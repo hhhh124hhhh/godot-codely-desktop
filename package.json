@@ -1,26 +1,27 @@
 {
-  "name": "dsh-desktop",
-  "version": "0.1.1",
-  "description": "A cross-platform desktop shell for DeepSeek Harness.",
+  "name": "godot-codely-desktop",
+  "version": "0.1.0",
+  "description": "Godot Codely - Godot game-dev AI agent desktop (DSH for Godot, MIT open source)",
   "private": true,
   "type": "module",
   "main": "./out/main/index.js",
-  "author": "DataElement",
+  "author": "hhhh124hhhh",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dataelement/dsh-desktop.git"
+    "url": "git+https://github.com/hhhh124hhhh/godot-codely-desktop.git"
   },
   "bugs": {
-    "url": "https://github.com/dataelement/dsh-desktop/issues"
+    "url": "https://github.com/hhhh124hhhh/godot-codely-desktop/issues"
   },
-  "homepage": "https://github.com/dataelement/dsh-desktop#readme",
+  "homepage": "https://github.com/hhhh124hhhh/godot-codely-desktop#readme",
   "keywords": [
+    "godot",
     "deepseek",
     "harness",
-    "electron",
     "desktop",
-    "agent"
+    "agent",
+    "game-dev"
   ],
   "scripts": {
     "postinstall": "patch-package && node scripts/install-brand-assets.mjs && install-electron --no",
@@ -313,8 +314,8 @@
     "koffi": "3.1.5"
   },
   "build": {
-    "appId": "io.dsh.desktop",
-    "productName": "DSH Desktop",
+    "appId": "io.godot.codely",
+    "productName": "Godot Codely",
     "asar": true,
     "asarUnpack": [
       "**/*.{node,dylib,dll,so,exe}",
@@ -462,12 +463,13 @@
     ],
     "publish": [
       {
-        "provider": "generic",
-        "url": "https://dshdesktop.com/updates/latest/"
+        "provider": "github",
+        "owner": "hhhh124hhhh",
+        "repo": "godot-codely-desktop"
       }
     ],
     "detectUpdateChannel": false,
-    "artifactName": "dsh-desktop-${os}-${arch}.${ext}",
+    "artifactName": "godot-codely-${os}-${arch}.${ext}",
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",
@@ -483,13 +485,7 @@
     },
     "win": {
       "icon": "build/icon.ico",
-      "verifyUpdateCodeSignature": true,
-      "signtoolOptions": {
-        "publisherName": "Beijing Shuju Xiangsu Intelligence Technology Co., Ltd.",
-        "signingHashAlgorithms": [
-          "sha256"
-        ]
-      },
+      "verifyUpdateCodeSignature": false,
       "requestedExecutionLevel": "asInvoker",
       "target": [
         {
@@ -501,7 +497,7 @@
       ]
     },
     "nsis": {
-      "artifactName": "dsh-desktop-windows-${arch}-setup.${ext}",
+      "artifactName": "godot-codely-windows-${arch}-setup.${ext}",
       "include": "build/installer.nsh",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
