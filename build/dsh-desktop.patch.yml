@@ -76,3 +76,9 @@
       config:
         resources: !!js process.env.DSH_DESKTOP_OFFICE_RESOURCES
         cli: !!js process.env.DSH_DESKTOP_OFFICE_CLI
+
+# Godot Codely stack: bundled godot-codely-lite preset, godot skills and
+# godot-mcp-server are provisioned into the DSH home on first boot.
+- insert:
+    - id: dsh-godot-stack
+      name: dsh-godot-stack

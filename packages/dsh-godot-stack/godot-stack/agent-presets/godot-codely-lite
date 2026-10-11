@@ -1,0 +1,3 @@
+name: Godot Codely Lite
+description: Godot 工程 AI 助手（轻量版）。瘦身主提示词 + SKILL.md 技能库按需加载（对标 Codely 技能库模式）：身份/纪律/红线常驻，场景树/GDScript/物理/UI/世界/质量/流程技能按任务激活。省 token 50-70%，可跨项目复用。原「Godot Codely」为完整注入版，可随时切换对照。
+order: 9
