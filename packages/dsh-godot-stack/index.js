@@ -31,7 +31,14 @@ export const inject = []
 export const Config = z.object({})
 
 function dshHome() {
-  return process.env.DSH_HOME || join(os.homedir(), '.dsh')
+  if (process.env.DSH_HOME) return process.env.DSH_HOME
+  // 桌面端把 userData 硬编码为 %APPDATA%\dsh-desktop（src/main/index.ts），
+  // dshHome = <userData>\harness。主进程环境没有 DSH_HOME，这里显式探测。
+  const appDataHome = join(process.env.APPDATA ?? '', 'dsh-desktop', 'harness')
+  if (appDataHome !== join('', 'dsh-desktop', 'harness') && existsSync(appDataHome)) {
+    return appDataHome
+  }
+  return join(os.homedir(), '.dsh')
 }
 
 async function exists(path) {
@@ -67,32 +74,44 @@ async function provisionMcp(home, target) {
   return { status: 'configured' }
 }
 
+async function provisionPreset(home) {
+  await mkdir(join(home, '.agent-presets'), { recursive: true })
+  await cp(
+    join(here, 'godot-stack', 'agent-presets', 'godot-codely-lite'),
+    join(home, '.agent-presets', 'godot-codely-lite'),
+    { recursive: true, force: true }
+  )
+}
+
 export async function apply(ctx) {
   const home = dshHome()
+  // 分段 best-effort：preset 与 MCP 互不拖累（asar 内目录 cp 可能因 Electron 文件系统兼容失败）
   try {
-    await mkdir(join(home, '.agent-presets'), { recursive: true })
-    await cp(
-      join(here, 'godot-stack', 'agent-presets', 'godot-codely-lite'),
-      join(home, '.agent-presets', 'godot-codely-lite'),
-      { recursive: true, force: true }
-    )
+    await provisionPreset(home)
+    ctx.logger?.info?.('godot-stack: preset provisioned; home=%s', home)
+  } catch (error) {
+    ctx.logger?.warn?.('godot-stack: preset provisioning skipped: %s', error?.message ?? String(error))
+  }
+  try {
     const mcpTarget = join(home, '.godot', 'mcp-server')
     await mkdir(join(home, '.godot'), { recursive: true })
     await cp(join(here, 'godot-stack', 'mcp', 'godot-mcp-server'), mcpTarget, { recursive: true, force: true })
     const mcp = await provisionMcp(home, mcpTarget)
-    ctx.logger?.info?.('godot-stack: preset provisioned; mcp=%s home=%s', mcp.status, home)
+    ctx.logger?.info?.('godot-stack: mcp provisioned; status=%s', mcp.status)
     if (mcp.status === 'source-only') {
       ctx.logger?.warn?.('godot-stack: %s', mcp.hint)
     }
   } catch (error) {
-    ctx.logger?.warn?.('godot-stack: provisioning skipped: %s', error?.message ?? String(error))
+    ctx.logger?.warn?.('godot-stack: mcp provisioning skipped: %s', error?.message ?? String(error))
   }
 
   // Godot bridge：面板连的 REST 服务。DSH harness 端口默认 43129（dev 构建 43130）。
+  // tokenFile 必须与 harness-runtime 落盘路径一致：<dshHome>/godot-codely-launch-token
   const dshPort = Number(process.env.DSH_HARNESS_PORT ?? process.env.GODOT_CODELY_DSH_PORT ?? 43129)
   const bridge = new BridgeServer({
     port: Number(process.env.GODOT_CODELY_BRIDGE_PORT ?? 4399),
     dshPort,
+    tokenFile: join(home, 'godot-codely-launch-token'),
     logger: ctx.logger,
   })
   try {

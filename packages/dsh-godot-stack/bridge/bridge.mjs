@@ -28,10 +28,25 @@ import { join } from 'node:path'
 export const BRIDGE_DEFAULT_PORT = 4399
 export const DSH_DEFAULT_PORT = 43129
 
-/** 默认 launch-token 文件（与 harness-runtime 写盘路径一致）。 */
+/**
+ * 默认 launch-token 文件。harness-runtime 落盘在 <dshHome>/godot-codely-launch-token，
+ * dshHome 是 DSH_HOME（桌面端实际为 %APPDATA%\dsh-desktop\harness），不是固定的 ~/.dsh。
+ * 因此按优先级探测多个候选路径，取第一个真实存在的。
+ */
 export function defaultTokenFile() {
   if (process.env.GODOT_CODELY_TOKEN_FILE) return process.env.GODOT_CODELY_TOKEN_FILE
-  return join(homedir(), '.dsh', 'godot-codely-launch-token')
+  const candidates = []
+  if (process.env.DSH_HOME) {
+    candidates.push(join(process.env.DSH_HOME, 'godot-codely-launch-token'))
+  }
+  if (process.env.APPDATA) {
+    candidates.push(join(process.env.APPDATA, 'dsh-desktop', 'harness', 'godot-codely-launch-token'))
+  }
+  candidates.push(join(homedir(), '.dsh', 'godot-codely-launch-token'))
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate
+  }
+  return candidates[0]
 }
 
 /** 最小 Typert unary 客户端（只实现需要的 endpoint，不依赖任何 DSH 内部包）。 */
@@ -72,6 +87,10 @@ export class TypertClient {
   }
 
   async call(endpoint, args, { signal } = {}) {
+    // 惰性鉴权：任何真实业务调用前确保已用 launch-token 交换签名 cookie
+    if (this.cookie === undefined && !(await this.auth())) {
+      throw new Error(`DSH API ${endpoint}: auth failed (no launch token / cookie exchange)`)
+    }
     const rpcId = randomUUID()
     const headers = { 'content-type': 'application/json' }
     if (this.cookie !== undefined) headers.cookie = this.cookie
@@ -102,42 +121,51 @@ export class TypertClient {
   }
 
   async createSession({ cwd, preset } = {}) {
-    const args = {}
-    if (cwd) args.cwd = cwd
-    if (preset) args.agentPreset = preset
-    return this.call('session/create', args)
+    const request = {}
+    if (cwd) request.cwd = cwd
+    if (preset) request.agentPreset = preset
+    return this.call('session/create', { request })
   }
 
   async prompt(sessionId, text) {
-    const args = {
+    const request = {
       requestId: randomUUID(),
       sessionId,
       mode: 'queue',
       content: [{ type: 'text', text }],
       clientTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     }
-    return this.call('session/prompt', args)
+    return this.call('session/prompt', { request })
   }
 
   async page(sessionId, { since = 0, limit = 50 } = {}) {
-    const args = {
-      address: { sessionId },
-      throughSeq: 2 ** 31 - 1, // "最新水位"：从 since 之后往回分页
+    // throughSeq 必须是当前会话水位（asOfSeq），不能是任意大值。
+    // session/list 的 projections.asOfSeq 就是权威水位。
+    const list = await this.call('session/list', { _request: {} })
+    const item = (list?.items ?? []).find((x) => x.sessionId === sessionId)
+    const throughSeq = item?.projections?.asOfSeq
+    if (throughSeq === undefined) {
+      throw new Error(`DSH API session/page: unknown cursor for session ${sessionId}`)
+    }
+    if (since >= throughSeq) return { records: [], hasMore: false }
+    const request = {
+      address: { kind: 'session', sessionId },
+      throughSeq,
       beforeSeq: since + 1,
       maxMessages: limit,
     }
-    return this.call('session/page', args)
+    return this.call('session/page', { request })
   }
 
   async cancel(sessionId) {
-    return this.call('session/cancel', { sessionId })
+    return this.call('session/cancel', { request: { sessionId } })
   }
 
   async ping() {
     try {
       await this.auth()
-      // 用一个轻量 remote 探测：list 返回会话列表
-      const value = await this.call('session/list', { limit: 1 })
+      // 用一个轻量 remote 探测：list 返回会话列表（参数名为 _request）
+      const value = await this.call('session/list', { _request: {} })
       return { ok: true, sessions: value }
     } catch (error) {
       return { ok: false, error: String(error?.message ?? error) }
@@ -215,7 +243,7 @@ export class BridgeServer {
         const since = Number(url.searchParams.get('since') ?? '0') || 0
         const page = await this.client.page(sessionId, { since, limit: 50 })
         const records = page.records ?? []
-        const nextSeq = records.reduce((max, r) => Math.max(max, r.seq ?? 0), since)
+        const nextSeq = records.reduce((max, r) => Math.max(max, r.event?.seq ?? 0), since)
         return this.#json(res, 200, { ok: true, records, nextSeq, hasMore: page.hasMore ?? false })
       }
     }
