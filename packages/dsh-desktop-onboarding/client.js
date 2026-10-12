@@ -13,10 +13,10 @@ window.__ModuleLoader__.load({
     // Settings section the "configure a model" action opens.
     const MODELS_SECTION_ID = 'models'
 
-    // DSH Desktop whale mark (same artwork as the sidebar brand seat), drawn
-    // in currentColor so it follows the header text color in both themes.
-    const BRAND_MARK_VIEWBOX = { x: 42, y: 218, width: 898, height: 564 }
-    const BRAND_MARK_PATH = 'M478.318 218C605.318 218 683.318 287 687.318 404L691.318 472C693.318 525 697.319 556 726.318 574C746.318 587 774.318 585 790.318 562C799.318 550 802.318 539 792.318 534C747.319 513 727.318 472 738.318 428C739.652 420 742.652 418.667 747.318 424C774.318 450 815.318 460 831.318 501C855.318 457 898.318 456 930.318 436C936.318 431.333 939.318 433.333 939.318 442C938.318 496 903.318 535 850.318 547C841.318 570 833.318 592 819.318 622C773.318 723 661.318 782 491.318 782H294.318C161.319 782 74.3183 714 53.3184 592C41.3184 526 38.3184 433 50.3184 375C70.3184 277 113.82 218 234.32 218H478.318ZM571.82 350.5C469.82 333.5 277.82 329.5 164.82 350.5C138.82 355.5 114.318 379 110.318 404C100.318 451 102.318 551 124.318 596C155.318 660 214.319 697 315.318 705C324.318 678 346.319 662 376.318 662C404.318 662 427.318 678 435.318 705C493.318 699 526.318 680 562.318 652C621.318 606 633.749 527.103 633.749 424C633.749 385.144 604.82 355.5 571.82 350.5ZM179.32 264C167.722 264 158.32 273.402 158.32 285C158.32 296.598 167.722 306 179.32 306C190.918 306 200.32 296.598 200.32 285C200.32 273.402 190.918 264 179.32 264ZM245.551 264C233.953 264 224.551 273.402 224.551 285C224.551 296.598 233.953 306 245.551 306C257.149 306 266.551 296.598 266.551 285C266.551 273.402 257.149 264 245.551 264ZM311.782 264C300.184 264 290.782 273.402 290.782 285C290.782 296.598 300.184 306 311.782 306C323.38 306 332.782 296.598 332.782 285C332.782 273.402 323.38 264 311.782 264Z'
+    // Godot Codely node mark (scene-tree node cluster), drawn in currentColor
+    // so it follows the header text color in both themes.
+    const BRAND_MARK_VIEWBOX = { x: 0, y: 0, width: 100, height: 100 }
+    const BRAND_MARK_PATH = 'M34 50a16 16 0 1 0 32 0a16 16 0 1 0 -32 0M42 10a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M9 78a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M75 78a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M50 25a6 6 0 1 0 12 0a6 6 0 1 0 -12 0M22 44a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M68 44a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M22 66a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M68 66a5 5 0 1 0 10 0a5 5 0 1 0 -10 0'
 
     // GitHub mark (Octicons mark-github, 16px grid), drawn in currentColor.
     const GITHUB_MARK_PATH = 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'
@@ -58,30 +58,30 @@ window.__ModuleLoader__.load({
     // ---------- locale dictionaries ----------
 
     const en = {
-      brandName: 'DSH Desktop',
-      brandBy: 'by dataelem',
-      step0Title: 'Internal Testing Notice',
-      declarationBody: "DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem.",
-      desktopIntroTitle: 'About DSH Desktop',
-      desktopIntroBody: 'DSH Desktop is maintained by the DataElem team as the desktop edition of DeepSeek Harness — local-first and cross-platform.',
-      officialSite: 'Official site',
-      officialSiteUrl: 'https://www.dshdesktop.com/',
-      desktopIntroFeedback: 'Found a bug or have a suggestion? Open an issue on GitHub, or reach us through the official site.',
+      brandName: 'Godot Codely',
+      brandBy: 'Open Source · MIT',
+      step0Title: 'Welcome to Godot Codely',
+      declarationBody: "Godot Codely is an AI coding agent desktop built for Godot developers, on top of the open-source DeepSeek Harness ecosystem (MIT).\n\nOut of the box: the Godot Expert Team preset (5 agents), 7 domain skills (Scene Tree / GDScript / Physics & Movement / UI UX / Shader & Worldgen / Quality Gates / Project Workflow), and godot-mcp-server with 23 Godot-native tools preloaded.\n\nLocal-first and free. Issues and PRs are welcome — let's push the Godot dev experience further together.",
+      desktopIntroTitle: 'About Godot Codely',
+      desktopIntroBody: 'Godot Codely is built by hhhh124hhhh as a vertical distribution based on the community dsh-desktop, keeping the DeepSeek Harness core and adding a Godot-specific layer.',
+      officialSite: 'Source repo',
+      officialSiteUrl: 'https://github.com/hhhh124hhhh/godot-codely-desktop',
+      desktopIntroFeedback: 'Found a bug or have a suggestion? Open an issue on GitHub.',
       configureModel: 'Configure a model',
       later: 'Maybe later',
       saveFailed: 'Could not save your acknowledgment. Please try again.'
     }
 
     const zh = {
-      brandName: 'DSH Desktop',
-      brandBy: 'by dataelem',
-      step0Title: '内测声明',
-      declarationBody: 'DeepSeek Harness 目前的 0.1 版本仍处在面向 Harness 开发者进行测试的阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者的反馈建议。预计 DeepSeek Harness 的核心插件以及基础 API 都会在接下来的一段时间内快速迭代、持续演化。\n\n我们期待与全球开发者一起，在开源、开放、可复用、可组合的基础设施之上，共同探索智能上限。欢迎全球 Harness 开发者加入 DSH 插件生态。',
-      desktopIntroTitle: '关于 DSH Desktop',
-      desktopIntroBody: 'DSH Desktop 是由 DataElem 团队维护的 DeepSeek Harness 桌面版本，为 Harness 提供本地优先、跨平台的桌面体验。',
-      officialSite: '官网',
-      officialSiteUrl: 'https://dshdesktop.com/zh/',
-      desktopIntroFeedback: '遇到问题或有功能建议？欢迎在 GitHub 提交 Issue，或在官网联系我们。',
+      brandName: 'Godot Codely',
+      brandBy: '开源 · MIT',
+      step0Title: '欢迎使用 Godot Codely',
+      declarationBody: 'Godot Codely 是专为 Godot 开发者打造的 AI 编码 Agent 桌面端，基于开源 DeepSeek Harness 生态（MIT 许可）构建。\n\n开箱即用：内置 Godot 五人专家团预设与 7 个领域技能（场景树 / GDScript / 物理移动 / UI UX / 着色器与世界生成 / 质量门禁 / 项目工作流），并预装 godot-mcp-server 的 23 个 Godot 原生工具。\n\n本地优先、开源免费。欢迎提交 Issue 与 PR，一起把 Godot 开发体验推向极致。',
+      desktopIntroTitle: '关于 Godot Codely',
+      desktopIntroBody: 'Godot Codely 由 hhhh124hhhh 基于社区 dsh-desktop 构建的垂直发行版，保留 DeepSeek Harness 内核能力，叠加 Godot 定制层。',
+      officialSite: '开源仓库',
+      officialSiteUrl: 'https://github.com/hhhh124hhhh/godot-codely-desktop',
+      desktopIntroFeedback: '遇到问题或有功能建议？欢迎在 GitHub 提交 Issue。',
       configureModel: '去配置模型',
       later: '稍后再说',
       saveFailed: '未能保存确认，请重试。'
@@ -127,7 +127,7 @@ window.__ModuleLoader__.load({
     function NoticeBody({ t }) {
       const paragraphs = t('declarationBody').split('\n\n')
       const links = [
-        { label: 'GitHub', href: 'https://github.com/dataelement/dsh-desktop', icon: GitHubMark },
+        { label: 'GitHub', href: 'https://github.com/hhhh124hhhh/godot-codely-desktop', icon: GitHubMark },
         { label: t('officialSite'), href: t('officialSiteUrl'), icon: IconGlobeOutlineRegular }
       ]
       return React.createElement(
