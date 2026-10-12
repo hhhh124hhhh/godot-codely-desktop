@@ -130,6 +130,16 @@ persona 遮蔽全局提示词、spawn 以空对话开始、继承父级 cwd/LLM�
 - 修复：删除外层冗余 cp；MCP 复制收敛到 provisionMcp 内部（dstReady 判定 + srcNewer mtime 比较 +
   filter 双分隔符排除 node_modules）。apply() 实测 0.0s，CLI 启动不再超时。
 
+## 记忆系统（AGENTS.md 注入，对标 cowork 记忆）
+
+DSH 原生按链注入工作区指令（dsh-base 默认开启，预算 64KB）：**全局** `~/.dsh/AGENTS.md` →
+**项目根** AGENTS.md/CLAUDE.md → **目录级** AGENTS.md（更具体者优先，变更增量注入）。
+
+- 全局记忆：`~/.dsh/AGENTS.md`（用户习惯：简体中文、飞书推送节点、3D 低精度偏好、产品背景、模型套餐）。
+- 项目记忆：仓库根 `AGENTS.md`（上游 DSH 开发约束，保留）+ 本目录 `packages/dsh-godot-stack/AGENTS.md`
+  （Godot Codely 定制层：目录地图、命令、陷阱、能力进度）。
+- 验证（2026-10-12，kimi）：CLI 询问产品定位/默认模型/3D 偏好，agent 全部正确回答 ✅。
+
 ## 开发
 
 ```bash
