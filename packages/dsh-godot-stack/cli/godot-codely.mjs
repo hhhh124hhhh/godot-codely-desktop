@@ -16,7 +16,7 @@
  * --model/--provider 生成一个临时 overlay patch（agent-default-model），
  * 通过 dsh 的 --patch 机制覆盖默认模型，仅本次运行生效。
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { runCli } from '@deepseek-ai/dsh/lib/bin.js'
@@ -207,19 +207,47 @@ if (patchFile) bootArgs.push('--patch', patchFile)
 
 // 自动记忆（对标 cowork）：任务末尾强制评估并沉淀值得长期记住的信息。
 // 任务内直接指令比 AGENTS.md 行为准则执行率高；--no-memory 可关闭。
+// 启动器在任务前后快照 memories 目录，跑完打印真实落盘结果（不依赖模型声称）。
+const memoryDir = join(home, 'memories')
+const memorySnapshot = () => {
+  if (!existsSync(memoryDir)) return []
+  try {
+    return readdirSync(memoryDir).sort()
+  } catch {
+    return []
+  }
+}
+const memBefore = memorySnapshot()
+
 if (!rest.includes('--no-memory')) {
   const taskIdx = rest.findIndex((a) => !a.startsWith('-'))
   if (taskIdx >= 0) {
     const task = rest[taskIdx]
     rest[taskIdx] =
       task +
-      '\n\n[自动记忆] 完成任务后，评估本轮是否出现值得长期记住的信息（用户偏好/产品决策/架构约定/踩坑结论/新能力状态）；' +
-      '如有，用 write 写入 ~/.dsh/memories/<topic>.md（UPSERT，topic 用英文短词）；' +
-      '然后在回答末尾用一行说明写了哪些记忆（没有则写：无新增记忆）。'
+      `\n\n[自动记忆] 完成任务后，评估本轮是否出现值得长期记住的信息（用户偏好/产品决策/架构约定/踩坑结论/新能力状态）；` +
+      `如有，用 write 写入 ${memoryDir}\\<topic>.md（UPSERT，topic 用英文短词，路径必须是 ${memoryDir} 下的绝对路径）；` +
+      `然后在回答末尾用一行说明：写了哪些记忆（写清文件名），没有则写：无新增记忆。`
   }
 }
 
 process.argv = [process.argv[0], process.argv[1], ...bootArgs, ...rest]
+
+const beforeExit = async (code) => {
+  try {
+    const after = memorySnapshot()
+    const added = after.filter((f) => !memBefore.includes(f))
+    if (added.length > 0) {
+      console.log(`\x1b[36m自动记忆落盘\x1b[0m · ${added.length} 个新文件：${added.join(', ')}`)
+    } else {
+      console.log('自动记忆：无新增记忆文件')
+    }
+  } catch {
+    console.log('自动记忆：memories 目录不可读')
+  }
+  process.exit(code)
+}
+process.on('exit', (code) => beforeExit(code))
 
 await runCli({}).catch((error) => {
   console.error(`\x1b[31mgodot-codely\x1b[0m: ${error.message}`)
