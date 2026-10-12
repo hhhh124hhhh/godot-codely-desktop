@@ -18,7 +18,7 @@
  * block the Harness boot.
  */
 import { cp, mkdir, readFile, writeFile, access, stat } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { join, dirname, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
@@ -149,4 +149,64 @@ export async function apply(ctx) {
   } else {
     ctx.logger?.info?.('godot-stack: bridge skipped (headless home=%s)', home)
   }
+
+  // 斜杠命令（桌面端/Web 会话 UI，对标 cowork /command 面）：确定性动作，不产生模型消息。
+  // ctx.inject 动态注入：headless 无 commands 服务时静默跳过，不影响 CLI 启动。
+  ctx.inject(['commands'], (commandCtx) => {
+    const memDir = join(home, 'memories')
+    const listMem = () => {
+      if (!existsSync(memDir)) return []
+      try {
+        return readdirSync(memDir).sort()
+      } catch {
+        return []
+      }
+    }
+    commandCtx.commands.register({
+      name: 'memory',
+      description: 'Godot Codely 长期记忆：记/查/列表',
+      input: { hint: '<记 topic 内容 | 查 topic | 列表>' },
+      handler: ({ rawInput }) => {
+        const parts = rawInput.trim().split(/\s+/)
+        const sub = parts[0]
+        if (sub === '记') {
+          const topic = parts[1]
+          const content = parts.slice(2).join(' ')
+          if (!topic || !content) return { kind: 'error', text: '用法：/memory 记 <topic> <内容>' }
+          mkdirSync(memDir, { recursive: true })
+          writeFileSync(join(memDir, topic + '.md'), content + '\n', 'utf8')
+          return { kind: 'success', text: `已记忆 ${topic}（${content.length} 字）` }
+        }
+        if (sub === '查') {
+          const topic = parts[1]
+          if (!topic) return { kind: 'error', text: '用法：/memory 查 <topic>' }
+          const f = join(memDir, topic + '.md')
+          if (!existsSync(f)) return { kind: 'success', text: `未找到记忆「${topic}」（/memory 列表 查看全部）` }
+          return { kind: 'success', text: `【记忆: ${topic}】\n${readFileSync(f, 'utf8').trim()}` }
+        }
+        if (sub === '列表') {
+          const files = listMem()
+          if (files.length === 0) return { kind: 'success', text: '记忆库为空（/memory 记 <topic> <内容>）' }
+          return { kind: 'success', text: files.map((f) => `- ${f.replace(/\.md$/, '')}`).join('\n') }
+        }
+        return { kind: 'error', text: '/memory 子命令：记 | 查 | 列表' }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'status',
+      description: 'Godot Codely 能力进度与记忆概览',
+      handler: () => {
+        const agents = join(home, 'AGENTS.md')
+        let status = ''
+        if (existsSync(agents)) {
+          const lines = readFileSync(agents, 'utf8')
+            .split(/\r?\n/)
+            .filter((l) => /✅|⏳|未完成|^- .*#/.test(l))
+          status = lines.slice(0, 15).join('\n')
+        }
+        return { kind: 'success', text: `能力进度：\n${status || '（无 AGENTS.md）'}\n记忆：${listMem().length} 个主题` }
+      },
+    })
+    ctx.logger?.info?.('godot-stack: slash commands registered (memory/status)')
+  })
 }

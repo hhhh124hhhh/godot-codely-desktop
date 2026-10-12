@@ -55,6 +55,91 @@ function listModels() {
 const argv = process.argv.slice(2)
 const first = argv[0]
 
+// 自动记忆目录（供斜杠命令与任务内沉淀共用）
+const memoryDir = join(home, 'memories')
+const memorySnapshot = () => {
+  if (!existsSync(memoryDir)) return []
+  try {
+    return readdirSync(memoryDir).sort()
+  } catch {
+    return []
+  }
+}
+
+// ---- 斜杠命令：确定性动作，不启动模型（秒回，对标 cowork /command 面） ----
+if (first?.startsWith('/')) {
+  // 命令可能整体在第一个参数里（如 "/memory 记 topic 内容"），按空白拆出命令名与参数
+  const [cmdWord, ...restOfFirst] = first.slice(1).split(/\s+/)
+  const cmd = cmdWord.toLowerCase()
+  const args = [...restOfFirst, ...argv.slice(1)]
+  if (cmd === 'memory') {
+    const sub = args[0]
+    if (sub === '记') {
+      const topic = args[1]
+      const content = args.slice(2).join(' ')
+      if (!topic || !content) {
+        console.error(`\x1b[31mgodot-codely\x1b[0m: /memory 记 <topic> <内容>\n  示例：godot-codely "/memory 记 user_preferences 用户喜欢快"`)
+        process.exit(2)
+      }
+      const f = join(memoryDir, topic + '.md')
+      writeFileSync(f, content + '\n', 'utf8')
+      console.log(`\x1b[36m已记忆\x1b[0m ${topic} -> ${f}`)
+      process.exit(0)
+    }
+    if (sub === '查') {
+      const topic = args[1]
+      if (!topic) {
+        console.error(`\x1b[31mgodot-codely\x1b[0m: /memory 查 <topic>`)
+        process.exit(2)
+      }
+      const f = join(memoryDir, topic + '.md')
+      if (!existsSync(f)) {
+        console.log(`未找到记忆「${topic}」（可用 /memory 列表 查看全部主题）`)
+        process.exit(0)
+      }
+      console.log(`【记忆: ${topic}】`)
+      console.log(readFileSync(f, 'utf8').trim())
+      process.exit(0)
+    }
+    if (sub === '列表') {
+      const files = memorySnapshot()
+      if (files.length === 0) {
+        console.log('记忆库为空（可 /memory 记 <topic> <内容> 写入）')
+        process.exit(0)
+      }
+      console.log(`记忆库目录：${memoryDir}`)
+      for (const f of files) console.log(`- ${f.replace(/\.md$/, '')}`)
+      process.exit(0)
+    }
+    console.error(`\x1b[31mgodot-codely\x1b[0m: /memory 子命令：记 | 查 | 列表`)
+    process.exit(2)
+  }
+  if (cmd === 'models') {
+    const providers = listModels()
+    console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 模型套餐\n`)
+    for (const [name, info] of providers) {
+      console.log(`  ${name}  (${info.displayName})`)
+      for (const id of info.models) console.log(`    - ${id}`)
+    }
+    process.exit(0)
+  }
+  if (cmd === 'status') {
+    console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 能力进度（AGENTS.md 摘要）\n`)
+    const agents = join(home, 'AGENTS.md')
+    if (existsSync(agents)) {
+      const txt = readFileSync(agents, 'utf8')
+      const lines = txt.split(/\r?\n/).filter((l) => /^#|^[-*]|✅|⏳|未完成/.test(l))
+      for (const l of lines.slice(0, 30)) console.log(l)
+    } else {
+      console.log('未找到全局 AGENTS.md')
+    }
+    console.log(`\n记忆条数：${memorySnapshot().length} 个主题`)
+    process.exit(0)
+  }
+  console.error(`\x1b[31mgodot-codely\x1b[0m: 未知斜杠命令 /${cmd}（可用：/memory 记|查|列表、/models、/status）`)
+  process.exit(2)
+}
+
 // ---- config 子命令：用户自建/查看模型套餐（对标 cowork 的模型市场体验） ----
 if (first === 'config') {
   const sub = argv[1]
@@ -208,15 +293,6 @@ if (patchFile) bootArgs.push('--patch', patchFile)
 // 自动记忆（对标 cowork）：任务末尾强制评估并沉淀值得长期记住的信息。
 // 任务内直接指令比 AGENTS.md 行为准则执行率高；--no-memory 可关闭。
 // 启动器在任务前后快照 memories 目录，跑完打印真实落盘结果（不依赖模型声称）。
-const memoryDir = join(home, 'memories')
-const memorySnapshot = () => {
-  if (!existsSync(memoryDir)) return []
-  try {
-    return readdirSync(memoryDir).sort()
-  } catch {
-    return []
-  }
-}
 const memBefore = memorySnapshot()
 
 if (!rest.includes('--no-memory')) {

@@ -155,10 +155,15 @@ godot-codely --permission read-only "任务"             # 只读（安全浏览
 - 协作模式：Web 端可用 `/permission <preset>` 切换（read-only / workspace-write / danger-full-access）。
 
 ### 动态记忆（godot-memory skill + MCP 工具，对标 cowork 独有记忆）
-
 - 静态链（上文）+ 动态层：agent 主动读写 `~/.dsh/memories/<topic>.md`（`godot-memory` skill 约定，headless 已跑通）。
 - MCP 工具版：`memory_remember / memory_recall / memory_list`（`godot-mcp-server`，单元验证全过；桌面端 harness 可用，headless 因 stdio 握手延迟暂不暴露）。
 - 2026-10-12 真机：full 权限下 CLI 写入 `~/.dsh/memories/verify_test4.md` 并回读一致 ✅；workspace-write 下写记忆目录亦放行（行为观察中）。
+
+## 斜杠命令（对标 cowork /command 面）
+
+- **CLI**（秒回，不启动模型）：`godot-codely "/memory 记 <topic> <内容>"`、`/memory 查 <topic>`、`/memory 列表`、`/models`、`/status`
+- **桌面端/Web 会话**：dsh-godot-stack 通过 `ctx.inject(['commands'])` 注册 `/memory`（记/查/列表）与 `/status`（能力进度+记忆概览），确定性动作不产生模型消息；headless 无 commands 服务时静默跳过
+- `/permission <preset>` 为 DSH 自带（read-only / workspace-write / danger-full-access）
 
 ## 开发
 
