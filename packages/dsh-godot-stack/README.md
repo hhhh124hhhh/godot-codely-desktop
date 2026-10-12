@@ -165,6 +165,14 @@ godot-codely --permission read-only "任务"             # 只读（安全浏览
 - **桌面端/Web 会话**：dsh-godot-stack 通过 `ctx.inject(['commands'])` 注册 `/memory`（记/查/列表）与 `/status`（能力进度+记忆概览），确定性动作不产生模型消息；headless 无 commands 服务时静默跳过
 - `/permission <preset>` 为 DSH 自带（read-only / workspace-write / danger-full-access）
 
+## LSP 通道（#18 · 2026-10-12 真机打通）
+
+- **机制**：Godot 原生 GDScript Language Server（`--editor --lsp-port <port> --headless`，TCP JSON-RPC；stdio 模式在 Windows 不可用）
+- **工具**：MCP server 新增 `lsp_diagnostics(path, project_path?)`——打开 .gd 文件收 `publishDiagnostics` + 工作区加载错误，返回结构化诊断（severity/line/column/message）
+- **Godot 探测**：GODOT_PATH → 已知路径（含本机 `D:\Godot_4.7_mono\...\Godot_v4.7-stable_mono_win64.exe`）→ 常见安装位；项目目录从 path 向上找 project.godot 自动定位
+- **真机验证**：错误文件（未定义函数/未用参数）返回 2 条诊断；干净文件无诊断 ✅
+- **能力意义**：agent 可自审 GDScript（对标 cowork 代码智能），无需人工开编辑器
+
 ## 开发
 
 ```bash

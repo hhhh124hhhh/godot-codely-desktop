@@ -37,6 +37,7 @@ import {
   type SovereignCtx,
 } from '../../../cs-unique/tools.js'
 import { MEMORY_TOOLS, dispatchMemory } from '../../../memory/memory.js'
+import { LSP_TOOLS, dispatchLsp } from '../../../lsp/tools.js'
 import { createImageGenTools } from '../../../image-gen/image-gen.js'
 
 /**
@@ -651,6 +652,7 @@ export function registerTools(server: Server, config: GodotConfig, ctx?: Soverei
     EXTRA_TOOLS = [
       ...CS_UNIQUE_TOOLS,
       ...MEMORY_TOOLS,
+      ...LSP_TOOLS,
       ...imgTools.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
     ]
     EXTRA_DISPATCH = async (name: string, args: Record<string, unknown>) => {
@@ -659,6 +661,9 @@ export function registerTools(server: Server, config: GodotConfig, ctx?: Soverei
       }
       if (MEMORY_TOOLS.some((t) => t.name === name)) {
         return dispatchMemory(name, args)
+      }
+      if (LSP_TOOLS.some((t) => t.name === name)) {
+        return dispatchLsp(name, args)
       }
       const img = imgTools.find((t) => t.name === name)
       if (img) {
