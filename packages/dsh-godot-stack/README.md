@@ -70,6 +70,42 @@ godot-codely config add \
 | volcengine | ❌ 400 | 账号无 CodingPlan 订阅 |
 | deepseek 官方 | ❌ 402 | 余额不足 |
 
+## 多模态资产生成（MCP：generate_sprite / generate_image / text_to_speech）
+
+Godot Codely 的 MCP server 提供 3 个多模态工具，写入 Godot 工程 `assets/`（Godot 4 自动 import，无需手写 meta）：
+
+| 工具 | 能力 | 落盘 |
+|---|---|---|
+| `generate_sprite` | 2D 游戏精灵（角色/敌人/道具/UI，透明背景） | `assets/textures/` |
+| `generate_image` | 任意图像（概念/场景/宣发） | `assets/textures/` |
+| `text_to_speech` | 文本转语音（wav/mp3） | `assets/audio/` |
+
+### 文生图（✅ 已通，开箱即用）
+
+- 默认走**火山方舟 doubao-seedream**：MCP 自动从 `~/.claude/skills/volcengine-generation/.env` 加载
+  `VOLCENGINE_API_KEY` + `VOLCENGINE_IMAGE_ENDPOINT=ep-xxxx`（接入点优先于进程级通用 URL）。
+- 实测（2026-10-12）：`generate_image` 真机出图成功（2048x2048，自动落盘 `assets/textures/`）。
+- 兜底：`GODOT_CODELY_IMAGE_BASE_URL` + `GODOT_CODELY_IMAGE_MODEL` + `GODOT_CODELY_IMAGE_API_KEY`
+  （任意 OpenAI 兼容 images/generations 端点，如自备 DashScope 原生 key）。
+
+### 语音合成（⚠️ 工具就绪，需自备 key）
+
+`text_to_speech` 走 DashScope multimodal-generation 格式（`qwen-audio-3.0-tts-plus` 等），
+需自备支持多模态的 DashScope/百炼 key：
+
+```
+GODOT_CODELY_TTS_BASE_URL=…（默认 dashscope multimodal-generation 端点）
+GODOT_CODELY_TTS_MODEL=qwen-audio-3.0-tts-plus
+GODOT_CODELY_TTS_API_KEY=sk-xxx
+GODOT_CODELY_TTS_VOICE=Cherry
+```
+
+### 已知限制（2026-10-12 实测）
+
+- **Token Plan 套餐**的 `wan2.7-image` / `qwen-audio-3.0-tts-plus` 虽在模型白名单，但网关只透传
+  chat 接口——`images/generations` 与 `audio/speech` 均返回 400 url error，**不能**经套餐调用。
+- **火山模型名直调**（doubao-seedream-5.0-lite-260128 等）404，必须用 `ep-` 接入点。
+
 ## 开发
 
 ```bash

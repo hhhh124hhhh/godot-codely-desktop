@@ -2,6 +2,13 @@
 // 零引擎运行时依赖：仅依赖 VOLC_ARK_API_KEY（火山方舟）写 PNG/JPG 进 Godot 工程 assets/。
 // Godot 4 在 rescan 时会自动为新增图片生成 .import，因此此处不手写 .meta/.import。
 // 由 createImageGenTools({ createSchema, getRuntimeContext }) 注入聚合器。
+//
+// 多模态端点（2026-10-12 扩展，用户自备 key 即开箱）：
+//   - 图像：火山方舟（默认，VOLC_ARK_API_KEY + VOLC_IMAGE_ENDPOINT=ep-xxx）
+//           或通用 OpenAI 兼容 images/generations 端点
+//           （GODOT_CODELY_IMAGE_BASE_URL + GODOT_CODELY_IMAGE_MODEL + GODOT_CODELY_IMAGE_API_KEY）
+//   - 语音：GODOT_CODELY_TTS_BASE_URL + GODOT_CODELY_TTS_MODEL + GODOT_CODELY_TTS_API_KEY
+//           （DashScope multimodal-generation 格式，qwen-audio-3.0-tts-plus 等）
 
 import https from 'https';
 import http from 'http';
@@ -40,7 +47,10 @@ function loadEnvCandidates(): void {
         if (!m) continue;
         const k = m[1];
         const v = m[2].trim().replace(/^["']|["']$/g, '');
-        if (process.env[k] === undefined) process.env[k] = v;
+        // ep- 接入点是可信信号：.env 里的 ep-xxx 覆盖进程级同名端点（避免不可用的通用 URL 遮蔽可用接入点）
+        if (process.env[k] === undefined || (/^ep-/i.test(v) && k.toUpperCase().includes('ENDPOINT'))) {
+          process.env[k] = v;
+        }
       }
     } catch (_) { /* ignore unreadable .env */ }
   }
@@ -48,6 +58,13 @@ function loadEnvCandidates(): void {
 loadEnvCandidates();
 
 function resolveTarget(): { url: string; model: string } {
+  // 通用 OpenAI 兼容图像端点优先（GODOT_CODELY_IMAGE_*）
+  const genericUrl = process.env.GODOT_CODELY_IMAGE_BASE_URL?.trim()
+  if (genericUrl) {
+    const model = process.env.GODOT_CODELY_IMAGE_MODEL?.trim()
+    if (!model) throw new Error('已配置 GODOT_CODELY_IMAGE_BASE_URL 但缺 GODOT_CODELY_IMAGE_MODEL')
+    return { url: genericUrl, model }
+  }
   const rawEp = process.env.VOLC_IMAGE_ENDPOINT || process.env.VOLCENGINE_IMAGE_ENDPOINT || '';
   const ep = rawEp.trim();
   if (/^ep-/i.test(ep)) {
@@ -61,15 +78,19 @@ function resolveTarget(): { url: string; model: string } {
   if (process.env.VOLC_IMAGE_MODEL) {
     return { url: DEFAULT_BASE, model: process.env.VOLC_IMAGE_MODEL };
   }
-  throw new Error('未配置火山方舟接入点。请设置环境变量 VOLC_IMAGE_ENDPOINT=ep-xxxx');
+  throw new Error('未配置图像生成端点。可选：\n' +
+    '  1) 火山方舟：VOLC_IMAGE_ENDPOINT=ep-xxxx + VOLC_ARK_API_KEY\n' +
+    '  2) 通用 OpenAI 兼容：GODOT_CODELY_IMAGE_BASE_URL + GODOT_CODELY_IMAGE_MODEL + GODOT_CODELY_IMAGE_API_KEY\n' +
+    '（当前 token-plan 套餐与火山模型直调均不可用，需用户自备可用端点）');
 }
 
 function genImage(opts: { prompt: string; width?: number; height?: number; apiKey?: string }): Promise<Buffer> {
-  const apiKey = opts.apiKey || process.env.VOLC_ARK_API_KEY || process.env.VOLCENGINE_API_KEY;
+  const genericKey = process.env.GODOT_CODELY_IMAGE_API_KEY
+  const apiKey = opts.apiKey || genericKey || process.env.VOLC_ARK_API_KEY || process.env.VOLCENGINE_API_KEY;
   if (!apiKey) {
     throw new Error(
-      '未找到火山方舟 API Key。可在 godot-mcp-server 的配置文件（godot-mcp-server.config.json 的 volcArkApiKey 字段）' +
-      '或环境变量 VOLC_ARK_API_KEY / VOLCENGINE_API_KEY 中填写' +
+      '未找到图像 API Key。可在 godot-mcp-server 的配置文件（godot-mcp-server.config.json 的 volcArkApiKey 字段）' +
+      '或环境变量 GODOT_CODELY_IMAGE_API_KEY / VOLC_ARK_API_KEY / VOLCENGINE_API_KEY 中填写' +
       '（也可放一份含 VOLCENGINE_API_KEY 的 .env 到 ~/.claude/skills/volcengine-generation/.env）。'
     );
   }
@@ -77,16 +98,25 @@ function genImage(opts: { prompt: string; width?: number; height?: number; apiKe
   const width = opts.width || 1024;
   const height = opts.height || 1024;
 
-  const payload = {
-    req_key: 'high_aes_general',
-    model,
-    prompt: opts.prompt,
-    width,
-    height,
-    use_prompt_embed: true,
-    return_url: true,
-    n: 1,
-  };
+  // 通用 OpenAI 兼容端点（images/generations：model/prompt/size/n）
+  const generic = process.env.GODOT_CODELY_IMAGE_BASE_URL?.trim()
+  const payload = generic
+    ? {
+        model,
+        prompt: opts.prompt,
+        size: `${width}x${height}`,
+        n: 1,
+      }
+    : {
+        req_key: 'high_aes_general',
+        model,
+        prompt: opts.prompt,
+        width,
+        height,
+        use_prompt_embed: true,
+        return_url: true,
+        n: 1,
+      };
 
   const body = JSON.stringify(payload);
 
@@ -95,7 +125,7 @@ function genImage(opts: { prompt: string; width?: number; height?: number; apiKe
     try {
       u = new URL(url);
     } catch (e) {
-      return reject(new Error('火山 endpoint 非法: ' + url));
+      return reject(new Error('图像 endpoint 非法: ' + url));
     }
     const req = https.request(
       u,
@@ -114,17 +144,17 @@ function genImage(opts: { prompt: string; width?: number; height?: number; apiKe
         res.on('end', () => {
           const text = Buffer.concat(chunks).toString('utf8');
           if (res.statusCode! < 200 || res.statusCode! >= 300) {
-            return reject(new Error(`火山图像 API HTTP ${res.statusCode}: ${text.slice(0, 600)}`));
+            return reject(new Error(`图像 API HTTP ${res.statusCode}: ${text.slice(0, 600)}`));
           }
           try {
             const json = JSON.parse(text);
             const item = (json.data && json.data[0]) || {};
-            const imgUrl = item.url || item.image_url;
-            if (imgUrl) return fetchUrl(imgUrl).then(resolve, reject);
-            if (item.b64_json) return resolve(Buffer.from(item.b64_json, 'base64'));
-            return reject(new Error('火山图像 API 返回无图像数据: ' + text.slice(0, 300)));
+            const imgUrl = item.url || item.image_url || item.b64_json;
+            if (typeof imgUrl === 'string' && imgUrl.startsWith('http')) return fetchUrl(imgUrl).then(resolve, reject);
+            if (typeof imgUrl === 'string') return resolve(Buffer.from(imgUrl, 'base64'));
+            return reject(new Error('图像 API 返回无图像数据: ' + text.slice(0, 300)));
           } catch (e: any) {
-            return reject(new Error('解析火山响应失败: ' + e.message + ' / ' + text.slice(0, 300)));
+            return reject(new Error('解析图像响应失败: ' + e.message + ' / ' + text.slice(0, 300)));
           }
         });
       }
@@ -239,6 +269,73 @@ async function generateImageInternal(args: any): Promise<string> {
   );
 }
 
+// ---------------------------------------------------------------------------
+// 语音合成（TTS）：DashScope multimodal-generation 格式（qwen-audio-3.0-tts-plus 等）
+// 配置：GODOT_CODELY_TTS_BASE_URL（默认 dashscope multimodal-generation）
+//       GODOT_CODELY_TTS_MODEL + GODOT_CODELY_TTS_API_KEY + GODOT_CODELY_TTS_VOICE
+// ---------------------------------------------------------------------------
+function postJson(url: string, key: string, payload: any, timeoutMs = 120000): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    let u: URL;
+    try { u = new URL(url); } catch (e) { return reject(new Error('TTS endpoint 非法: ' + url)); }
+    const body = JSON.stringify(payload);
+    const req = https.request(u, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`, 'Content-Length': Buffer.byteLength(body) },
+      timeout: timeoutMs,
+    }, (res) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (c: Buffer) => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode!, text: Buffer.concat(chunks).toString('utf8') }));
+    });
+    req.on('error', reject);
+    req.on('timeout', () => req.destroy(new Error('TTS 请求超时')));
+    req.write(body);
+    req.end();
+  });
+}
+
+async function generateTtsInternal(args: any): Promise<string> {
+  const baseUrl = process.env.GODOT_CODELY_TTS_BASE_URL?.trim() || 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation'
+  const model = process.env.GODOT_CODELY_TTS_MODEL?.trim() || 'qwen-audio-3.0-tts-plus'
+  const apiKey = process.env.GODOT_CODELY_TTS_API_KEY?.trim() || ''
+  const voice = process.env.GODOT_CODELY_TTS_VOICE?.trim() || args.voice || 'Cherry'
+  if (!apiKey) {
+    throw new Error(
+      '未配置 TTS API Key。设置环境变量 GODOT_CODELY_TTS_API_KEY（+ GODOT_CODELY_TTS_MODEL / GODOT_CODELY_TTS_BASE_URL）。\n' +
+      '注意：token-plan 套餐的 qwen-audio 模型当前无法经网关调用，需自备支持多模态的 DashScope/百炼 key。'
+    )
+  }
+  const text = args.text || ''
+  if (!text) throw new Error('text 必填')
+  const sampleRate = args.sample_rate || 24000
+  const format = args.format || 'wav'
+
+  const r = await postJson(baseUrl, apiKey, {
+    model,
+    input: { text, voice },
+    parameters: { format, sample_rate: sampleRate },
+  })
+  if (r.status < 200 || r.status >= 300) {
+    throw new Error(`TTS API HTTP ${r.status}: ${r.text.slice(0, 600)}`)
+  }
+  const json = JSON.parse(r.text)
+  const out = json.output || {}
+  let audioBuf: Buffer | null = null
+  if (out.audio) audioBuf = Buffer.from(out.audio, 'base64')
+  else if (out.url) audioBuf = await fetchUrl(out.url)
+  if (!audioBuf) throw new Error('TTS 返回无音频数据: ' + r.text.slice(0, 300))
+
+  const projectRoot = args.project_root || (args.getRuntimeContext && args.getRuntimeContext().projectPath) || process.cwd()
+  const targetDir = args.target_dir ? path.resolve(args.target_dir) : path.join(projectRoot, 'assets', 'audio')
+  fs.mkdirSync(targetDir, { recursive: true })
+  const fileBase = `${args.name || 'voice'}_${uuidHex().slice(0, 8)}`
+  const ext = format === 'mp3' ? 'mp3' : 'wav'
+  const outPath = path.join(targetDir, `${fileBase}.${ext}`)
+  fs.writeFileSync(outPath, audioBuf)
+  return `✅ 已生成语音「${fileBase}.${ext}」\n文本: ${text.slice(0, 60)}\n音频: ${outPath}\n工程根: ${projectRoot}`
+}
+
 // 返回符合 MCP JSON Schema 的工具定义（供聚合器 ListTools 直出）
 export function createImageGenTools(getRuntimeContext?: () => any): any[] {
   const run = (args: any) => generateImageInternal({ ...args, getRuntimeContext });
@@ -278,6 +375,24 @@ export function createImageGenTools(getRuntimeContext?: () => any): any[] {
         required: ['prompt'],
       },
       handler: async (args: any) => run(args),
+    },
+    {
+      name: 'text_to_speech',
+      description: '[audio] 语音合成（TTS）：把文本转成 wav/mp3 写入 Godot 工程 assets/audio/。需 GODOT_CODELY_TTS_API_KEY（自备支持多模态的 DashScope/百炼 key）。',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: '要合成的文本' },
+          voice: { type: 'string', description: '音色，默认环境变量 GODOT_CODELY_TTS_VOICE 或 Cherry' },
+          format: { type: 'string', enum: ['wav', 'mp3'], default: 'wav' },
+          sample_rate: { type: 'number', default: 24000 },
+          name: { type: 'string', description: '文件名前缀' },
+          target_dir: { type: 'string', description: '落盘目录，默认 <project>/assets/audio' },
+          project_root: { type: 'string', description: 'Godot 工程根' },
+        },
+        required: ['text'],
+      },
+      handler: async (args: any) => generateTtsInternal({ ...args, getRuntimeContext }),
     },
   ];
 }
