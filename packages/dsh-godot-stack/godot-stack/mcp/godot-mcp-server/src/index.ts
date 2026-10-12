@@ -123,28 +123,37 @@ async function main(): Promise<void> {
 
   if (transportType === 'http') {
     const httpServer = http.createServer()
-    const transports = new Map<string, StreamableHTTPServerTransport>()
+    const sessions = new Map<
+      string,
+      { server: Server; transport: StreamableHTTPServerTransport }
+    >()
 
     httpServer.on('request', async (req, res) => {
       const sessionId = req.headers['mcp-session-id'] as string | undefined
-      let transport: StreamableHTTPServerTransport | undefined
-      if (sessionId && transports.has(sessionId)) {
-        transport = transports.get(sessionId)
+      let session: { server: Server; transport: StreamableHTTPServerTransport } | undefined
+      if (sessionId && sessions.has(sessionId)) {
+        session = sessions.get(sessionId)
       } else if (!sessionId && req.headers['accept']?.includes('text/event-stream')) {
-        // 新会话：为每次 initialize 创建独立 transport 并接入同一 Server
-        transport = new StreamableHTTPServerTransport({
+        // 每会话独立 Server + Transport：避免全局单例 server.connect 被复用冲突
+        const s = new Server(
+          { name: 'godot-mcp-server', version: '2.0.0' },
+          { capabilities: { tools: {} } },
+        )
+        registerTools(s, config, buildSovereignCtx())
+        const t = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: (sid) => {
-            transports.set(sid, transport!)
+            sessions.set(sid, { server: s, transport: t })
           },
         })
-        await server.connect(transport)
+        await s.connect(t)
+        session = { server: s, transport: t }
       } else {
         res.writeHead(400).end('Bad Request')
         return
       }
-      if (transport) {
-        await transport.handleRequest(req, res)
+      if (session) {
+        await session.transport.handleRequest(req, res)
       } else {
         res.writeHead(404).end('Not Found')
       }
