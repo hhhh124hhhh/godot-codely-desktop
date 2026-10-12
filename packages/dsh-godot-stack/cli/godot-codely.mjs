@@ -26,30 +26,112 @@ const home = process.env.DSH_HOME ?? join(homedir(), '.dsh')
 const profileDir = join(home, 'profiles', PROFILE)
 const profilePatch = join(profileDir, 'cordis.patch.yml')
 
-/** 从 profile cordis.patch.yml 枚举 provider -> [modelIds]，无 YAML 依赖的行级解析。 */
+/** 从 profile + home 级 cordis.patch.yml 枚举 provider -> [modelIds]，无 YAML 依赖的行级解析。 */
 function listModels() {
   const providers = new Map() // name -> { displayName, models: [] }
-  const lines = readFileSync(profilePatch, 'utf8').split(/\r?\n/)
-  let cur = null
-  for (const line of lines) {
-    const pm = line.match(/^ {6}([A-Za-z0-9_.-]+):\s*$/)
-    if (pm) {
-      const name = pm[1]
-      if (!providers.has(name)) providers.set(name, { displayName: name, models: [] })
-      cur = name
-      continue
+  const sources = [profilePatch, join(home, 'cordis.patch.yml')]
+  for (const file of sources) {
+    if (!existsSync(file)) continue
+    const lines = readFileSync(file, 'utf8').split(/\r?\n/)
+    let cur = null
+    for (const line of lines) {
+      const pm = line.match(/^ {6}([A-Za-z0-9_.-]+):\s*$/)
+      if (pm) {
+        const name = pm[1]
+        if (!providers.has(name)) providers.set(name, { displayName: name, models: [] })
+        cur = name
+        continue
+      }
+      if (!cur) continue
+      const dm = line.match(/^ {8}displayName:\s*(.+)$/)
+      if (dm) { providers.get(cur).displayName = dm[1].trim(); continue }
+      const mm = line.match(/^ {10}- id:\s*(.+)$/)
+      if (mm) { providers.get(cur).models.push(mm[1].trim()); continue }
     }
-    if (!cur) continue
-    const dm = line.match(/^ {8}displayName:\s*(.+)$/)
-    if (dm) { providers.get(cur).displayName = dm[1].trim(); continue }
-    const mm = line.match(/^ {10}- id:\s*(.+)$/)
-    if (mm) { providers.get(cur).models.push(mm[1].trim()); continue }
   }
   return providers
 }
 
 const argv = process.argv.slice(2)
 const first = argv[0]
+
+// ---- config 子命令：用户自建/查看模型套餐（对标 cowork 的模型市场体验） ----
+if (first === 'config') {
+  const sub = argv[1]
+  if (sub === 'add') {
+    const get = (flag) => {
+      const i = argv.indexOf(flag)
+      return i >= 0 ? argv[i + 1] : undefined
+    }
+    const name = get('--name')
+    const baseURL = get('--base-url')
+    const api = get('--api') ?? 'openai-completions'
+    const keyEnv = get('--key-env')
+    const key = get('--key')
+    const models = get('--models')?.split(',').map((s) => s.trim()).filter(Boolean) ?? []
+    const display = get('--display') ?? name
+    if (!name || !baseURL || !keyEnv || !key || models.length === 0) {
+      console.error(`\x1b[31mgodot-codely\x1b[0m: config add 需要 --name --base-url --key-env --key --models\n  示例：godot-codely config add --name my-plan --base-url https://api.example.com/v1 --api openai-completions --key-env MY_API_KEY --key sk-xxx --models m1,m2 --display "我的套餐" [--default]`)
+      process.exit(2)
+    }
+    if (!['openai-completions', 'anthropic-messages'].includes(api)) {
+      console.error(`\x1b[31mgodot-codely\x1b[0m: --api 仅支持 openai-completions | anthropic-messages`)
+      process.exit(2)
+    }
+    // 1) 写入 home 级 patch（~/.dsh/cordis.patch.yml，DSH 自动应用到所有 profile）
+    const homePatch = join(home, 'cordis.patch.yml')
+    const providerBlock = [
+      `- id: llm-pi-ai`,
+      `  config:`,
+      `    providers:`,
+      `      ${name}:`,
+      `        apiKeyEnv: ${keyEnv}`,
+      `        displayName: ${display}`,
+      `        api: ${api}`,
+      `        baseURL: ${baseURL}`,
+      `        models:`,
+      ...models.map((m) => `          - id: ${m}`)
+    ].join('\n')
+    if (!existsSync(homePatch) || readFileSync(homePatch, 'utf8').trim() === '[]') {
+      writeFileSync(homePatch, providerBlock + '\n', 'utf8')
+    } else {
+      const cur = readFileSync(homePatch, 'utf8')
+      writeFileSync(homePatch, cur.trimEnd() + '\n' + providerBlock + '\n', 'utf8')
+    }
+    // 2) 写入 key（~/.dsh/.credentials.yaml 的 refs）
+    const credPath = join(home, '.credentials.yaml')
+    const cred = readFileSync(credPath, 'utf8')
+    if (cred.includes(`\n  ${keyEnv}: `) || cred.includes(`  ${keyEnv}: `)) {
+      const lines = cred.split(/\r?\n/).map((l) => (l.startsWith(`  ${keyEnv}: `) ? `  ${keyEnv}: ${key}` : l))
+      writeFileSync(credPath, lines.join('\n'), 'utf8')
+    } else {
+      writeFileSync(credPath, cred.replace(/\nrecords:/, `\n  ${keyEnv}: ${key}\nrecords:`), 'utf8')
+    }
+    // 3) --default → 设为默认模型
+    if (argv.includes('--default')) {
+      const defPatch = join(profileDir, 'cordis.patch.yml')
+      const dp = readFileSync(defPatch, 'utf8')
+      const next = dp.replace(/- id: agent-default-model\n  config:\n    provider: .*\n    model: .*\n/, `- id: agent-default-model\n  config:\n    provider: ${name}\n    model: ${models[0]}\n`)
+      writeFileSync(defPatch, next, 'utf8')
+      console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 套餐「${display}」已添加并设为默认（${name}/${models[0]}）`)
+    } else {
+      console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 套餐「${display}」已添加（${name}，${models.length} 个模型）`)
+    }
+    console.log(`  可用：godot-codely --list-models 查看 ｜ godot-codely --model <id> "任务" 切换`)
+    process.exit(0)
+  }
+  if (sub === 'list') {
+    const providers = listModels()
+    console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 模型套餐\n`)
+    for (const [name, info] of providers) {
+      console.log(`  ${name}  (${info.displayName})`)
+      for (const id of info.models) console.log(`    - ${id}`)
+    }
+    process.exit(0)
+  }
+  console.error(`\x1b[31mgodot-codely\x1b[0m: config 子命令：add（新增套餐）/ list（列出套餐）`)
+  process.exit(2)
+}
 
 // --list-models：枚举并退出
 if (argv.includes('--list-models')) {
