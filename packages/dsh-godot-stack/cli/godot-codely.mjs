@@ -149,15 +149,30 @@ if (argv.includes('--list-models')) {
   process.exit(0)
 }
 
-// 解析 --model / --provider（仅限本命令自有参数，紧跟在命令名后）
+// 解析 --model / --provider / --permission（仅限本命令自有参数，紧跟在命令名后）
 let modelId = null
 let providerName = null
+let permissionMode = null
 const rest = []
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]
   if (a === '--model' || a === '-m') { modelId = argv[++i]; continue }
   if (a === '--provider') { providerName = argv[++i]; continue }
+  if (a === '--permission') { permissionMode = argv[++i]; continue }
   rest.push(a)
+}
+
+// 安全策略/协作模式：默认 danger-full-access（完全权限+无审批，CLI 能干重活）；
+// 可 --permission workspace-write / read-only 降级（ask 审批，headless 无审批通道时写工作区外会 fail-closed）。
+if (permissionMode) {
+  if (!['read-only', 'workspace-write', 'danger-full-access'].includes(permissionMode)) {
+    console.error(`\x1b[31mgodot-codely\x1b[0m: --permission 仅支持 read-only | workspace-write | danger-full-access`)
+    process.exit(2)
+  }
+  process.env.DSH_PERMISSION_MODE = permissionMode
+  console.log(`\x1b[36mGodot Codely CLI\x1b[0m · permission=${permissionMode}`)
+} else {
+  process.env.DSH_PERMISSION_MODE ??= 'danger-full-access'
 }
 
 // 模型名 -> provider 解析

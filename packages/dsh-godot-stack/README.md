@@ -140,6 +140,26 @@ DSH 原生按链注入工作区指令（dsh-base 默认开启，预算 64KB）�
   （Godot Codely 定制层：目录地图、命令、陷阱、能力进度）。
 - 验证（2026-10-12，kimi）：CLI 询问产品定位/默认模型/3D 偏好，agent 全部正确回答 ✅。
 
+## 安全策略/协作模式（对标 cowork permission 体系）
+
+DSH 的权限 = 沙箱模式 + 审批策略的捆绑（preset）。Godot Codely CLI 默认走 **danger-full-access**（完全权限 + 无审批，能写工作区外、能干重活）：
+
+```bash
+godot-codely "任意任务"                                # 默认 full
+godot-codely --permission workspace-write "任务"       # 降级：工作区写 + ask 审批
+godot-codely --permission read-only "任务"             # 只读（安全浏览）
+```
+
+- 实现：启动器注入 `DSH_PERMISSION_MODE`（dsh-sandbox-policy 直读）；profile patch 覆盖 `permission` 插件 `defaultPreset: danger-full-access`（Web 端新会话默认同此）。
+- 审批语义：`danger-full-access` → `never`（不询问）；`workspace-write`/`read-only` → `ask`（headless 无审批通道时，写工作区外 fail-closed = 安全兜底）。
+- 协作模式：Web 端可用 `/permission <preset>` 切换（read-only / workspace-write / danger-full-access）。
+
+### 动态记忆（godot-memory skill + MCP 工具，对标 cowork 独有记忆）
+
+- 静态链（上文）+ 动态层：agent 主动读写 `~/.dsh/memories/<topic>.md`（`godot-memory` skill 约定，headless 已跑通）。
+- MCP 工具版：`memory_remember / memory_recall / memory_list`（`godot-mcp-server`，单元验证全过；桌面端 harness 可用，headless 因 stdio 握手延迟暂不暴露）。
+- 2026-10-12 真机：full 权限下 CLI 写入 `~/.dsh/memories/verify_test4.md` 并回读一致 ✅；workspace-write 下写记忆目录亦放行（行为观察中）。
+
 ## 开发
 
 ```bash
