@@ -4,6 +4,9 @@
   "description": "Godot Codely stack: godot-codely-lite preset, godot skills and godot-mcp-server, provisioned into the DSH home on boot.",
   "type": "module",
   "main": "./index.js",
+  "bin": {
+    "godot-codely": "./cli/godot-codely.mjs"
+  },
   "exports": {
     ".": "./index.js",
     "./package.json": "./package.json",
@@ -12,6 +15,7 @@
   "files": [
     "index.js",
     "bridge",
+    "cli",
     "skills",
     "godot-stack",
     "cordis.patch.yml",
