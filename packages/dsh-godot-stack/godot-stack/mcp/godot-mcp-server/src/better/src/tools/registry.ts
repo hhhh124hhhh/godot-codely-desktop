@@ -246,6 +246,7 @@ const P0_TOOLS = [
       '- detect_godot: find Godot binary path',
       '- check: verify project and Godot availability',
       '- auto_setup: locate Godot (config/standard/deep-scan) or download & install if missing',
+      '- state: 桌面端/CLI ↔ 编辑器插件状态同步（读 <DSH_HOME>/.godot/state.json）',
     ].join('\n'),
     annotations: createAnnotations('Config', { idempotent: true }),
     inputSchema: {
@@ -253,7 +254,7 @@ const P0_TOOLS = [
       properties: {
         action: {
           type: 'string',
-          enum: ['status', 'set', 'detect_godot', 'check', 'auto_setup'],
+          enum: ['status', 'set', 'detect_godot', 'check', 'auto_setup', 'state'],
           description: 'Action to perform',
         },
         key: { type: 'string', description: 'Config key (for set)' },
@@ -623,6 +624,11 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
 let EXTRA_TOOLS: any[] = []
 let EXTRA_DISPATCH: ((name: string, args: Record<string, unknown>) => Promise<any>) | null = null
 
+type ToolDispatch = (
+  name: string,
+  args: Record<string, unknown>,
+) => Promise<{ content: Array<{ type: string; text: string }>; structuredContent?: Record<string, unknown>; isError?: boolean }>
+
 /**
  * Register all tools with the MCP server
  */
@@ -667,41 +673,39 @@ export function registerTools(server: Server, config: GodotConfig, ctx?: Soverei
     tools: allTools,
   }))
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args = {} } = request.params
-
+  const dispatchTool: ToolDispatch = async (name: string, args: Record<string, unknown>) => {
     // [sovereign] 额外工具（image-gen / cs-unique）优先分发，再回退 better 复合工具
     if (ctx && EXTRA_DISPATCH && EXTRA_TOOLS.some((t) => t.name === name)) {
-      try {
-        return EXTRA_DISPATCH(name, args)
-      } catch (error) {
-        return formatError(error)
-      }
+      return EXTRA_DISPATCH(name, args)
     }
 
+    let result: {
+      content: Array<{ type: string; text: string }>
+      structuredContent?: Record<string, unknown>
+      isError?: boolean
+    }
+    if (name === 'help') {
+      result = await handleHelp(args.topic as string | undefined)
+    } else {
+      const handler = Object.hasOwn(TOOL_HANDLERS, name) ? TOOL_HANDLERS[name] : undefined
+      if (!handler) {
+        const validTools = TOOLS.map((t) => t.name)
+        const closest = findClosestMatch(name, validTools)
+        const suggestion = closest ? ` Did you mean '${closest}'?` : ''
+        throw new GodotMCPError(
+          `Unknown tool: ${name}.${suggestion}`,
+          'INVALID_ACTION',
+          `Available tools: ${validTools.join(', ')}`,
+        )
+      }
+      result = await handler(args.action as string, args, config)
+    }
+    return wrapToolResult(name, result)
+  }
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args = {} } = request.params
     try {
-      let result: {
-        content: Array<{ type: string; text: string }>
-        structuredContent?: Record<string, unknown>
-        isError?: boolean
-      }
-      if (name === 'help') {
-        result = await handleHelp(args.topic as string | undefined)
-      } else {
-        const handler = Object.hasOwn(TOOL_HANDLERS, name) ? TOOL_HANDLERS[name] : undefined
-        if (!handler) {
-          const validTools = TOOLS.map((t) => t.name)
-          const closest = findClosestMatch(name, validTools)
-          const suggestion = closest ? ` Did you mean '${closest}'?` : ''
-          throw new GodotMCPError(
-            `Unknown tool: ${name}.${suggestion}`,
-            'INVALID_ACTION',
-            `Available tools: ${validTools.join(', ')}`,
-          )
-        }
-        result = await handler(args.action as string, args as Record<string, unknown>, config)
-      }
-      return wrapToolResult(name, result)
+      return await dispatchTool(name, args)
     } catch (error) {
       return formatError(error)
     }

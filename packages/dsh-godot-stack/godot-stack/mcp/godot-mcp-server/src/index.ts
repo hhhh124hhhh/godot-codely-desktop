@@ -8,20 +8,18 @@
  *  - 原生 image-gen：generate_sprite / generate_image（火山方舟文生图，移植自 cocos-mcp-bridge）
  *  - 已删除：coding-solo 冗余 10 工具 + Plan B 子进程代理（spawnUpstream / cs__ / better__ 前缀）
  *
- * 传输：stdio（默认）或 http 单端点（MCP_TRANSPORT=http）。
+ * 传输：stdio（默认），或 HTTP /mcp + Godot JSON /api（MCP_TRANSPORT=http）。
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import http from 'http'
 import path from 'path'
 import fs from 'fs'
-import { randomUUID } from 'crypto'
 import { fileURLToPath } from 'url'
 import { detectGodot, isVersionSupported, tryGetVersion } from './better/src/godot/detector.js'
 import type { GodotConfig } from './better/src/godot/types.js'
 import { registerTools } from './better/src/tools/registry.js'
+import { createHttpServer } from './http-server.js'
 import type { SovereignCtx } from './cs-unique/tools.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -122,45 +120,10 @@ async function main(): Promise<void> {
   const transportType = process.env.MCP_TRANSPORT || 'stdio'
 
   if (transportType === 'http') {
-    const httpServer = http.createServer()
-    const sessions = new Map<
-      string,
-      { server: Server; transport: StreamableHTTPServerTransport }
-    >()
-
-    httpServer.on('request', async (req, res) => {
-      const sessionId = req.headers['mcp-session-id'] as string | undefined
-      let session: { server: Server; transport: StreamableHTTPServerTransport } | undefined
-      if (sessionId && sessions.has(sessionId)) {
-        session = sessions.get(sessionId)
-      } else if (!sessionId && req.headers['accept']?.includes('text/event-stream')) {
-        // 每会话独立 Server + Transport：避免全局单例 server.connect 被复用冲突
-        const s = new Server(
-          { name: 'godot-mcp-server', version: '2.0.0' },
-          { capabilities: { tools: {} } },
-        )
-        registerTools(s, config, buildSovereignCtx())
-        const t = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-          onsessioninitialized: (sid) => {
-            sessions.set(sid, { server: s, transport: t })
-          },
-        })
-        await s.connect(t)
-        session = { server: s, transport: t }
-      } else {
-        res.writeHead(400).end('Bad Request')
-        return
-      }
-      if (session) {
-        await session.transport.handleRequest(req, res)
-      } else {
-        res.writeHead(404).end('Not Found')
-      }
-    })
+    const httpServer = createHttpServer(config, buildSovereignCtx())
 
     httpServer.listen(CONFIG.port, CONFIG.host, () => {
-      console.error(`[godot-mcp-server] HTTP 端点已起: http://${CONFIG.host}:${CONFIG.port}/mcp`)
+      console.error(`[godot-mcp-server] HTTP 端点已起: http://${CONFIG.host}:${CONFIG.port}/mcp (Godot JSON: /api)`)
     })
   } else {
     const stdioTransport = new StdioServerTransport()

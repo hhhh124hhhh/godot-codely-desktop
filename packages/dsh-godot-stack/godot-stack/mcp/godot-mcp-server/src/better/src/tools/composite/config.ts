@@ -1,10 +1,10 @@
 /**
  * Config tool - Server configuration, environment detection, and verification
- * Actions: status | set | detect_godot | check | auto_setup
+ * Actions: status | set | detect_godot | check | auto_setup | state
  */
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { detectGodot, isExecutable, isVersionSupported, scanGodotCommon, tryGetVersion } from '../../godot/detector.js'
@@ -311,6 +311,41 @@ async function handleCheck(_args: Record<string, unknown>, config: GodotConfig) 
   return formatJSON(status)
 }
 
+/**
+ * 桌面端/CLI ↔ 编辑器插件状态同步：
+ * 读取 <DSH_HOME>/.godot/state.json（Godot AI 面板连接成功后自动写入），
+ * 合并 server 自身运行时状态，供 CLI/桌面端 agent 观察编辑器当前项目/场景。
+ */
+async function handleState(_args: Record<string, unknown>, config: GodotConfig) {
+  let plugin: Record<string, unknown> | null = null
+  try {
+    const home = process.env.USERPROFILE || process.env.HOME || ''
+    const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+    const p = join(dshHome, '.godot', 'state.json')
+    if (existsSync(p)) {
+      const parsed: unknown = JSON.parse(readFileSync(p, 'utf8'))
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Expected an editor state object')
+      }
+      plugin = parsed as Record<string, unknown>
+    }
+  } catch (error) {
+    throw new GodotMCPError(
+      'Cannot read editor state',
+      'INVALID_ARGS',
+      'Check the editor state file under DSH_HOME/.godot/state.json.',
+      { cause: error instanceof Error ? error.message : String(error) },
+    )
+  }
+  return formatJSON({
+    godot_path: config.godotPath || 'not detected',
+    godot_version: config.godotVersion?.raw || 'unknown',
+    project_path: config.projectPath || 'not set',
+    runtime_overrides: runtimeConfig,
+    editor_plugin: plugin,
+  })
+}
+
 const CONFIG_ACTIONS: Record<
   string,
   (
@@ -323,6 +358,7 @@ const CONFIG_ACTIONS: Record<
   detect_godot: handleDetectGodot,
   check: handleCheck,
   auto_setup: handleAutoSetup,
+  state: handleState,
   setup_status: async () => formatJSON({ needs_setup: false, reason: 'godot-mcp has no credentials' }),
   setup_start: async () => formatSuccess('No setup required for godot-mcp.'),
   setup_reset: async () => formatSuccess('Nothing to reset.'),

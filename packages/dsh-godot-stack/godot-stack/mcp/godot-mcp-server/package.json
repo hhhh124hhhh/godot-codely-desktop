@@ -16,6 +16,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "smoke": "node scripts/smoke.mjs",
+    "test:http": "npm run build && node --test tests/http.test.mjs",
     "start": "node build/index.js",
     "start:http": "MCP_TRANSPORT=http node build/index.js"
   },

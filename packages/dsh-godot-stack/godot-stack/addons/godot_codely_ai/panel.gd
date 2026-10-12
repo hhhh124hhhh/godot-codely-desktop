@@ -110,6 +110,7 @@ func _ready() -> void:
 func _on_connect_pressed() -> void:
 	if _connecting:
 		return
+	_connected = false
 	_connecting = true
 	_status_label.text = "连接中…"
 	_append_line("[color=#999999]连接 godot-mcp-server (127.0.0.1:8785)…[/color]", Color.WHITE)
@@ -150,9 +151,50 @@ func _on_connected() -> void:
 	_status_label.text = "已连接"
 	_status_label.add_theme_color_override("font_color", Color(0.3, 0.8, 0.5))
 	_append_line("[color=#57B44E]✓ MCP 已连接[/color]", Color.WHITE)
+	_write_state()
+
+
+## 状态同步：把当前项目/场景/版本写入 <DSH_HOME>/.godot/state.json
+## 桌面端/CLI 通过 config/state 工具读取，实现双端同步
+func _write_state() -> void:
+	var home := OS.get_environment("USERPROFILE")
+	if home.is_empty():
+		home = OS.get_environment("HOME")
+	var dsh := OS.get_environment("DSH_HOME")
+	var dsh_home := dsh if not dsh.is_empty() else home + "/.dsh"
+	var dir := dsh_home + "/.godot"
+	var dir_error := DirAccess.make_dir_recursive_absolute(dir)
+	if dir_error != OK:
+		push_warning("[godot-codely] state directory failed: " + str(dir_error))
+		return
+	var ver := Engine.get_version_info()
+	var scene_path := ""
+	if Engine.is_editor_hint():
+		var scene := EditorInterface.get_edited_scene_root()
+		if scene != null:
+			scene_path = scene.scene_file_path
+	var state := {
+		"client": "godot-codely-ai-panel",
+		"project": str(ProjectSettings.get_setting("application/config/name", "unknown")),
+		"project_path": ProjectSettings.globalize_path("res://"),
+		"scene_path": scene_path,
+		"godot_version": str(ver.get("string", "unknown")),
+		"mcp_port": 8785,
+		"connected_at": Time.get_datetime_string_from_system(),
+	}
+	var f := FileAccess.open(dir + "/state.json", FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(state))
+		var write_error := f.get_error()
+		f.close()
+		if write_error != OK:
+			push_warning("[godot-codely] state write failed: " + str(write_error))
+	else:
+		push_warning("[godot-codely] state open failed: " + str(FileAccess.get_open_error()))
 
 
 func _on_conn_error(message: String) -> void:
+	_connected = false
 	_append_line("[color=#E5533D]" + message + "[/color]", Color.WHITE)
 
 

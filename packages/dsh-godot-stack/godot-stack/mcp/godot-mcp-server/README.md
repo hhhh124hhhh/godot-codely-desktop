@@ -45,6 +45,22 @@ NOTICE                三方署名与许可声明
 
 ## 构建
 
+Godot 编辑器面板使用 HTTP 模式的 `/api`（`/api/` 也可用）。它与 `/mcp` 共用
+SDK 工具注册，但设置 `enableJsonResponse: true`，让 `HTTPRequest` 能读完响应。
+客户端仍按 MCP 要求接受 `application/json, text/event-stream`；接受 SSE 与实际收到
+SSE 是不同状态。JSON 响应解析后先保存 session header，再发送 `notifications/initialized`。
+`tools/list`、工具错误和 session 删除均由 SDK 处理，不维护另一套工具分发。
+
+面板连接成功后，将项目、当前场景和引擎版本快照写入 `<DSH_HOME>/.godot/state.json`；
+`config` 工具的 `state` 动作读取这份快照。它表示最近一次连接状态，不是实时在线探针。
+编辑器与 server 必须使用同一个 `DSH_HOME`，两者未设置时回退到用户目录下的 `.dsh`。
+
+HTTP 行为回归：在本目录执行 `npm run test:http`。设置 `GODOT_TEST_BIN` 为本机
+Godot 可执行文件后，还会在临时项目、独立 userData 和 DSH_HOME 中加载真实面板，
+检查“已连接”标签、工具调用以及状态文件往返。未设置时只运行 HTTP 检查。
+同步部署时先确保构建退出码为 0，再复制 `build/` 和插件的 `mcp_client.gd`、`panel.gd`，
+随后重新启动 server 与编辑器；源码更新不代表已运行进程或现有项目插件副本已更新。
+
 ```bash
 npm install          # 安装依赖（@modelcontextprotocol/sdk ^1.30.0 + typescript）
 npm run build        # 一次 tsc 编译 src/（含 better/cs-unique/image-gen）→ build/

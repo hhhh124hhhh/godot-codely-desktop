@@ -8,7 +8,7 @@ signal connected
 signal tool_result(id: int, result: Dictionary)
 signal connection_error(message: String)
 
-const DEFAULT_URL := "http://127.0.0.1:8785/"
+const DEFAULT_URL := "http://127.0.0.1:8785/api"
 
 var _base_url := DEFAULT_URL
 var _session_id := ""
@@ -49,15 +49,19 @@ func connect_server(url := "") -> bool:
 			"clientInfo": {"name": "godot-codely-ai", "version": "0.1.0"},
 		},
 	}
-	var result: Dictionary = await _post("/", body)
+	var result: Dictionary = await _post("", body)
 	if result.get("ok", false) and result.has("data"):
 		var data: Dictionary = result["data"]
 		if data.has("result") and not data["result"].is_empty():
 			var headers: Dictionary = result["headers"]
 			if headers.has("mcp-session-id"):
 				_session_id = str(headers["mcp-session-id"])
-			connected.emit()
-			return true
+			if not _session_id.is_empty():
+				var notified: Dictionary = await _post("", {"jsonrpc": "2.0", "method": "notifications/initialized"})
+				if notified.get("ok", false):
+					connected.emit()
+					return true
+	connection_error.emit("MCP 初始化失败: " + str(result.get("data", result)))
 	return false
 
 
@@ -70,26 +74,17 @@ func call_tool(tool_name: String, args: Dictionary = {}) -> Dictionary:
 		"method": "tools/call",
 		"params": {"name": tool_name, "arguments": args},
 	}
-	var result: Dictionary = await _post("/", body)
+	var result: Dictionary = await _post("", body)
 	var parsed: Dictionary = _extract_result(result)
 	tool_result.emit(_req_id, parsed)
 	return parsed
 
 
-## 解析 SSE/JSON 响应中的 result 字段
+## 解析 JSON 响应中的 result 字段
 func _extract_result(result: Dictionary) -> Dictionary:
 	if not result.get("ok", false):
 		return {"error": result.get("error", "unknown"), "raw": result}
 	var data: Dictionary = result["data"]
-	# SSE 格式：event: message\ndata: {...}
-	var text := str(data.get("text", ""))
-	if text.begins_with("event:"):
-		var data_idx := text.find("\ndata: ")
-		if data_idx >= 0:
-			var json_part := text.substr(data_idx + 7).strip_edges()
-			var parsed = JSON.parse_string(json_part)
-			if parsed is Dictionary:
-				return parsed
 	if data.has("result"):
 		return data["result"]
 	return data
@@ -98,6 +93,7 @@ func _extract_result(result: Dictionary) -> Dictionary:
 ## 发 POST 请求（自动带 session 头），返回 {ok, status, headers, data}
 func _post(path: String, body: Dictionary) -> Dictionary:
 	_ensure_http()
+	# MCP requires both accepted types; /api selects the SDK's finite JSON response.
 	var headers := ["Content-Type: application/json", "Accept: application/json, text/event-stream"]
 	if not _session_id.is_empty():
 		headers.append("Mcp-Session-Id: " + _session_id)
@@ -106,9 +102,15 @@ func _post(path: String, body: Dictionary) -> Dictionary:
 		connection_error.emit("HTTP 请求失败: " + str(err))
 		return {"ok": false, "error": str(err)}
 	var response: Array = await _http.request_completed
+	if int(response[0]) != HTTPRequest.RESULT_SUCCESS:
+		var message := "HTTP 传输失败: " + str(response[0])
+		connection_error.emit(message)
+		return {"ok": false, "error": message}
 	var code := int(response[1])
 	var headers_raw = response[2]
 	var body_bytes = response[3]
+	if code == 202:
+		return {"ok": true, "status": code, "headers": {}, "data": {}}
 	if code != 200:
 		connection_error.emit("HTTP " + str(code) + ": " + body_bytes.get_string_from_utf8())
 		return {"ok": false, "status": code, "error": body_bytes.get_string_from_utf8()}
@@ -117,9 +119,13 @@ func _post(path: String, body: Dictionary) -> Dictionary:
 		var kv := String(h).split(":", true, 1)
 		if kv.size() == 2:
 			header_map[kv[0].to_lower().strip_edges()] = kv[1].strip_edges()
+	var data = JSON.parse_string(body_bytes.get_string_from_utf8())
+	if not data is Dictionary:
+		connection_error.emit("MCP 响应不是有效 JSON 对象")
+		return {"ok": false, "error": "Invalid MCP JSON response"}
 	return {
 		"ok": true,
 		"status": code,
 		"headers": header_map,
-		"data": {"text": body_bytes.get_string_from_utf8()},
+		"data": data,
 	}
