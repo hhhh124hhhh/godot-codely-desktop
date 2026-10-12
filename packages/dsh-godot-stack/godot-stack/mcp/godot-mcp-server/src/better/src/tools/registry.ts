@@ -36,6 +36,7 @@ import {
   dispatchCsUnique,
   type SovereignCtx,
 } from '../../../cs-unique/tools.js'
+import { MEMORY_TOOLS, dispatchMemory } from '../../../memory/memory.js'
 import { createImageGenTools } from '../../../image-gen/image-gen.js'
 
 /**
@@ -649,11 +650,15 @@ export function registerTools(server: Server, config: GodotConfig, ctx?: Soverei
     }))
     EXTRA_TOOLS = [
       ...CS_UNIQUE_TOOLS,
+      ...MEMORY_TOOLS,
       ...imgTools.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
     ]
     EXTRA_DISPATCH = async (name: string, args: Record<string, unknown>) => {
       if (CS_UNIQUE_TOOLS.some((t) => t.name === name)) {
         return dispatchCsUnique(name, args, ctx)
+      }
+      if (MEMORY_TOOLS.some((t) => t.name === name)) {
+        return dispatchMemory(name, args)
       }
       const img = imgTools.find((t) => t.name === name)
       if (img) {
