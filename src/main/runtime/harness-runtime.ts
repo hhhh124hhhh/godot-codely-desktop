@@ -1,6 +1,6 @@
 import { execFile, execFileSync, type SpawnOptionsWithoutStdio } from 'node:child_process'
 import type { EventEmitter } from 'node:events'
-import { createWriteStream, existsSync, mkdirSync, type WriteStream } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, writeFileSync, type WriteStream } from 'node:fs'
 import { mkdir, readFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { dirname, join, posix, win32 } from 'node:path'
@@ -681,6 +681,14 @@ ${cause}`
       this.launchToken ??= extractLaunchToken(line)
       if (!hadToken && this.launchToken !== undefined) {
         this.writeLog('[desktop] Harness announced its endpoint; probing until it answers')
+        // Godot Codely: 把 launch token 落盘到 DSH home，供编辑器桥（bridge）换取 DSH API cookie
+        try {
+          const tokenFile = join(this.options.dshHome, 'godot-codely-launch-token')
+          writeFileSync(tokenFile, `${this.launchToken}\n`, { encoding: 'utf8' })
+          this.writeLog(`[desktop] godot bridge token written to ${tokenFile}`)
+        } catch (error) {
+          this.writeLog(`[desktop] godot bridge token write failed: ${String(error?.message ?? error)}`)
+        }
       }
     }
   }

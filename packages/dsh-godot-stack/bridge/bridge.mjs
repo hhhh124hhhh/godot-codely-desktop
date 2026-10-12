@@ -11,30 +11,73 @@
  *   GET  /v1/sessions/:id/events?since=N → 增量事件（session/page 轮询）
  *   POST /v1/sessions/:id/cancel         → 取消（session/cancel）
  *
- * Typert unary RPC（源自 dsh-client-connection，localhost 同源无需鉴权）：
- *   POST {base}/api/<namespace>/<method>
- *   body: { type:"client-request", rpcId, method, payload:{ args } }
- *   resp: { rpcId, result }
+ * 鉴权：DSH web server 用 launch-token 换取签名 cookie（dsh-auth-*）。
+ * 桌面端在 harness 启动时把 launch token 写入
+ *   <dshHome>/godot-codely-launch-token
+ * bridge 启动时读取 → GET /?token=<launchToken>（redirect manual）→ 抓 Set-Cookie →
+ * 之后的 Typert 请求携带该 cookie。
  *
  * 独立调试：node bridge/bridge.mjs --port 4399 --dsh-port 43129
  */
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
+import { readFileSync, existsSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 
 export const BRIDGE_DEFAULT_PORT = 4399
 export const DSH_DEFAULT_PORT = 43129
 
+/** 默认 launch-token 文件（与 harness-runtime 写盘路径一致）。 */
+export function defaultTokenFile() {
+  if (process.env.GODOT_CODELY_TOKEN_FILE) return process.env.GODOT_CODELY_TOKEN_FILE
+  return join(homedir(), '.dsh', 'godot-codely-launch-token')
+}
+
 /** 最小 Typert unary 客户端（只实现需要的 endpoint，不依赖任何 DSH 内部包）。 */
 export class TypertClient {
-  constructor(baseUrl) {
+  constructor(baseUrl, { tokenFile } = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, '')
+    this.tokenFile = tokenFile ?? defaultTokenFile()
+    this.cookie = undefined // 交换到的 DSH 签名 cookie
+  }
+
+  /** 读取 launch token 并交换签名 cookie。 */
+  async auth() {
+    if (this.cookie !== undefined) return true
+    let token
+    try {
+      token = readFileSync(this.tokenFile, 'utf8').trim().split('\n')[0]
+    } catch {
+      return false // 桌面端尚未就绪/无 token 文件
+    }
+    if (!token) return false
+    try {
+      const response = await fetch(`${this.baseUrl}/?token=${encodeURIComponent(token)}`, {
+        redirect: 'manual',
+        headers: { accept: 'text/html' },
+      })
+      const setCookies = typeof response.headers.getSetCookie === 'function'
+        ? response.headers.getSetCookie()
+        : (response.headers.get('set-cookie') ? [response.headers.get('set-cookie')] : [])
+      const sessionCookie = setCookies.find((c) => c.startsWith('dsh-auth-'))
+      if (sessionCookie) {
+        this.cookie = sessionCookie.split(';')[0]
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
   }
 
   async call(endpoint, args, { signal } = {}) {
     const rpcId = randomUUID()
+    const headers = { 'content-type': 'application/json' }
+    if (this.cookie !== undefined) headers.cookie = this.cookie
     const response = await fetch(`${this.baseUrl}/api/${endpoint}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers,
       body: JSON.stringify({
         type: 'client-request',
         rpcId,
@@ -92,6 +135,7 @@ export class TypertClient {
 
   async ping() {
     try {
+      await this.auth()
       // 用一个轻量 remote 探测：list 返回会话列表
       const value = await this.call('session/list', { limit: 1 })
       return { ok: true, sessions: value }
@@ -103,10 +147,10 @@ export class TypertClient {
 
 /** 简化 REST 桥服务。 */
 export class BridgeServer {
-  constructor({ port = BRIDGE_DEFAULT_PORT, dshPort = DSH_DEFAULT_PORT, host = '127.0.0.1', logger } = {}) {
+  constructor({ port = BRIDGE_DEFAULT_PORT, dshPort = DSH_DEFAULT_PORT, host = '127.0.0.1', tokenFile, logger } = {}) {
     this.port = port
     this.host = host
-    this.client = new TypertClient(`http://127.0.0.1:${dshPort}`)
+    this.client = new TypertClient(`http://127.0.0.1:${dshPort}`, { tokenFile })
     this.logger = logger ?? console
     this.server = null
     this.sessions = new Map() // sessionId -> { events: [], lastSeq }
@@ -205,7 +249,15 @@ if (import.meta.url === `file://${process.argv[1]?.replaceAll('\\', '/')}` || pr
     const i = args.indexOf(`--${name}`)
     return i >= 0 ? Number(args[i + 1]) : undefined
   }
-  const server = new BridgeServer({ port: flag('port') ?? BRIDGE_DEFAULT_PORT, dshPort: flag('dsh-port') ?? DSH_DEFAULT_PORT })
+  const strFlag = (name) => {
+    const i = args.indexOf(`--${name}`)
+    return i >= 0 ? args[i + 1] : undefined
+  }
+  const server = new BridgeServer({
+    port: flag('port') ?? BRIDGE_DEFAULT_PORT,
+    dshPort: flag('dsh-port') ?? DSH_DEFAULT_PORT,
+    tokenFile: strFlag('token-file'),
+  })
   server.start()
   console.log(`bridge standalone on :${server.port}, dsh at :${server.client.baseUrl}`)
 }
