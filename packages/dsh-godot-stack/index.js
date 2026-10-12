@@ -17,9 +17,9 @@
  * All provisioning is best-effort: failures only log a warning and never
  * block the Harness boot.
  */
-import { cp, mkdir, readFile, writeFile, access } from 'node:fs/promises'
+import { cp, mkdir, readFile, writeFile, access, stat } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { join, dirname, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
 import z from '@deepseek-ai/schemastery'
@@ -49,8 +49,31 @@ async function exists(path) {
 }
 
 async function provisionMcp(home, target) {
-  const builtEntry = join(target, 'build', 'index.js')
-  if (!(await exists(builtEntry))) {
+  // 就绪判定 + 增量复制：目标已构建且依赖在位、源未更新时跳过复制，
+  // 避免每次启动全量拷贝 node_modules（几十 MB / 数千文件）拖垮 boot 导致插件超时。
+  const srcRoot = join(here, 'godot-stack', 'mcp', 'godot-mcp-server')
+  const srcBuilt = join(srcRoot, 'build', 'index.js')
+  const dstBuilt = join(target, 'build', 'index.js')
+  const dstReady =
+    (await exists(dstBuilt)) && (await exists(join(target, 'node_modules', '@modelcontextprotocol')))
+  const srcNewer =
+    (await exists(srcBuilt)) &&
+    (!(await exists(dstBuilt)) || (await stat(srcBuilt)).mtimeMs > (await stat(dstBuilt)).mtimeMs)
+  if (!dstReady || srcNewer) {
+    await mkdir(join(home, '.godot'), { recursive: true })
+    await cp(srcRoot, target, {
+      recursive: true,
+      force: true,
+      // 只复制源码与 build 产物；node_modules 现场安装（asar 内本就不含依赖，force 复制不删目标已有依赖）
+      // 注意：fs.cp 的 filter 在 Windows 上可能收到正斜杠路径，必须同时匹配两种分隔符
+      filter: (src) =>
+        !src.includes(`${sep}node_modules${sep}`) &&
+        !src.includes('/node_modules/') &&
+        !src.endsWith(`${sep}node_modules`) &&
+        !src.endsWith('/node_modules'),
+    })
+  }
+  if (!(await exists(dstBuilt))) {
     return { status: 'source-only', hint: `run "npm install && npm run build" inside ${target} then restart` }
   }
   const settingsPath = join(home, 'settings.json')
@@ -64,7 +87,7 @@ async function provisionMcp(home, target) {
   if (!settings.mcpServers.godot) {
     settings.mcpServers.godot = {
       command: 'node',
-      args: [builtEntry],
+      args: [dstBuilt],
       env: {}
     }
     await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf8')
@@ -91,9 +114,9 @@ export async function apply(ctx) {
     ctx.logger?.warn?.('godot-stack: preset provisioning skipped: %s', error?.message ?? String(error))
   }
   try {
+    // MCP 复制在 provisionMcp 内部完成（增量 + 排除 node_modules，避免每次启动全量拷贝几十 MB 依赖）。
+    // 这里不再做全量 cp——否则 npm install 后的源目录会把 node_modules 一起拷过去，拖垮 boot。
     const mcpTarget = join(home, '.godot', 'mcp-server')
-    await mkdir(join(home, '.godot'), { recursive: true })
-    await cp(join(here, 'godot-stack', 'mcp', 'godot-mcp-server'), mcpTarget, { recursive: true, force: true })
     const mcp = await provisionMcp(home, mcpTarget)
     ctx.logger?.info?.('godot-stack: mcp provisioned; status=%s', mcp.status)
     if (mcp.status === 'source-only') {

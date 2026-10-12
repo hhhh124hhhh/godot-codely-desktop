@@ -106,6 +106,30 @@ GODOT_CODELY_TTS_VOICE=Cherry
   chat 接口——`images/generations` 与 `audio/speech` 均返回 400 url error，**不能**经套餐调用。
 - **火山模型名直调**（doubao-seedream-5.0-lite-260128 等）404，必须用 `ep-` 接入点。
 
+## 子代理系统（Godot 领域专家 agents，对标 cowork agents）
+
+DSH 内核自带完整子代理栈（dsh-subagent 服务 + spawn/fork 后端 + 委派工具）。本包在
+`~/.dsh/profiles/godot-codely/cordis.patch.yml` 追加了 3 个 **Godot 领域专家实例**（每实例 = 一个具名工具，
+persona 遮蔽全局提示词、spawn 以空对话开始、继承父级 cwd/LLM）：
+
+| 工具 | 领域 | 典型任务 |
+|---|---|---|
+| `subagent_godot_scene` | 场景架构 | 节点树设计、场景复用、UI 布局、2D/3D 场景搭建 |
+| `subagent_godot_shader` | 着色器 | GDShader 编写、材质、特效 shader |
+| `subagent_godot_gdscript` | GDScript | 脚本编写重构、信号/协程、状态机、对象池 |
+
+- 验证（2026-10-12，kimi-for-coding）：主 agent 委派 `subagent_godot_scene` 设计 2D 平台关卡入口，
+  子代理返回完整节点树 + 信号接线 GDScript + 搭建检查清单 ✅。
+- 注意：新增插件行必须放 `- insert:` 块（普通 `- id:` 行只覆盖已有行）。
+- 原生工具 `subagent` / `subagent_fork` / `list_agents` / `send_message` / `interrupt_agent` 亦可用。
+
+## 启动修复（2026-10-12）
+
+- 根因：apply() 在 provisionMcp 之前做了一层**无 filter 的全量 cp**，npm install 后源目录
+  39.5MB node_modules 被整体复制，插件初始化 95s+ 超时。
+- 修复：删除外层冗余 cp；MCP 复制收敛到 provisionMcp 内部（dstReady 判定 + srcNewer mtime 比较 +
+  filter 双分隔符排除 node_modules）。apply() 实测 0.0s，CLI 启动不再超时。
+
 ## 开发
 
 ```bash
