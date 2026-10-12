@@ -204,6 +204,21 @@ if (modelId) {
 // 组装 dsh 参数
 const bootArgs = ['--profile', PROFILE]
 if (patchFile) bootArgs.push('--patch', patchFile)
+
+// 自动记忆（对标 cowork）：任务末尾强制评估并沉淀值得长期记住的信息。
+// 任务内直接指令比 AGENTS.md 行为准则执行率高；--no-memory 可关闭。
+if (!rest.includes('--no-memory')) {
+  const taskIdx = rest.findIndex((a) => !a.startsWith('-'))
+  if (taskIdx >= 0) {
+    const task = rest[taskIdx]
+    rest[taskIdx] =
+      task +
+      '\n\n[自动记忆] 完成任务后，评估本轮是否出现值得长期记住的信息（用户偏好/产品决策/架构约定/踩坑结论/新能力状态）；' +
+      '如有，用 write 写入 ~/.dsh/memories/<topic>.md（UPSERT，topic 用英文短词）；' +
+      '然后在回答末尾用一行说明写了哪些记忆（没有则写：无新增记忆）。'
+  }
+}
+
 process.argv = [process.argv[0], process.argv[1], ...bootArgs, ...rest]
 
 await runCli({}).catch((error) => {
