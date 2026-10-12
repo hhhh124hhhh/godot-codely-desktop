@@ -79,6 +79,7 @@ const P0_TOOLS = [
       '- settings_get (key -> project_path): read project setting',
       '- settings_set (key, value -> project_path): write project setting',
       '- export (preset, output_path -> project_path): export game build',
+      '- create (name, parent_path, template -> ): create a new project (empty|2d|3d|ui)',
     ].join('\n'),
     annotations: createAnnotations('Project'),
     inputSchema: {
@@ -86,7 +87,7 @@ const P0_TOOLS = [
       properties: {
         action: {
           type: 'string',
-          enum: ['info', 'version', 'run', 'logs', 'stop', 'settings_get', 'settings_set', 'export'],
+          enum: ['info', 'version', 'run', 'logs', 'stop', 'settings_get', 'settings_set', 'export', 'create'],
           description: 'Action to perform',
         },
         project_path: { type: 'string', description: 'Path to Godot project directory' },
@@ -96,6 +97,9 @@ const P0_TOOLS = [
         value: { type: 'string', description: 'Settings value (for settings_set)' },
         preset: { type: 'string', description: 'Export preset name (for export)' },
         output_path: { type: 'string', description: 'Export output path (for export)' },
+        name: { type: 'string', description: 'New project name (for create)' },
+        parent_path: { type: 'string', description: 'Parent directory for new project (for create)' },
+        template: { type: 'string', description: 'Project template for create: empty|2d|3d|ui' },
       },
       required: ['action'],
     },

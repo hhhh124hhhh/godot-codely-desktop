@@ -1,8 +1,9 @@
 /**
  * Project tool - Godot project management
- * Actions: info | version | run | stop | settings_get | settings_set | export
+ * Actions: info | version | run | stop | settings_get | settings_set | export | create
  */
 
+import { existsSync, mkdirSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
@@ -100,6 +101,58 @@ async function parseProjectGodot(projectPath: string): Promise<ProjectInfo> {
 
 export async function handleProject(action: string, args: Record<string, unknown>, config: GodotConfig) {
   switch (action) {
+    case 'create': {
+      // [godot-codely] 自动创建 Godot 项目：目录 + project.godot + 主场景
+      const name = (args.name as string) || 'godot_project'
+      const parentPath = (args.parent_path as string) || config.projectPath || process.cwd()
+      const template = (args.template as string) || '2d' // empty | 2d | 3d | ui
+
+      if (!/^[\w\-.\u4e00-\u9fa5]+$/.test(name)) {
+        throw new GodotMCPError('Invalid project name', 'INVALID_ARGS', 'Name must be alphanumeric (letters, digits, _ - .) or Chinese.')
+      }
+      if (!['empty', '2d', '3d', 'ui'].includes(template)) {
+        throw new GodotMCPError('Invalid template', 'INVALID_ARGS', 'Template must be one of: empty | 2d | 3d | ui.')
+      }
+      if (typeof parentPath === 'string' && /[;&|`$(){}<>'"\0\n\r]/.test(parentPath)) {
+        throw new GodotMCPError('Invalid parent path', 'INVALID_ARGS', 'Parent path must not contain shell metacharacters.')
+      }
+      const projectPath = join(parentPath, name)
+      if (existsSync(projectPath)) {
+        throw new GodotMCPError('Project already exists', 'INVALID_ARGS', `Path already exists: ${projectPath}`)
+      }
+      mkdirSync(projectPath, { recursive: true })
+
+      const mainScene = 'main.tscn'
+      const rootNode = template === '3d' ? 'Node3D' : template === 'ui' ? 'Control' : template === '2d' ? 'Node2D' : 'Node'
+      const projectGodot = [
+        '; Engine configuration file.',
+        'config_version=5',
+        '',
+        '[application]',
+        `config/name="${name}"`,
+        `run/main_scene="res://${mainScene}"`,
+        '',
+        '[display]',
+        'window/size/viewport_width=1280',
+        'window/size/viewport_height=720',
+        '',
+        '[rendering]',
+        'renderer/rendering_method="gl_compatibility"',
+        'renderer/rendering_method.mobile="gl_compatibility"',
+        '',
+      ].join('\n')
+      const mainSceneContent = [
+        `[gd_scene format=3]`,
+        '',
+        `[node name="Main" type="${rootNode}"]`,
+        '',
+      ].join('\n')
+
+      await writeFile(join(projectPath, 'project.godot'), projectGodot, 'utf-8')
+      await writeFile(join(projectPath, mainScene), mainSceneContent, 'utf-8')
+      return formatJSON({ created: true, path: projectPath, name, template, main_scene: mainScene, root_node: rootNode })
+    }
+
     case 'info': {
       const projectPath = (args.project_path as string) || config.projectPath
       if (!projectPath) {
