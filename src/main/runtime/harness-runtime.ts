@@ -687,7 +687,7 @@ ${cause}`
           writeFileSync(tokenFile, `${this.launchToken}\n`, { encoding: 'utf8' })
           this.writeLog(`[desktop] godot bridge token written to ${tokenFile}`)
         } catch (error) {
-          this.writeLog(`[desktop] godot bridge token write failed: ${String(error?.message ?? error)}`)
+          this.writeLog(`[desktop] godot bridge token write failed: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
     }
