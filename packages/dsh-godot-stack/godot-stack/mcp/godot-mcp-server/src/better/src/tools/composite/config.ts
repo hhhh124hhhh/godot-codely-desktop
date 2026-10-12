@@ -1,10 +1,13 @@
 /**
  * Config tool - Server configuration, environment detection, and verification
- * Actions: status | set | detect_godot | check
+ * Actions: status | set | detect_godot | check | auto_setup
  */
 
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { detectGodot, isExecutable, isVersionSupported, tryGetVersion } from '../../godot/detector.js'
+import { tmpdir } from 'node:os'
+import { detectGodot, isExecutable, isVersionSupported, scanGodotCommon, tryGetVersion } from '../../godot/detector.js'
 import type { GodotConfig } from '../../godot/types.js'
 import { formatJSON, formatSuccess, GodotMCPError, throwUnknownAction } from '../helpers/errors.js'
 import { pathExists } from '../helpers/paths.js'
@@ -147,6 +150,146 @@ async function handleDetectGodot(_args: Record<string, unknown>, config: GodotCo
 }
 
 /**
+ * [godot-codely] auto_setup：自动定位 Godot（配置 → 标准检测 → 深度扫描），
+ * 找不到则下载官方稳定版到 <DSH_HOME>/.godot/godot/ 并配置。
+ * 可配：GODOT_SETUP_VERSION（默认 4.7.1-stable）、GODOT_MIRROR（下载镜像前缀，默认 GitHub 官方）。
+ */
+const DEFAULT_GODOT_VERSION = '4.7.1-stable'
+
+/**
+ * [godot-codely] 持久化 Godot 路径（<DSH_HOME>/.godot/godot-path.txt），
+ * 供 server 下次启动直接读取（见 init-server.ts loadPersistedGodotPath）。
+ */
+function persistGodotPath(p: string): void {
+  try {
+    const home = process.env.USERPROFILE || process.env.HOME || ''
+    const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+    const dir = join(dshHome, '.godot')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'godot-path.txt'), p, 'utf8')
+  } catch {
+    /* 持久化失败不阻塞流程 */
+  }
+}
+
+function godotDownloadUrl(version: string): string {
+  const mirror = process.env.GODOT_MIRROR
+  const asset = process.platform === 'win32'
+    ? `Godot_v${version}_win64.exe.zip`
+    : process.platform === 'darwin'
+      ? `Godot_v${version}_macos.universal.zip`
+      : `Godot_v${version}_linux.x86_64.zip`
+  if (mirror) return `${mirror.replace(/\/$/, '')}/godotengine/godot/releases/download/${version}/Godot_v${version}-stable_win64.exe.zip`.replace('_win64', process.platform === 'win32' ? '_win64' : '_x86_64')
+  return `https://github.com/godotengine/godot/releases/download/${version}/${asset}`
+}
+
+async function downloadWithFallback(urls: string[], dest: string): Promise<boolean> {
+  for (const url of urls) {
+    try {
+      const resp = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(300_000) })
+      if (!resp.ok) continue
+      const buf = Buffer.from(await resp.arrayBuffer())
+      if (buf.length < 10 * 1024 * 1024) continue // 有效 Godot zip 远大于 10MB
+      writeFileSync(dest, buf)
+      return true
+    } catch {
+      /* 尝试下一个镜像 */
+    }
+  }
+  return false
+}
+
+async function installGodotDefault(): Promise<string | null> {
+  const version = process.env.GODOT_SETUP_VERSION || DEFAULT_GODOT_VERSION
+  const home = process.env.USERPROFILE || process.env.HOME || ''
+  const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+  const destDir = join(dshHome, '.godot', 'godot')
+  mkdirSync(destDir, { recursive: true })
+
+  const zipPath = join(tmpdir(), `godot-${version}.zip`)
+  const urls = [godotDownloadUrl(version)]
+  // 备选：官方 TuxFamily 镜像（GitHub 不可达时）
+  if (process.platform === 'win32') {
+    urls.push(`https://downloads.tuxfamily.org/godotengine/${version}/Godot_v${version}-stable_win64.exe.zip`)
+  }
+
+  if (!(await downloadWithFallback(urls, zipPath))) return null
+  if (!existsSync(zipPath)) return null
+
+  try {
+    // Windows 10+ 自带 bsdtar，可解 zip；失败则回退 PowerShell Expand-Archive
+    try {
+      execFileSync('tar', ['-xf', zipPath, '-C', destDir], { timeout: 120_000, stdio: 'pipe' })
+    } catch {
+      execFileSync('powershell', ['-NoProfile', '-Command', `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${destDir}' -Force`], { timeout: 120_000, stdio: 'pipe' })
+    }
+    // 解压目录中找 exe
+    for (const f of readdirSync(destDir)) {
+      if (!/^Godot.*\.exe$/i.test(f) || /console/i.test(f)) continue
+      const p = join(destDir, f)
+      if (!isExecutable(p)) continue
+      const ver = tryGetVersion(p)
+      if (ver && isVersionSupported(ver)) return p
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+/**
+ * [godot-codely] auto_setup：完整自举流程（配置 → 标准检测 → 深度扫描 → 下载安装）
+ */
+async function handleAutoSetup(_args: Record<string, unknown>, config: GodotConfig) {
+  // 阶段 1：已配置的 godotPath
+  if (config.godotPath) {
+    const version = tryGetVersion(config.godotPath, true)
+    if (version && isVersionSupported(version)) {
+      return formatJSON({ found: true, path: config.godotPath, version, source: 'config' })
+    }
+  }
+  // 阶段 2：标准检测（env/PATH/系统位置）
+  const detected = detectGodot()
+  if (detected) {
+    config.godotPath = detected.path
+    config.godotVersion = detected.version
+    persistGodotPath(detected.path)
+    return formatJSON({ found: true, path: detected.path, version: detected.version, source: detected.source })
+  }
+  // 阶段 3：深度扫描（便携位）
+  const scanned = scanGodotCommon()
+  if (scanned) {
+    config.godotPath = scanned.path
+    config.godotVersion = scanned.version
+    persistGodotPath(scanned.path)
+    return formatJSON({ found: true, path: scanned.path, version: scanned.version, source: scanned.source })
+  }
+  // 阶段 4：下载安装
+  const installed = await installGodotDefault()
+  if (installed) {
+    const version = tryGetVersion(installed, true)
+    config.godotPath = installed
+    if (version) config.godotVersion = version
+    persistGodotPath(installed)
+    return formatJSON({
+      found: true,
+      path: installed,
+      version: version || { major: 4, minor: 0, patch: 0, label: 'downloaded', raw: 'downloaded' },
+      source: 'downloaded',
+      note: '已自动下载 Godot 到 ' + installed + '（可用 GODOT_MIRROR 环境变量配置下载镜像）',
+    })
+  }
+  return formatJSON({
+    found: false,
+    message: '未找到 Godot 且自动下载失败',
+    suggestions: [
+      '手动安装：https://godotengine.org/download 或 winget install GodotEngine.GodotEngine',
+      '配置 GODOT_SETUP_VERSION / GODOT_MIRROR 环境变量后重试 auto_setup',
+    ],
+  })
+}
+
+/**
  * Check Godot and project status.
  */
 async function handleCheck(_args: Record<string, unknown>, config: GodotConfig) {
@@ -179,6 +322,7 @@ const CONFIG_ACTIONS: Record<
   set: handleSet,
   detect_godot: handleDetectGodot,
   check: handleCheck,
+  auto_setup: handleAutoSetup,
   setup_status: async () => formatJSON({ needs_setup: false, reason: 'godot-mcp has no credentials' }),
   setup_start: async () => formatSuccess('No setup required for godot-mcp.'),
   setup_reset: async () => formatSuccess('Nothing to reset.'),

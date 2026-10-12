@@ -256,6 +256,60 @@ function getSystemPaths(): string[] {
 }
 
 /**
+ * [godot-codely] 深度扫描常见便携安装位（各盘根目录 / Downloads / DSH_HOME/.godot）
+ * 严格校验（isExecutable + tryGetVersion + isVersionSupported），
+ * 防止 0 字节占位文件、损坏 exe 被误判为可用 Godot。
+ */
+export function scanGodotCommon(): DetectionResult | null {
+  const candidates: string[] = []
+  const home = process.env.USERPROFILE || process.env.HOME || ''
+  const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+
+  if (process.platform === 'win32') {
+    // 各盘根目录便携版（Godot_v*.exe，排除 console 变体）
+    for (const drive of ['C', 'D', 'E', 'F', 'G']) {
+      const root = `${drive}:\\`
+      try {
+        for (const f of readdirSync(root)) {
+          if (/^Godot_v[\d.]+.*_win64\.exe$/i.test(f) && !/console/i.test(f)) candidates.push(join(root, f))
+        }
+      } catch {
+        /* 盘不存在或不可读，跳过 */
+      }
+    }
+    // 下载目录（常见浏览器默认）
+    if (home) candidates.push(join(home, 'Downloads'))
+  } else if (process.platform === 'darwin') {
+    if (home) {
+      candidates.push(join(home, 'Applications', 'Godot.app', 'Contents', 'MacOS', 'Godot'))
+      candidates.push(join(home, 'Downloads', 'Godot.app', 'Contents', 'MacOS', 'Godot'))
+    }
+  }
+
+  // 产品默认安装位（auto_setup 下载目录）
+  candidates.push(join(dshHome, '.godot'))
+
+  for (const dir of candidates) {
+    try {
+      if (!existsSync(dir)) continue
+      const files = readdirSync(dir, { withFileTypes: true })
+      for (const f of files) {
+        if (!f.isFile()) continue
+        if (!/^Godot.*\.exe$/i.test(f.name) && !/^godot([4]?)$/i.test(f.name)) continue
+        if (/console/i.test(f.name)) continue
+        const p = join(dir, f.name)
+        if (!isExecutable(p)) continue
+        const version = tryGetVersion(p)
+        if (version && isVersionSupported(version)) return { path: p, version, source: 'scan' }
+      }
+    } catch {
+      /* 目录不可读，跳过 */
+    }
+  }
+  return null
+}
+
+/**
  * Detect Godot binary on the system
  *
  * @returns Detection result or null if not found

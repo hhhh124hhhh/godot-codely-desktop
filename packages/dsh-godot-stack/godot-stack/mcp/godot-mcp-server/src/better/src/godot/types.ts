@@ -13,7 +13,7 @@ export interface GodotVersion {
 export interface DetectionResult {
   path: string
   version: GodotVersion
-  source: 'env' | 'path' | 'system'
+  source: 'env' | 'path' | 'system' | 'scan'
 }
 
 export interface GodotConfig {

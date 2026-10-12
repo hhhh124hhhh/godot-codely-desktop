@@ -19,7 +19,7 @@ import path from 'path'
 import fs from 'fs'
 import { randomUUID } from 'crypto'
 import { fileURLToPath } from 'url'
-import { detectGodot } from './better/src/godot/detector.js'
+import { detectGodot, isVersionSupported, tryGetVersion } from './better/src/godot/detector.js'
 import type { GodotConfig } from './better/src/godot/types.js'
 import { registerTools } from './better/src/tools/registry.js'
 import type { SovereignCtx } from './cs-unique/tools.js'
@@ -27,6 +27,26 @@ import type { SovereignCtx } from './cs-unique/tools.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const ROOT = path.resolve(__dirname, '..')
+
+/**
+ * [godot-codely] 读取 auto_setup 持久化的 Godot 路径（<DSH_HOME>/.godot/godot-path.txt）
+ * 深扫/自动下载的兜底来源：标准 detectGodot 找不到便携版时启用。
+ */
+function loadPersistedGodotPath(): string | null {
+  try {
+    const home = process.env.USERPROFILE || process.env.HOME || ''
+    const dshHome = process.env.DSH_HOME || path.join(home, '.dsh')
+    const p = path.join(dshHome, '.godot', 'godot-path.txt')
+    if (!fs.existsSync(p)) return null
+    const value = fs.readFileSync(p, 'utf8').trim()
+    if (!value) return null
+    const version = tryGetVersion(value, true)
+    if (version && isVersionSupported(version)) return value
+  } catch {
+    /* 持久化不可读时忽略 */
+  }
+  return null
+}
 
 export interface GodotMcpConfig {
   host: string
@@ -69,8 +89,10 @@ function buildSovereignCtx(): SovereignCtx {
 
 async function main(): Promise<void> {
   // 检测 Godot 二进制（better 路线；无则仅文件解析类工具可用，godot 进程类工具需二进制）
+  // 优先级：标准检测 → auto_setup 持久化路径 → config.json / GODOT_PATH env
   const detection = detectGodot()
-  const godotPath = detection?.path ?? (CONFIG.godotPath || null)
+  const persistedPath = detection?.path ? null : loadPersistedGodotPath()
+  const godotPath = detection?.path ?? persistedPath ?? (CONFIG.godotPath || null)
   if (godotPath) {
     console.error(`[godot-mcp-server] Godot detected: ${godotPath}`)
   } else {

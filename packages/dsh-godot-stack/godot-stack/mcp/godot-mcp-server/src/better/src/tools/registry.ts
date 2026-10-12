@@ -241,6 +241,7 @@ const P0_TOOLS = [
       '- set (key, value): update setting',
       '- detect_godot: find Godot binary path',
       '- check: verify project and Godot availability',
+      '- auto_setup: locate Godot (config/standard/deep-scan) or download & install if missing',
     ].join('\n'),
     annotations: createAnnotations('Config', { idempotent: true }),
     inputSchema: {
@@ -248,7 +249,7 @@ const P0_TOOLS = [
       properties: {
         action: {
           type: 'string',
-          enum: ['status', 'set', 'detect_godot', 'check'],
+          enum: ['status', 'set', 'detect_godot', 'check', 'auto_setup'],
           description: 'Action to perform',
         },
         key: { type: 'string', description: 'Config key (for set)' },

@@ -13,7 +13,9 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import pkg from '../package.json' with { type: 'json' }
-import { detectGodot } from './godot/detector.js'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { detectGodot, isVersionSupported, tryGetVersion } from './godot/detector.js'
 import { getTrackedPids, killProcessTree } from './godot/headless.js'
 import type { GodotConfig } from './godot/types.js'
 import { logger } from './tools/helpers/logger.js'
@@ -25,15 +27,37 @@ function getVersion(): string {
   return pkg.version ?? '0.0.0'
 }
 
+/**
+ * [godot-codely] 读取 auto_setup 持久化的 Godot 路径（<DSH_HOME>/.godot/godot-path.txt）
+ */
+function loadPersistedGodotPath(): string | null {
+  try {
+    const home = process.env.USERPROFILE || process.env.HOME || ''
+    const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+    const p = join(dshHome, '.godot', 'godot-path.txt')
+    if (!existsSync(p)) return null
+    const value = readFileSync(p, 'utf8').trim()
+    if (!value) return null
+    const version = tryGetVersion(value, true)
+    if (version && isVersionSupported(version)) return value
+  } catch {
+    /* 持久化不可读时回退标准检测 */
+  }
+  return null
+}
+
 export function createGodotServer(): Server {
-  // Detect Godot binary
-  const detection = detectGodot()
+  // Detect Godot binary — 持久化路径优先，其次标准检测
+  const persistedPath = loadPersistedGodotPath()
+  const detection = persistedPath
+    ? { path: persistedPath, version: tryGetVersion(persistedPath, true)!, source: 'persisted' as const }
+    : detectGodot()
 
   if (detection) {
     logger.info(`Godot detected: ${detection.version.raw} at ${detection.path} (${detection.source})`)
   } else {
     logger.warn('Godot not found. CLI headless tools will be limited.')
-    logger.warn('Set GODOT_PATH env var or install Godot.')
+    logger.warn('Set GODOT_PATH env var or run config.auto_setup.')
   }
 
   // Resolve project path from env var (tools also accept project_path per call)
