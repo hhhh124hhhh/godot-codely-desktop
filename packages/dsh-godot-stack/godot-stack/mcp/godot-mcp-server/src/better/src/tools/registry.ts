@@ -570,27 +570,6 @@ const P3_TOOLS = [
       required: ['action'],
     },
   },
-  {
-    name: 'framework',
-    description: [
-      'godot-framework (zfoo/) integration.',
-      '',
-      'Actions (required params -> optional):',
-      '- check (-> project_path): verify zfoo/ integration status',
-      '- bootstrap (framework_source_path -> project_path): copy zfoo/ + register Autoload',
-    ].join('\n'),
-    annotations: createAnnotations('Framework', { destructive: true }),
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        action: { type: 'string', enum: ['check', 'bootstrap'], description: 'Action to perform' },
-        project_path: { type: 'string', description: 'Path to Godot project directory' },
-        framework_source_path: { type: 'string', description: 'Path to godot-framework directory (for bootstrap)' },
-      },
-      required: ['action'],
-    },
-  },
-
 ]
 
 // Envelope-loose output schema (spec 2025-11-25): domain tools return free-form
