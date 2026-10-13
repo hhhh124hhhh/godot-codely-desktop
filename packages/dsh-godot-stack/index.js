@@ -30,7 +30,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 
 export const name = 'dsh-godot-stack'
 export const inject = []
-export const Config = z.object({})
+export const Config = z.object({ bridge: z.boolean().default(false) })
 
 function dshHome() {
   // 桌面端由 src/main/index.ts 为 harness 进程设置 DSH_HOME=<userData>\harness；
@@ -49,7 +49,7 @@ async function provisionPreset(home) {
   )
 }
 
-export async function apply(ctx) {
+export async function apply(ctx, config = {}) {
   const home = dshHome()
   // Refresh only our tiny proxy; native OCU installation is an explicit setup step.
   try {
@@ -76,7 +76,7 @@ export async function apply(ctx) {
 
   // Godot bridge：面板连的 REST 服务，只在桌面端形态启动（headless CLI 不需要）。
   // 判定：桌面端 harness 进程由主进程注入 DSH_HOME=<userData>\harness；CLI 无 DSH_HOME。
-  const isDesktopHome = !!process.env.DSH_HOME && home.startsWith(join(process.env.APPDATA ?? '', 'dsh-desktop'))
+  const isDesktopHome = config.bridge === true
   if (isDesktopHome) {
     const dshPort = Number(process.env.DSH_HARNESS_PORT ?? process.env.GODOT_CODELY_DSH_PORT ?? 43129)
     const bridge = new BridgeServer({
@@ -86,11 +86,11 @@ export async function apply(ctx) {
       logger: ctx.logger,
     })
     try {
-      bridge.start()
+      await bridge.start()
+      ctx.on('approval/request', (request, next) => bridge.approval(request, next), { global: true })
+      ctx.on('agent/assistant-stream', payload => bridge.assistantStream(payload), { global: true })
       ctx.logger?.info?.('godot-stack: bridge started on :%d -> dsh :%d', bridge.port, dshPort)
-      ctx.on('dispose', () => {
-        bridge.stop()
-      })
+      ctx.on('dispose', () => bridge.stop())
     } catch (error) {
       ctx.logger?.warn?.('godot-stack: bridge start failed: %s', error?.message ?? String(error))
     }

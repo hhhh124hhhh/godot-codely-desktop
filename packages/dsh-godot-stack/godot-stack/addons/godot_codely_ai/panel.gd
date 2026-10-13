@@ -6,11 +6,19 @@ extends Control
 
 const MCP_CLIENT_SCRIPT := "res://addons/godot_codely_ai/mcp_client.gd"
 const LLM_CLIENT_SCRIPT := "res://addons/godot_codely_ai/llm_client.gd"
+const HARNESS_CLIENT_SCRIPT := "res://addons/godot_codely_ai/harness_client.gd"
 
 const MIN_WIDTH := 340
 
 var _client: Node
 var _llm: Node
+var _harness: Node
+var _agent_status: Label
+var _preview: TextEdit
+var _approvals: VBoxContainer
+var _approval_signature := ""
+var _agent_ready := false
+var _agent_busy := false
 var _status_label: Label
 var _log: RichTextLabel
 var _input: TextEdit
@@ -46,6 +54,9 @@ func _ready() -> void:
 	_status_label.text = "未连接"
 	_status_label.add_theme_color_override("font_color", Color(0.9, 0.5, 0.2))
 	status_bar.add_child(_status_label)
+	_agent_status = Label.new()
+	_agent_status.text = "Agent 未连接"
+	status_bar.add_child(_agent_status)
 	status_bar.add_child(Control.new()) # spacer
 	var reconnect := Button.new()
 	reconnect.text = "连接"
@@ -62,6 +73,13 @@ func _ready() -> void:
 	_log.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_log)
+	_preview = TextEdit.new()
+	_preview.editable = false
+	_preview.custom_minimum_size = Vector2(0, 100)
+	_preview.visible = false
+	root.add_child(_preview)
+	_approvals = VBoxContainer.new()
+	root.add_child(_approvals)
 	_append_line("[b][color=#9BBBF4]Godot Codely AI[/color][/b] 已就绪。输入 [b]/tool 名称 参数[/b] 调用工具，或点下方快捷按钮。", Color.WHITE)
 
 	# ── 快捷操作行 ──
@@ -85,8 +103,9 @@ func _ready() -> void:
 	mode_row.add_theme_constant_override("separation", 4)
 	root.add_child(mode_row)
 	_mode = OptionButton.new()
-	_mode.add_item("Agent 对话")
+	_mode.add_item("桌面 Agent")
 	_mode.add_item("工具直调")
+	_mode.add_item("独立 LLM 对话")
 	_mode.select(0)
 	mode_row.add_child(_mode)
 	mode_row.add_child(Control.new())
@@ -103,12 +122,26 @@ func _ready() -> void:
 	send.text = "发送"
 	send.pressed.connect(_on_send_pressed)
 	input_row.add_child(send)
+	var cancel := Button.new()
+	cancel.text = "停止"
+	cancel.pressed.connect(_cancel_agent)
+	input_row.add_child(cancel)
 
 	# 初始化 MCP 客户端
 	_client = load(MCP_CLIENT_SCRIPT).new()
 	add_child(_client)
 	_client.connected.connect(_on_connected)
 	_client.connection_error.connect(_on_conn_error)
+	_harness = load(HARNESS_CLIENT_SCRIPT).new()
+	add_child(_harness)
+	_harness.connected.connect(func():
+		_agent_ready = true
+		_agent_status.text = "Agent 已连接"
+	)
+	_harness.failed.connect(_on_agent_error)
+	_harness.journal_event.connect(_on_agent_event)
+	_harness.assistant_frame.connect(_on_agent_frame)
+	_harness.approvals_changed.connect(_on_approvals)
 	# 初始化 LLM 客户端（AI 对话 + 流式）
 	_llm = load(LLM_CLIENT_SCRIPT).new()
 	add_child(_llm)
@@ -126,6 +159,10 @@ func _ready() -> void:
 
 
 func _on_connect_pressed() -> void:
+	_agent_status.text = "Agent 连接中…"
+	_harness.connect_session()
+	if _mode.selected == 0:
+		return
 	if _connecting:
 		return
 	_connected = false
@@ -227,7 +264,14 @@ func _on_send_pressed() -> void:
 	if text.is_empty():
 		return
 	_input.text = ""
-	if text.begins_with("/tool "):
+	if text == "/new":
+		if _agent_busy:
+			_on_agent_error("请先停止当前任务，再新建会话")
+			return
+		await _harness.new_session()
+	elif text == "/cancel":
+		_cancel_agent()
+	elif text.begins_with("/tool "):
 		# /tool <name> <json参数>
 		var parts := text.substr(6).split(" ", true, 2)
 		var tool_name := parts[0].strip_edges()
@@ -240,12 +284,120 @@ func _on_send_pressed() -> void:
 				args = {"action": parts[1].strip_edges()}
 		_run_tool(tool_name, args)
 	elif text.begins_with("/model "):
-		_handle_model_cmd(text.substr(7).strip_edges())
+		if _mode.selected == 0:
+			_append_line("桌面 Agent 使用桌面端的模型配置。独立 LLM 对话可用 /model 配置。", Color.WHITE)
+		else:
+			_handle_model_cmd(text.substr(7).strip_edges())
 	elif _mode.selected == 0:
+		if _agent_busy:
+			_on_agent_error("任务仍在执行，可停止后发送新任务")
+			_input.text = text
+			return
+		if not _agent_ready and not await _harness.connect_session():
+			_input.text = text
+			return
+		if await _harness.prompt(text):
+			_agent_busy = true
+			_agent_status.text = "任务已接收"
+		else:
+			_input.text = text
+	elif _mode.selected == 2:
 		_start_llm_chat(text)
 	else:
 		_append_line("[color=#9BBBF4]你：[/color]" + text, Color.WHITE)
 		_append_line("[color=#666666]工具直调模式：请用 /tool 或快捷按钮；切换 Agent 对话模式可用自然语言。[/color]", Color.WHITE)
+
+
+func _on_agent_error(message: String) -> void:
+	_agent_ready = false
+	_agent_status.text = "Agent 连接中断"
+	_log.add_text("Agent: " + message + "\n")
+	_on_approvals([])
+
+
+func _on_agent_event(event: Dictionary) -> void:
+	var kind := str(event.get("type", ""))
+	var data: Dictionary = event.get("data", {})
+	if kind == "turn/start":
+		_agent_busy = true
+		_agent_status.text = "Agent 执行中"
+	elif kind == "turn/end":
+		_agent_busy = false
+		_agent_status.text = "Agent 就绪"
+	elif kind == "user/message" or kind == "assistant/message":
+		var message: Dictionary = data.get("message", {})
+		_log.add_text(("你：" if kind == "user/message" else "AI：") + _message_text(message) + "\n")
+	elif kind == "tool/call":
+		_log.add_text("调用工具：" + str(data.get("name", "")) + "\n")
+	elif kind == "tool/result":
+		var message: Dictionary = data.get("message", {})
+		_log.add_text("工具结果：" + _message_text(message).substr(0, 4000) + "\n")
+	elif kind == "approval/asked":
+		_agent_status.text = "等待审批"
+	elif kind == "approval/decided":
+		_log.add_text("审批：" + str(data.get("outcome", "")) + "\n")
+	_log.scroll_to_line(_log.get_line_count() - 1)
+
+
+func _message_text(message: Dictionary) -> String:
+	var content = message.get("content", "")
+	if content is String:
+		return content
+	var text := ""
+	if content is Array:
+		for part in content:
+			if part is Dictionary and part.get("type") == "text":
+				text += str(part.get("text", ""))
+	return text
+
+
+func _on_agent_frame(frame: Dictionary) -> void:
+	if frame.get("type") == "start":
+		_preview.text = ""
+		_preview.visible = true
+	elif frame.get("type") == "chunk":
+		var chunk: Dictionary = frame.get("chunk", {})
+		if chunk.get("type") == "text-delta":
+			_preview.text += str(chunk.get("text", ""))
+	elif frame.get("type") == "end":
+		_preview.visible = false
+
+
+func _on_approvals(items: Array) -> void:
+	var signature := JSON.stringify(items)
+	if signature == _approval_signature:
+		return
+	_approval_signature = signature
+	for child in _approvals.get_children():
+		_approvals.remove_child(child)
+		child.queue_free()
+	for item in items:
+		var reason := Label.new()
+		reason.text = "审批：%s\n%s" % [item.get("toolName", ""), item.get("reason", "")]
+		reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_approvals.add_child(reason)
+		var row := HBoxContainer.new()
+		_approvals.add_child(row)
+		for choice in [["允许一次", "allowed-once"], ["拒绝", "rejected"]]:
+			var button := Button.new()
+			button.text = choice[0]
+			button.pressed.connect(_answer_approval.bind(str(item.get("id", "")), str(choice[1]), button))
+			row.add_child(button)
+
+
+func _answer_approval(id: String, outcome: String, button: Button) -> void:
+	button.disabled = true
+	var ok: bool = await _harness.answer(id, outcome)
+	if is_instance_valid(button):
+		button.disabled = ok
+
+
+func _cancel_agent() -> void:
+	if _mode.selected == 2:
+		_on_agent_error("独立 LLM 模式的停止尚未接入；桌面 Agent 支持取消")
+		return
+	if await _harness.cancel():
+		_agent_status.text = "取消中…"
 
 
 ## 模型配置命令：/model base=<url> key=<key> model=<name>（缺省保留现值）
