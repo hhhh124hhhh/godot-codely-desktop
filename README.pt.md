@@ -1,10 +1,10 @@
 <h1 align="center">
-  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Logotipo do DSH Desktop" valign="middle" />
-  DSH Desktop
+  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Logotipo do Godot Codely" valign="middle" />
+  Godot Codely
 </h1>
 
 <p align="center">
-  Um aplicativo desktop local-first e multiplataforma para o
+  Fork público do DSH Desktop para ajudar a criar com Godot, sobre o
   <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.
 </p>
 
@@ -20,9 +20,9 @@
 
 ![DSH Desktop com Preset portáteis, provedores de modelos, controle pelo celular e geração de PPTX editáveis](docs/images/dsh-desktop-hero-v021.png)
 
-<p align="center"><strong>Use modelos oficiais da DeepSeek ou provedores de terceiros populares, gerencie Agent Preset portáteis, continue suas sessões do Harness pelo celular e transforme materiais em apresentações PPTX editáveis.</strong></p>
+<p align="center"><strong>Edite um projeto Godot com godot-codely. O desktop continua cuidando de modelos, Preset portáteis, sessões do celular e PPTX editáveis.</strong></p>
 
-O DSH Desktop transforma a experiência local do DeepSeek Harness em um aplicativo desktop instalável. Ele inicia o Harness automaticamente, armazena Profile, plugins, espaços de trabalho, configurações de modelos e sessões fora do diretório do aplicativo e abre a interface completa quando o Runtime local está pronto.
+Godot Codely é este repositório. Ele mantém o host do DSH Desktop e acrescenta o comando godot-codely, presets e habilidades do Godot, e um servidor MCP do Godot. O host inicia o Harness automaticamente, armazena Profile, plugins, espaços de trabalho, configurações de modelos e sessões fora do diretório do aplicativo e abre a interface do Harness quando o Runtime local está pronto.
 
 > [!IMPORTANT]
 > O DSH Desktop é uma versão inicial baseada no `@deepseek-ai/dsh@0.2.0-rc.2`, que evolui rapidamente. As versões para macOS são assinadas e notarizadas pela Apple. Os instaladores para Windows x64 também são assinados; os avisos de segurança do Windows podem diminuir gradualmente à medida que o editor acumula reputação de downloads e instalações.

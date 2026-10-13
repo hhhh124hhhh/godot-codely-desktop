@@ -76,6 +76,8 @@ describe('localized README parity', () => {
       expect(content).toContain('godot-codely')
       expect(content).toContain(forkClone)
       expect(content).not.toContain(upstreamClone)
+      expect(content).toMatch(/<h1[^>]*>[\s\S]*\n\s*Godot Codely\s*\n<\/h1>/)
+      expect(content).not.toMatch(/<h1[^>]*>[\s\S]*\n\s*DSH Desktop\s*\n<\/h1>/)
     }
 
     const development = readFileSync('docs/development.md', 'utf8')

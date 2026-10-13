@@ -1,10 +1,10 @@
 <h1 align="center">
-  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Logotipo de DSH Desktop" valign="middle" />
-  DSH Desktop
+  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Logotipo de Godot Codely" valign="middle" />
+  Godot Codely
 </h1>
 
 <p align="center">
-  Una aplicación de escritorio local y multiplataforma para
+  Fork público de DSH Desktop para ayudar a crear con Godot, sobre
   <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.
 </p>
 
@@ -20,9 +20,9 @@
 
 ![DSH Desktop con Preset portátiles, proveedores de modelos, control desde el teléfono y generación de PPTX editables](docs/images/dsh-desktop-hero-v021.png)
 
-<p align="center"><strong>Usa modelos oficiales de DeepSeek o proveedores externos populares, administra Agent Preset portátiles, continúa tus sesiones de Harness desde el teléfono y convierte material de origen en presentaciones PPTX editables.</strong></p>
+<p align="center"><strong>Edita un proyecto de Godot con godot-codely. El escritorio sigue gestionando modelos, Preset portátiles, sesiones del teléfono y PPTX editables.</strong></p>
 
-DSH Desktop convierte la experiencia local de DeepSeek Harness en una aplicación de escritorio instalable. Inicia Harness automáticamente, guarda Profile, plugins, espacios de trabajo, ajustes de modelos y sesiones fuera del directorio de la aplicación y abre la interfaz completa cuando el Runtime local está listo.
+Godot Codely es este repositorio. Conserva el host de DSH Desktop y añade el comando godot-codely, presets y habilidades de Godot, y un servidor MCP de Godot. El host inicia Harness automáticamente, guarda Profile, plugins, espacios de trabajo, ajustes de modelos y sesiones fuera del directorio de la aplicación y abre la interfaz de Harness cuando el Runtime local está listo.
 
 > [!IMPORTANT]
 > DSH Desktop es una versión preliminar basada en `@deepseek-ai/dsh@0.2.0-rc.2`, que evoluciona rápidamente. Las versiones de macOS están firmadas y notarizadas por Apple. Los instaladores para Windows x64 también están firmados; las advertencias de seguridad de Windows pueden disminuir gradualmente a medida que el editor acumula reputación de descargas e instalaciones.

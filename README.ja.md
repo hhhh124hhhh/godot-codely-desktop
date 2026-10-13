@@ -1,10 +1,11 @@
 <h1 align="center">
-  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="DSH Desktop ロゴ" valign="middle" />
-  DSH Desktop
+  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Godot Codely ロゴ" valign="middle" />
+  Godot Codely
 </h1>
 
 <p align="center">
-  <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a> のための、ローカルファーストかつクロスプラットフォーム対応のデスクトップアプリ。
+  Godot 制作を補助するための DSH Desktop 公開 fork。基盤は
+  <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>。
 </p>
 
 <p align="center">
@@ -19,9 +20,9 @@
 
 ![ポータブル Preset、モデルプロバイダー、スマートフォン連携、編集可能な PPTX 生成を備えた DSH Desktop](docs/images/dsh-desktop-hero-v021.png)
 
-<p align="center"><strong>DeepSeek 公式モデルや主要なサードパーティーモデルを利用し、ポータブルな Agent Preset を管理し、スマートフォンから Harness セッションを続け、資料から編集可能な PPTX を生成できます。</strong></p>
+<p align="center"><strong>godot-codely で Godot プロジェクトを編集します。デスクトップ側はモデル、ポータブル Preset、スマートフォンのセッション、編集可能な PPTX を扱います。</strong></p>
 
-DSH Desktop は、ローカルの DeepSeek Harness をインストール可能なデスクトップアプリとして提供します。Harness を自動起動し、Profile、プラグイン、ワークスペース、モデル設定、セッションをアプリ本体とは別の場所に保存し、ローカル Runtime の準備が整うと完全な Harness 画面を開きます。
+Godot Codely がこのリポジトリです。DSH Desktop のホストを残し、godot-codely コマンド、Godot のプリセットとスキル、Godot MCP を追加しています。ホストは Harness を自動起動し、Profile、プラグイン、ワークスペース、モデル設定、セッションをアプリ本体とは別の場所に保存し、ローカル Runtime の準備が整うと Harness 画面を開きます。
 
 > [!IMPORTANT]
 > DSH Desktop は、急速に進化している `@deepseek-ai/dsh@0.2.0-rc.2` を基盤とする早期プレビューです。macOS 版はコード署名と Apple 公証済みです。Windows x64 インストーラーもコード署名済みですが、発行元のダウンロード・インストール実績が蓄積されるまでは Windows のセキュリティ警告が表示される場合があります。

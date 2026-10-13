@@ -1,10 +1,10 @@
 <h1 align="center">
-  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Логотип DSH Desktop" valign="middle" />
-  DSH Desktop
+  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Логотип Godot Codely" valign="middle" />
+  Godot Codely
 </h1>
 
 <p align="center">
-  Локальное кроссплатформенное настольное приложение для
+  Публичный форк DSH Desktop для помощи в создании игр на Godot, на основе
   <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.
 </p>
 
@@ -20,9 +20,9 @@
 
 ![DSH Desktop с переносимыми Preset, поставщиками моделей, управлением с телефона и созданием редактируемых PPTX](docs/images/dsh-desktop-hero-v021.png)
 
-<p align="center"><strong>Используйте официальные модели DeepSeek или популярные сторонние модели, управляйте переносимыми Agent Preset, продолжайте сессии Harness с телефона и превращайте материалы в редактируемые презентации PPTX.</strong></p>
+<p align="center"><strong>Редактируйте проект Godot через godot-codely. Настольная часть по-прежнему ведёт модели, переносимые Preset, сессии с телефона и редактируемые PPTX.</strong></p>
 
-DSH Desktop превращает локальный DeepSeek Harness в устанавливаемое настольное приложение. Оно автоматически запускает Harness, хранит Profile, плагины, рабочие пространства, настройки моделей и сессии вне каталога приложения и открывает полный интерфейс Harness, когда локальный Runtime готов.
+Godot Codely — это этот репозиторий. Он сохраняет хост DSH Desktop и добавляет команду godot-codely, пресеты и навыки Godot, а также Godot MCP. Хост автоматически запускает Harness, хранит Profile, плагины, рабочие пространства, настройки моделей и сессии вне каталога приложения и открывает интерфейс Harness, когда локальный Runtime готов.
 
 > [!IMPORTANT]
 > DSH Desktop — ранняя предварительная версия на основе быстро развивающегося `@deepseek-ai/dsh@0.2.0-rc.2`. Выпуски для macOS подписаны и нотариально заверены Apple. Установщики Windows x64 также подписаны; предупреждения безопасности Windows могут уменьшаться постепенно по мере накопления репутации загрузок и установок.
