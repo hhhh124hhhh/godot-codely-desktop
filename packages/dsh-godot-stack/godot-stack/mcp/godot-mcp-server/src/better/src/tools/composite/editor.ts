@@ -8,6 +8,7 @@ import type { GodotConfig } from '../../godot/types.js'
 import { formatJSON, formatSuccess, GodotMCPError, throwUnknownAction } from '../helpers/errors.js'
 import { safeResolve } from '../helpers/paths.js'
 import { isValidPid, validatePid } from '../helpers/security.js'
+import { editorAction } from '../../../../editor-control.js'
 
 /**
  * Check if tracked Godot processes are running
@@ -34,6 +35,14 @@ function getGodotProcesses(config: GodotConfig): Array<{ pid: string; name: stri
 
 export async function handleEditor(action: string, args: Record<string, unknown>, config: GodotConfig) {
   switch (action) {
+    case 'play':
+    case 'stop':
+    case 'scan':
+    case 'live_status': {
+      const projectPath = typeof args.project_path === 'string' ? args.project_path : config.projectPath
+      if (!projectPath) throw new GodotMCPError('No project path specified', 'INVALID_ARGS', 'Provide project_path.')
+      return formatJSON(await editorAction(safeResolve(config.projectPath || process.cwd(), projectPath), action === 'live_status' ? 'status' : action))
+    }
     case 'launch': {
       if (!config.godotPath) {
         throw new GodotMCPError(
@@ -68,6 +77,6 @@ export async function handleEditor(action: string, args: Record<string, unknown>
     }
 
     default:
-      throwUnknownAction(action, ['launch', 'status'])
+      throwUnknownAction(action, ['launch', 'status', 'live_status', 'scan', 'play', 'stop'])
   }
 }

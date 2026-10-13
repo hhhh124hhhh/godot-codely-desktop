@@ -9,11 +9,14 @@
   },
   "exports": {
     ".": "./index.js",
+    "./mcp-agent": "./mcp-agent.mjs",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
   "files": [
     "index.js",
+    "memory-root.mjs",
+    "mcp-agent.mjs",
     "mcp-runtime.mjs",
     "bridge",
     "cli",
@@ -39,7 +42,9 @@
     "@deepseek-ai/schemastery": "^3.18.2"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2"
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-scope": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-mcp-client": "0.2.0-rc.2"
   },
   "dsh": {
     "bundle": {

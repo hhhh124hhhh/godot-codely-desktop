@@ -24,6 +24,7 @@ import {
 } from '../helpers/project-settings.js'
 import { isValidPid, validatePid } from '../helpers/security.js'
 import { fastTrimRange, parseCommaSeparatedList } from '../helpers/strings.js'
+import { validateProject } from '../../../../project-validation.js'
 
 async function parseProjectGodot(projectPath: string): Promise<ProjectInfo> {
   const configPath = join(projectPath, 'project.godot')
@@ -101,6 +102,15 @@ async function parseProjectGodot(projectPath: string): Promise<ProjectInfo> {
 
 export async function handleProject(action: string, args: Record<string, unknown>, config: GodotConfig) {
   switch (action) {
+    case 'verify': {
+      if (!config.godotPath) throw new GodotMCPError('Godot not found', 'GODOT_NOT_FOUND', 'Set GODOT_PATH.')
+      const projectPath = typeof args.project_path === 'string' ? args.project_path : config.projectPath
+      if (!projectPath) throw new GodotMCPError('No project path specified', 'INVALID_ARGS', 'Provide project_path.')
+      const frames = args.frames ?? 60
+      if (typeof frames !== 'number' || !Number.isInteger(frames) || frames < 1 || frames > 600) throw new GodotMCPError('Invalid frame count', 'INVALID_ARGS', 'frames must be an integer from 1 to 600.')
+      const result = await validateProject(config.godotPath, resolveProjectRoot(projectPath, config.projectPath), frames)
+      return { ...formatJSON(result), isError: !result.ok }
+    }
     case 'create': {
       // [godot-codely] 自动创建 Godot 项目：目录 + project.godot + 主场景
       const name = (args.name as string) || 'godot_project'
@@ -370,7 +380,7 @@ export async function handleProject(action: string, args: Record<string, unknown
       throw new GodotMCPError(
         `Unknown action: ${action}`,
         'INVALID_ACTION',
-        'Valid actions: info, version, run, logs, stop, settings_get, settings_set, export. Use help tool for full docs.',
+        'Valid actions: info, version, run, verify, logs, stop, settings_get, settings_set, export, create. Use help tool for full docs.',
       )
   }
 }

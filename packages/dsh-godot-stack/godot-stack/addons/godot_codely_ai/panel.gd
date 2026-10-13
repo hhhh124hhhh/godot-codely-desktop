@@ -293,7 +293,8 @@ func _on_agent_event(event: Dictionary) -> void:
 		_agent_busy = false
 		_agent_status.text = "Agent 就绪"
 	elif kind == "user/message" or kind == "assistant/message":
-		var message: Dictionary = data.get("message", {})
+		# Harness user/message stores the message directly; assistant/message wraps it.
+		var message: Dictionary = data if kind == "user/message" else data.get("message", {})
 		_log.add_text(("你：" if kind == "user/message" else "AI：") + _message_text(message) + "\n")
 	elif kind == "tool/call":
 		_log.add_text("调用工具：" + str(data.get("name", "")) + "\n")

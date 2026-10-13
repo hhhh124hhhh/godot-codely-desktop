@@ -207,3 +207,7 @@
   config:
     fetch: false
     searchTimeoutMs: 60000
+
+# Agent-owned Godot tools: await initialize and tools/list before session publication.
+- id: godot-mcp
+  name: 'dsh-godot-stack/mcp-agent'

@@ -1,0 +1,41 @@
+name: Godot Agent regression
+
+on:
+  pull_request:
+    paths:
+      - 'packages/dsh-godot-stack/**'
+      - 'test/godot-*.mjs'
+      - 'test/ocu-gateway.test.mjs'
+      - 'scripts/build-godot-runtime.mjs'
+      - 'package*.json'
+      - '.github/workflows/godot-agent.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-godot:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install Godot 4.7.1
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'godot-4.7.1.zip'
+          Invoke-WebRequest 'https://github.com/godotengine/godot-builds/releases/download/4.7.1-stable/Godot_v4.7.1-stable_win64.exe.zip' -OutFile $archive
+          $digest = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($digest -ne 'c7a289051eaefb460b0106b60e9cd5bee0ef55fd102dcb2bed1eb356cf3d90a1') { throw 'Godot archive integrity check failed' }
+          $destination = Join-Path $env:RUNNER_TEMP 'godot-4.7.1'
+          Expand-Archive -LiteralPath $archive -DestinationPath $destination
+          "GODOT_TEST_BIN=$(Join-Path $destination 'Godot_v4.7.1-stable_win64.exe')" >> $env:GITHUB_ENV
+      - run: npm ci
+      - run: npm run godot:build
+      - run: npm run typecheck
+      - name: Harness, MCP, panel and native editor regressions
+        run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs

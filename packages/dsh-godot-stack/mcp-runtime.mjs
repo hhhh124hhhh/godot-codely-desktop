@@ -7,8 +7,11 @@ import { join } from 'node:path'
 async function validateRuntime(root) {
   const manifest = JSON.parse(await readFile(join(root, 'runtime-manifest.json'), 'utf8'))
   if (manifest.format !== 1 || !manifest.files || typeof manifest.files !== 'object') throw Error('invalid Godot runtime manifest')
-  const expected = ['build/index.js', 'src/godot-scripts/godot_operations.gd', 'package.json']
+  const required = ['build/index.js', 'src/godot-scripts/godot_operations.gd', 'package.json', 'tool-help/help.txt']
+  if (required.some(file => !(file in manifest.files))) throw Error('incomplete Godot runtime manifest')
+  const expected = Object.keys(manifest.files)
   for (const file of expected) {
+    if (!required.includes(file) && !/^tool-help\/[\w-]+\.txt$/.test(file)) throw Error('invalid Godot runtime file path')
     const digest = createHash('sha256').update(await readFile(join(root, file))).digest('hex')
     if (manifest.files[file] !== digest) throw Error(`Godot runtime integrity failed: ${file}`)
   }
