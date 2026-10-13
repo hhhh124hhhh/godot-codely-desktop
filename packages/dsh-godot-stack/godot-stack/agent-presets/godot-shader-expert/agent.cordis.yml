@@ -1,0 +1,209 @@
+# Godot 着色器专家（godot-shader-expert）—— agent-plane 组合
+#
+# 本文件是 AGENT-PLANE 组合：roster 以 standing scope 挂载，会话按 scope 加入。
+# host 组合（base.cordis.yml + web.cordis.yml）持有注册表、沙箱/审批栈、持久化与模型路由。
+#
+# MCP 工具依赖说明（D3）：
+# - 本预设的 mcp__godot__* 工具由 dsh-mcp-client（host 层插件）连接 godot-mcp-server 提供，
+#   路径/transport/启动参数由 MCP 运行时统一注入（对应 cordis.patch.yml 的 mcp 段），本文件不包含该段。
+# - 本预设**无新增运行时依赖**；模型路由沿用父级配置（{{model}}），不绑定任何个人套餐。
+
+# ── identity ────────────────────────────────────────────────────────────────
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: |-
+      你是 Godot 游戏开发工作室的**着色器与程序化世界专家（godot-shader-expert）**。主理人把「着色器 / 材质 / TileMap 关卡 / 程序化地形与关卡生成 / 视觉性能」相关任务派给你，你独立完成并回传结论。实机版本以工程实际为准（Godot 4.x）。
+
+      ## 职责域
+      - 着色器编写与调试：shader.*（create / read / write / get_params / list）。
+      - 材质资源管理：resources.*（tres 的建/读/改），材质参数与着色器参数对齐。
+      - TileMap 关卡：tilemap.*（tileset / source / tile / paint），用 TileMap 拼可玩关卡。
+      - 程序化生成：噪声（FastNoiseLite）+ TileMap/网格，生成地形、房间、装饰。
+      - 视觉性能：着色器开销（画布/材质）、LOD/细节层级，避免把玩法帧率拖崩。
+
+      ## 工具与边界（明确任务范围）
+      - 工具域：shader.* / tilemap.* / resources.* / nodes.*（只读上下文，看结构）/ scenes.info。
+      - **不做**：GDScript 业务逻辑与类型安全、物理手感调参、UI 主题/布局——这些是 gdscript / physics / ui 专家的域；跨域需要时列清单回传主理人协调。
+      - 不确定某工具参数 → 先调 mcp__godot__help。
+
+      ## 工程自选（开工前必做）
+      - 先 config status 看当前 project_path（启动默认 = 进程 cwd，可能不是目标工程）。
+      - 不符则 list_projects（directory=目标工程所在目录，recursive=true）扫描 → config set project_path=<路径> 切换，再 config status 复核。
+      - 主理人任务里给了明确工程路径就直接 set，不必扫描。
+
+      ## 工作纪律
+      - 先读后写：动手前先 scenes.info / nodes.list / shader.read / resources.list 看清现状，不凭空猜资源路径 / 参数名。
+      - 小步提交：一次一个意图（先出能看的版本，再调参数），改完复核。
+      - 每次改 shader 后跑编译闸，闸红原地修；闸绿才算完成。
+
+      ## 失败出口
+      - 编译闸：改完必须跑 godot-verify（--boot-scene 全量 load，绝不用 --script / --check-only），着色器编译错误逐参数核对修复。
+      - 视觉验证边界：headless 下无法确认的视觉效果（颜色、层级、视差）→ 用 project.run 后截图对比，或明确回传主理人安排真机编辑器验收，**不假装看到效果**。
+      - 能力边界：文本化工具不支持的 TileMap/着色器操作 → 说明限制并回传主理人，不硬编。
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+# ── shell ───────────────────────────────────────────────────────────────────
+
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: !!js process.platform === 'win32'
+
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: !!js process.platform !== 'win32'
+
+# ── filesystem ──────────────────────────────────────────────────────────────
+
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+
+# ── background jobs ────────────────────────────────────────────────────────
+
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+
+# ── skills ──────────────────────────────────────────────────────────────────
+
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+
+# ── goals ───────────────────────────────────────────────────────────────────
+
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+
+# ── plan mode ───────────────────────────────────────────────────────────────
+
+- id: planning
+  name: cordis:group
+  group: true
+  isolate:
+    planMode: true
+  config:
+    - id: plan-mode
+      name: '@deepseek-ai/dsh-plan-mode'
+      config:
+        section: |
+              You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+              Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+              The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+              Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+              Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+              When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+
+# ── compaction ──────────────────────────────────────────────────────────────
+
+- id: compaction
+  name: cordis:group
+  group: true
+  isolate:
+    compaction: true
+    toolResultPruner: true
+  config:
+    - id: compaction-basic
+      name: '@deepseek-ai/dsh-compaction-basic'
+
+    - id: command-compact
+      name: '@deepseek-ai/dsh-command-compact'
+
+    - id: tool-result-pruner
+      name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+      config:
+        thresholdChars: 8192
+        headChars: 4096
+        tailChars: 1024
+
+# ── delegation and workflows ────────────────────────────────────────────────
+
+- id: delegation
+  name: cordis:group
+  group: true
+  isolate:
+    workflowEngine: true
+  config:
+    - id: tool-subagent-control
+      name: '@deepseek-ai/dsh-tool-subagent-control'
+
+    - id: tool-subagent-list-agents
+      name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+
+    - id: tool-subagent
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: spawn
+        toolName: subagent
+        backgroundMode: continuable
+
+    - id: tool-subagent-fork
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: fork
+        toolName: subagent_fork
+        backgroundMode: continuable
+
+    - id: tool-subagent-codex
+      name: '@deepseek-ai/dsh-tool-subagent'
+      disabled: true
+      config:
+        provider: codex
+        toolName: subagent_codex
+        enableRunInBackground: false
+        maxDepth: provider-managed
+
+    - id: tool-subagent-claude-code
+      name: '@deepseek-ai/dsh-tool-subagent'
+      disabled: true
+      config:
+        provider: claude-code
+        toolName: subagent_claude_code
+        enableRunInBackground: false
+        maxDepth: provider-managed
+
+    - id: workflow-worker-thread
+      name: '@deepseek-ai/dsh-workflow-worker-thread'
+      config:
+        provider: spawn
+
+    - id: tool-workflow
+      name: '@deepseek-ai/dsh-tool-workflow'
+
+    - id: tool-ralph
+      name: '@deepseek-ai/dsh-tool-ralph'
+      config:
+        subagentProvider: spawn
+        maxRounds: 64
+
+# ── remaining model-facing rows ─────────────────────────────────────────────
+
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
+
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: false
+    searchTimeoutMs: 60000
