@@ -106,7 +106,7 @@ export function windowsMenuTemplate(
     },
     { type: 'separator' },
     command('check-for-updates', '检查更新…', 'Check for Updates…', 'Ctrl+U'),
-    command('about', '关于 DSH Desktop', 'About DSH Desktop'),
+    command('about', '关于 Godot Codely', 'About Godot Codely'),
     { type: 'separator' },
     command('quit', '退出', 'Exit')
   ]

@@ -1,6 +1,6 @@
-# DSH Desktop development guide
+# Godot Codely development guide
 
-This guide covers local development, validation, patch maintenance, and target-native packaging for [hhhh124hhhh/godot-codely-desktop](https://github.com/hhhh124hhhh/godot-codely-desktop), the public fork that adds the `godot-codely` Godot path on top of DSH Desktop. For the runtime design, see [Architecture](architecture.md). For formal releases, see the [release runbook](release-runbook.md). Upstream installers from dataelement/dsh-desktop do not include this fork's Godot changes.
+This guide covers local development, validation, patch maintenance, and target-native packaging for [hhhh124hhhh/godot-codely-desktop](https://github.com/hhhh124hhhh/godot-codely-desktop). For the runtime design, see [Architecture](architecture.md). For formal releases, see the [release runbook](release-runbook.md). Upstream installers from dataelement/dsh-desktop do not include this fork's Godot changes.
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ npm run dev
 
 `npm ci` runs the repository's `postinstall` hook. It reapplies the tracked `patch-package` patches, installs DSH brand assets into the pinned Harness frontend, and installs Electron.
 
-Development builds use the separate application name `DSH Desktop Dev` and the separate user-data directory `dsh-desktop-dev`, so they do not reuse production DSH Desktop data. Multiple development worktrees still share that development profile by default; avoid running them at the same time when testing profile, plugin, migration, or recovery changes.
+Development builds use the separate application name `Godot Codely Dev` and the separate user-data directory `dsh-desktop-dev`, so they do not reuse the production directory `dsh-desktop`. Multiple development worktrees still share that development profile by default; avoid running them at the same time when testing profile, plugin, migration, or recovery changes.
 
 ## Validation
 
