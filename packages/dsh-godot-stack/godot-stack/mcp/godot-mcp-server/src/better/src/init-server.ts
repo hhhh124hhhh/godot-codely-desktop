@@ -33,7 +33,7 @@ function getVersion(): string {
 function loadPersistedGodotPath(): string | null {
   try {
     const home = process.env.USERPROFILE || process.env.HOME || ''
-    const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+    const dshHome = process.env.DSH_HOME || join(home, '.godot-codely')
     const p = join(dshHome, '.godot', 'godot-path.txt')
     if (!existsSync(p)) return null
     const value = readFileSync(p, 'utf8').trim()

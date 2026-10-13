@@ -38,6 +38,9 @@ describe('localized README parity', () => {
   it('keeps every relative Markdown link resolvable', () => {
     const documents = [
       ...readmes,
+      'CONTRIBUTING.md',
+      'CODE_OF_CONDUCT.md',
+      'SECURITY.md',
       'docs/development.md',
       'docs/architecture.md',
       'docs/release-runbook.md',
@@ -61,6 +64,39 @@ describe('localized README parity', () => {
         ).toBe(true)
       }
     }
+  })
+
+  it('identifies this fork and does not send clones to upstream', () => {
+    const forkClone = 'git clone https://github.com/hhhh124hhhh/godot-codely-desktop.git'
+    const upstreamClone = 'git clone https://github.com/dataelement/dsh-desktop.git'
+
+    for (const path of readmes) {
+      const content = readFileSync(path, 'utf8')
+      expect(content).toContain('https://github.com/hhhh124hhhh/godot-codely-desktop')
+      expect(content).toContain('godot-codely')
+      expect(content).toContain(forkClone)
+      expect(content).not.toContain(upstreamClone)
+      expect(content).toMatch(/<h1[^>]*>[\s\S]*\n\s*Godot Codely\s*\n<\/h1>/)
+      expect(content).not.toMatch(/<h1[^>]*>[\s\S]*\n\s*DSH Desktop\s*\n<\/h1>/)
+      expect(content).toContain('build/app-icon.png')
+      expect(content).not.toContain('readme-logo-black-rounded.svg')
+      expect(content).toContain('godot-codely-lite')
+      expect(content).toContain('GODOT_PATH')
+      expect(content).not.toContain('DSH Desktop is an early preview')
+      expect(content).not.toContain('DSH Desktop 当前处于早期预览')
+      expect(content).not.toContain('## What DSH Desktop adds')
+      expect(content).not.toContain('## DSH Desktop 带来了什么')
+    }
+
+    const development = readFileSync('docs/development.md', 'utf8')
+    expect(development).toContain(forkClone)
+    expect(development).not.toContain(upstreamClone)
+    expect(existsSync('CONTRIBUTING.md')).toBe(true)
+    expect(existsSync('CODE_OF_CONDUCT.md')).toBe(true)
+    expect(existsSync('SECURITY.md')).toBe(true)
+    expect(existsSync('.github/ISSUE_TEMPLATE/bug_report.md')).toBe(true)
+    expect(existsSync('.github/ISSUE_TEMPLATE/config.yml')).toBe(true)
+    expect(existsSync('.github/PULL_REQUEST_TEMPLATE.md')).toBe(true)
   })
 
   it('does not publish internal working documents', () => {

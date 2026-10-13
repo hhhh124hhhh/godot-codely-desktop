@@ -106,7 +106,7 @@ export function renderDocumentPage(markdown, { markdownUrl, language = 'zh-CN', 
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(title)} — DSH Desktop</title>
+<title>${escapeHtml(title)} — Godot Codely</title>
 <link rel="alternate" type="text/markdown" href="${escapeHtml(markdownUrl)}">
 ${alternatePageUrl ? `<link rel="alternate" hreflang="${alternateLanguage}" href="${escapeHtml(alternatePageUrl)}">` : ''}
 <style>

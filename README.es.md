@@ -1,10 +1,10 @@
 <h1 align="center">
-  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Logotipo de DSH Desktop" valign="middle" />
-  DSH Desktop
+  <img src="build/app-icon.png" width="96" alt="Logotipo de Godot Codely" valign="middle" />
+  Godot Codely
 </h1>
 
 <p align="center">
-  Una aplicación de escritorio local y multiplataforma para
+  Fork MIT público de <a href="https://github.com/dataelement/dsh-desktop">DSH Desktop</a> para ayudar a crear con Godot, sobre
   <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.
 </p>
 
@@ -13,116 +13,67 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="Licencia: MIT" src="https://img.shields.io/badge/License-MIT-171513.svg" /></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-171513.svg" /></a>
   <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-171513.svg" />
   <img alt="Windows" src="https://img.shields.io/badge/Windows-x64-171513.svg" />
 </p>
 
-![DSH Desktop con Preset portátiles, proveedores de modelos, control desde el teléfono y generación de PPTX editables](docs/images/dsh-desktop-hero-v021.png)
+## Este repositorio
 
-<p align="center"><strong>Usa modelos oficiales de DeepSeek o proveedores externos populares, administra Agent Preset portátiles, continúa tus sesiones de Harness desde el teléfono y convierte material de origen en presentaciones PPTX editables.</strong></p>
+Godot Codely modifica un proyecto de Godot con el comando `godot-codely`. El comando usa el preset `godot-codely-lite`, las habilidades de Godot y el MCP de Godot. Los archivos `.tscn` y `.gd` se editan como texto, así que el editor de Godot puede permanecer cerrado. `project.run`, `project.export` y `editor.launch` necesitan `GODOT_PATH`.
 
-DSH Desktop convierte la experiencia local de DeepSeek Harness en una aplicación de escritorio instalable. Inicia Harness automáticamente, guarda Profile, plugins, espacios de trabajo, ajustes de modelos y sesiones fuera del directorio de la aplicación y abre la interfaz completa cuando el Runtime local está listo.
+El host de escritorio bajo el comando es DSH Desktop, fijado en `@deepseek-ai/dsh@0.2.0-rc.2`. Este fork publica el código fuente. Las compilaciones firmadas de macOS y el instalador NSIS de Windows en el [sitio upstream](https://www.dshdesktop.com/#download) y en [GitHub Releases upstream](https://github.com/dataelement/dsh-desktop/releases) son el DSH Desktop original. Esos archivos omiten el comando, los presets y el MCP de Godot de este repositorio.
 
-> [!IMPORTANT]
-> DSH Desktop es una versión preliminar basada en `@deepseek-ai/dsh@0.2.0-rc.2`, que evoluciona rápidamente. Las versiones de macOS están firmadas y notarizadas por Apple. Los instaladores para Windows x64 también están firmados; las advertencias de seguridad de Windows pueden disminuir gradualmente a medida que el editor acumula reputación de descargas e instalaciones.
+## Ejecutar desde el código
 
-## Descarga
-
-Ofrecemos versiones estables y preliminares: la **versión estable**, recomendada para el uso diario, se descarga desde el [sitio web oficial](https://www.dshdesktop.com/#download). Para probar una **versión preliminar**, elige una versión marcada como **Pre-release** en [GitHub Releases](https://github.com/dataelement/dsh-desktop/releases).
-
-Las versiones preliminares incluyen nuestras nuevas funciones y adoptan con rapidez las últimas versiones oficiales de DeepSeek Harness. Pueden ser incompatibles con los plugins de la comunidad y **no se recomiendan para usuarios generales**. Invitamos a quienes quieran probar las novedades antes que nadie a compartir sus comentarios en la comunidad; solo distribuimos las actualizaciones a toda la comunidad después de que estos usuarios las hayan validado.
-
-Las versiones instaladas comprueban actualizaciones poco después del inicio y cada seis horas. Cuando hay una versión nueva, DSH Desktop pregunta antes de descargarla; la instalación solo comienza al elegir **Restart and install**. También puedes comprobar manualmente o saltar una versión sin ocultar versiones posteriores.
-
-## Comunidad
-
-<p align="center">
-  Escanea el siguiente código QR con WeChat para unirte al grupo de DSH Desktop.<br />
-  <img src="docs/images/wechat-group-20260815.png" width="220" alt="Código QR del grupo de DSH Desktop en WeChat" /><br />
-  También puedes unirte a la <a href="https://discord.gg/7Xgf3qe3Qp">comunidad de DSH Desktop en Discord</a>.
-</p>
-
-## Qué añade DSH Desktop
-
-DeepSeek Harness ya proporciona el Agent Runtime y la Web UI. DSH Desktop añade las capacidades nativas necesarias para un producto de escritorio:
-
-- Inicia y detiene Harness sin una CLI separada ni otra pestaña del navegador
-- Usa el selector de directorios del sistema para añadir y administrar espacios de trabajo
-- Admite modelos oficiales de DeepSeek y proveedores externos populares
-- Importa y exporta Agent Preset completos como [paquetes `.dshpreset`](docs/preset-packages.md) portátiles
-- Convierte material de origen en presentaciones PPTX editables mediante el modo PPT integrado
-- Incluye Python y bibliotecas de Office para crear y comprobar DOCX, PPTX y XLSX sin conexión en macOS y Windows
-- Conserva Profile, plugins, espacios de trabajo, sesiones y ajustes de modelos al actualizar la aplicación
-- Detecta fallos de inicio y de plugins de la interfaz, guarda diagnósticos y ofrece recuperación guiada
-- Incluye un Modo seguro no destructivo que bloquea temporalmente plugins de terceros
-- Permite que un teléfono vinculado continúe sesiones por LAN o mediante un túnel público temporal opcional
-- Comprueba actualizaciones de la aplicación y deja la descarga e instalación bajo control del usuario
-- Adapta menús, barra de título, foco de ventana, tema y marca para macOS y Windows
-
-## Creación de PPT
-
-Activa el botón **PPT**, elige una plantilla y describe la presentación que necesitas. El catálogo incluye **16 plantillas y 192 diseños**, con salida PPTX editable. Las vistas previas están en inglés; las presentaciones pueden generarse en inglés o chino, con ajustes de fuentes para ambos idiomas. El idioma de la vista previa no determina el del resultado.
-
-PPT viene preinstalado y sus instrucciones automáticas solo se aplican a las sesiones con el botón PPT activado. Consulta la [guía de PPT](packages/ppt-runtime/README.md) para conocer las plantillas, las validaciones y las fuentes de referencia.
-
-## Acceso desde el teléfono
-
-Elige **Connect Phone…** en el menú `Harness` y escanea el código. El escritorio debe aprobar explícitamente la conexión antes de que el teléfono acceda a las sesiones.
-
-Harness permanece en un puerto aleatorio de `127.0.0.1`. El teléfono usa un Bridge independiente y vinculado: puede limitarse a la red local o activar un Cloudflare Quick Tunnel temporal para el acceso remoto.
-
-Si Cloudflare no se inicia, la aplicación intenta usar Pinggy. Si aparece el enlace de Cloudflare pero el teléfono no puede abrirlo, selecciona **Can’t open? Try another link** para cambiar a Pinggy.
-
-## Modo seguro y recuperación
-
-Si un plugin de terceros impide el inicio o la visualización, DSH Desktop relaciona la evidencia del Runtime y del frontend con los plugins instalados y abre una recuperación guiada.
-
-Elige **Restart as Safe Mode…** en el menú `Harness` para iniciar un Profile aislado con los Bundle oficiales principales. Los plugins externos del Profile normal quedan bloqueados, pero el Agent, las sesiones, los ajustes de modelos y los espacios de trabajo siguen disponibles.
-
-La pantalla de recuperación busca actualizaciones compatibles de los plugins y permite instalarlas cuando están disponibles. El Modo seguro también permite actualizar varios plugins a la vez. Para pedir ayuda, pasa el cursor sobre **WeChat group** para mostrar el código QR, o haz clic en **Discord** para abrir la comunidad.
-
-Si no puedes abrir la interfaz normal, inicia la aplicación con `--safe-mode`. En macOS:
+Hace falta Node.js 22 o posterior.
 
 ```sh
-open -a "DSH Desktop" --args --safe-mode
+git clone https://github.com/hhhh124hhhh/godot-codely-desktop.git
+cd godot-codely-desktop
+npm ci
+node packages/dsh-godot-stack/cli/godot-codely.mjs --list-models
 ```
 
-## Datos locales y seguridad
+Una tarea usa la configuración de modelo que añadas tú. La forma del comando está en la [guía del stack de Godot](packages/dsh-godot-stack/README.md). No pongas claves de API en el repositorio, en issues ni en registros.
 
-- La Web UI de Harness solo se sirve en un puerto loopback aleatorio.
-- El Renderer no tiene privilegios de Node.js y utiliza Context Isolation y sandbox.
-- Se bloquean WebView, navegación interna no confiable y solicitudes inesperadas de permisos.
-- Profile y sesiones se guardan en los datos de usuario de la aplicación, no en el directorio de instalación.
-- El teléfono necesita un Token de corta duración y aprobación explícita del escritorio.
+```sh
+node packages/dsh-godot-stack/cli/godot-codely.mjs "Resume el proyecto Godot actual"
+```
 
-## Plataformas compatibles
+El perfil se llama `godot-codely`. Si `DSH_HOME` no está definido, el perfil de la línea de comandos y las memorias compartidas viven en `~/.godot-codely`. La ventana de escritorio guarda sus datos en el directorio de datos de la aplicación `godot-codely` (`godot-codely-dev` en una build de desarrollo) y no abre el directorio upstream `dsh-desktop`. Es otro proceso y, al arrancar, coloca el mismo preset de Godot:
 
-| Plataforma | Distribución | Estado |
-| --- | --- | --- |
-| macOS Apple Silicon | DMG/ZIP firmados y notarizados | Compatible |
-| macOS Intel | DMG/ZIP firmados y notarizados | Compatible |
-| Windows x64 | Instalador NSIS firmado | Compatible |
-| Windows ARM64 | — | No compatible actualmente |
-| Linux | — | No compatible actualmente |
+```sh
+npm run dev
+```
 
-Harness incluye dependencias nativas, por lo que cada artefacto se compila en el sistema operativo y la arquitectura correspondientes.
+La preparación, las comprobaciones y el empaquetado están en la [guía de desarrollo](docs/development.md). Los límites de ejecución están en la [arquitectura](docs/architecture.md).
 
-## Desarrollo y arquitectura
+## Comportamiento del host que se conserva
 
-- [Guía de desarrollo](docs/development.md) — configuración, validación, mantenimiento de parches y empaquetado nativo
-- [Arquitectura](docs/architecture.md) — Runtime, datos, seguridad, recuperación, teléfono y actualizaciones
-- [Guía de publicación](docs/release-runbook.md) — firma y controles de publicación
-- [Formato de paquetes Preset](docs/preset-packages.md) — contrato de Agent Preset portátil
+- El modo PPT escribe PPTX editables. En macOS y Windows, las habilidades sin conexión DOCX, PPTX y XLSX incluyen bibliotecas de Python. Consulta la [guía del runtime PPT](packages/ppt-runtime/README.md).
+- Un teléfono emparejado puede continuar una sesión. La ruta remota habitual es Cloudflare Quick Tunnel. Si Cloudflare no está disponible, se usa Pinggy.
+- El modo seguro bloquea plugins de terceros y conserva los datos del usuario. Si la ventana no abre, pasa `--safe-mode`. Después de empaquetar este fork en macOS: `open -a "Godot Codely" --args --safe-mode`.
+- Los presets portátiles de Agent usan [paquetes `.dshpreset`](docs/preset-packages.md).
+- El host puede empaquetarse como un DMG/ZIP firmado de macOS o como un instalador NSIS firmado de Windows x64. Este repositorio no ha publicado esos instaladores. Linux y Windows ARM64 quedan fuera del soporte actual del host. Los pasos de firma para un paquete futuro están en la [guía de publicación](docs/release-runbook.md).
 
-Antes de enviar cambios, ejecuta `npm test`, `npm run typecheck` y `npm run build`, y prueba en la aplicación real el flujo afectado. Nunca incluyas claves API reales en Issue, registros, capturas o datos de prueba.
+## Comunidad upstream
 
-## Proyectos amigos
+El grupo de WeChat y Discord de abajo pertenecen al DSH Desktop upstream.
 
-[dsh-market](https://github.com/dsh-market/dsh-market) es el mercado comunitario de plugins para DeepSeek Harness. Desde Harness puedes buscar y previsualizar plugins, instalar o actualizar paquetes, activarlos o desactivarlos y cambiar temas.
+<p align="center">
+  <img src="docs/images/wechat-group-20260815.png" width="220" alt="Código QR del grupo de WeChat de DSH Desktop upstream" /><br />
+  <a href="https://discord.gg/7Xgf3qe3Qp">Discord de DSH Desktop upstream</a>
+</p>
+
+## Contribuir
+
+- [Contribuir](CONTRIBUTING.md)
+- [Guía de desarrollo](docs/development.md)
+- [Arquitectura](docs/architecture.md)
+
+Antes de un cambio, ejecuta `npm test`, `npm run typecheck` y `npm run build`, y recorre el flujo que tocaste.
 
 ## Licencia
 
-DSH Desktop se publica bajo la [licencia MIT](LICENSE).
-
-DeepSeek Harness y sus dependencias siguen sujetos a sus licencias y políticas de marcas correspondientes. DSH Desktop es una aplicación de escritorio comunitaria independiente.
+Godot Codely se publica bajo la [Licencia MIT](LICENSE). El aviso de copyright de ese archivo sigue siendo de DataElement, los autores del escritorio upstream. DeepSeek Harness y los árboles de Godot MCP incluidos conservan sus propias licencias.

@@ -1,5 +1,15 @@
 # Godot 面板 Agent 闭环验证
 
+## 2026-10-13 主线同步验收
+
+本分支在 `2ec9dbe` 的 Agent 工具与编辑器运行验证基础上合入 `origin/main` `00740aa`。下文旧基线与 PR 状态保留为历史记录；本次同步已包含主线的实时编辑器上下文、数据目录隔离、OCU 修复和品牌更新。唯一冲突位于插件入口 import：保留预设绑定当前宿主所需的 `pathToFileURL`，移除主线已替代的 `os` import，采用 `cliHome()`。
+
+- `npm run typecheck`、`npm run build`、`git diff --check` 通过。首次沙箱构建遇到 `realpath` 权限错误，授权环境重跑通过。
+- Windows Godot 4.7.1 console 二进制：7 个 Godot/OCU 专项套件，28/28 通过，包含真实 Harness Agent 工具、跳跃修改及运行验证、原生编辑器 Play/Stop。命令沿用下文 7 套件专项命令。
+- 编辑器状态 compose/live：2/2 通过。必须给测试进程设置独立的 `APPDATA`、`LOCALAPPDATA`、`USERPROFILE`、`HOME`；本机继承用户配置时 compose 进程崩溃、live 超时，隔离后两项通过，不把原配置下的失败掩盖为通过。
+- `npm test -- --maxWorkers=4` 已完整执行，188 文件中 175 通过、9 失败、4 跳过；1619 测试通过、14 失败、32 跳过。失败包括 Windows symlink `EPERM`、图像写入失败、pnpm rebuild 失败、Harness 启动与 PPT hook 超时；本次未修复这些其他模块的失败，不能称整仓全绿。该轮 Godot 回归没有失败。
+- 未执行正式安装包和已安装 Electron 的生产 UI 全流程验收，未发布新版本。
+
 ## 状态边界
 
 `origin/main` 的基线 `ebf5f95` 仍按 **P0 2/3** 计数。本文对应本地 `codex/godot-agent-validation` 验证分支，组合 PR #1、#3 的实现后补充剩余闭环；不表示两支 PR 已在 GitHub 合并。PR #2 不参与组合。

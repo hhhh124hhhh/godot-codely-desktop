@@ -1,6 +1,6 @@
-# DSH Desktop development guide
+# Godot Codely development guide
 
-This guide covers local development, validation, patch maintenance, and target-native packaging. For the runtime design, see [Architecture](architecture.md). For formal releases, see the [release runbook](release-runbook.md).
+This guide covers local development, validation, patch maintenance, and target-native packaging for [hhhh124hhhh/godot-codely-desktop](https://github.com/hhhh124hhhh/godot-codely-desktop). For the runtime design, see [Architecture](architecture.md). For formal releases, see the [release runbook](release-runbook.md). Upstream installers from dataelement/dsh-desktop do not include this fork's Godot changes.
 
 ## Prerequisites
 
@@ -13,15 +13,15 @@ This baseline pins `@deepseek-ai/dsh@0.2.0-rc.2`. Windows packages run Harness i
 ## Local setup
 
 ```bash
-git clone https://github.com/dataelement/dsh-desktop.git
-cd dsh-desktop
+git clone https://github.com/hhhh124hhhh/godot-codely-desktop.git
+cd godot-codely-desktop
 npm ci
 npm run dev
 ```
 
 `npm ci` runs the repository's `postinstall` hook. It reapplies the tracked `patch-package` patches, installs DSH brand assets into the pinned Harness frontend, and installs Electron.
 
-Development builds use the separate application name `DSH Desktop Dev` and the separate user-data directory `dsh-desktop-dev`, so they do not reuse production DSH Desktop data. Multiple development worktrees still share that development profile by default; avoid running them at the same time when testing profile, plugin, migration, or recovery changes.
+Development builds use the separate application name `Godot Codely Dev` and the separate user-data directory `godot-codely-dev`, so they do not reuse the production directory `godot-codely`. Neither directory is the upstream `dsh-desktop` or `dsh-desktop-dev` folder; data already there is left in place. Multiple development worktrees still share that development profile by default; avoid running them at the same time when testing profile, plugin, migration, or recovery changes.
 
 ## Validation
 

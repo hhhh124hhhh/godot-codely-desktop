@@ -345,7 +345,7 @@ describe('GitHub release contract', () => {
     expect(packageJson.scripts['package:dev:win']).toContain('electron-builder.dev.cjs')
     expect(packageJson.scripts['package:dev:win']).toContain('--publish never')
     expect(developmentConfig.appId).toBe('io.dsh.desktop.dev')
-    expect(developmentConfig.productName).toBe('DSH Desktop Dev')
+    expect(developmentConfig.productName).toBe('Godot Codely Dev')
     expect(developmentConfig.directories.output).toBe('dist-dev')
     expect(developmentConfig.extraMetadata.dshDesktopChannel).toBe('development')
     expect(developmentConfig.artifactName).toBe('dsh-desktop-dev-${os}-${arch}.${ext}')
@@ -368,7 +368,7 @@ describe('GitHub release contract', () => {
     expect(workflow).toContain('$executable = Join-Path $isolatedApp $sourceExecutable.Name')
     expect(workflow).toContain('-WorkingDirectory $isolatedApp')
     expect(workflow).toContain('Packaged koffi native binding failed (exit code $koffiExitCode).')
-    expect(workflow).toContain("'dist-dev\\win-unpacked\\DSH Desktop Dev.exe'")
+    expect(workflow).toContain("'dist-dev\\win-unpacked\\Godot Codely Dev.exe'")
     expect(workflow).toContain('if (-not [string]::IsNullOrEmpty($log))')
     expect(workflow).toContain("dsh web: (http://127\\.0\\.0\\.1:\\d+/\\?token=[^\\s]+)")
     expect(workflow).toContain('-SessionVariable harnessSession')
@@ -509,7 +509,7 @@ describe('GitHub release contract', () => {
       expect(readme).not.toContain('Coming soon')
       expect(readme).not.toContain('即将发布')
       expect(readme).toContain('https://github.com/dataelement/dsh-desktop/releases')
-      expect(readme).toContain('**Pre-release**')
+      expect(readme).not.toMatch(/github\.com\/hhhh124hhhh\/godot-codely-desktop\/releases/)
       for (const asset of releaseAssets) {
         expect(readme).not.toContain(`releases/latest/download/${asset}`)
       }
@@ -574,7 +574,11 @@ describe('prerelease parity workflow', () => {
   it('parametrises the Windows smoke test executable', async () => {
     const yml = await load()
     expect(yml).toContain('SMOKE_EXE')
-    expect(yml).toContain('SMOKE_USERDATA')
+    expect(yml).toContain("&& 'godot-codely' || 'godot-codely-dev'")
+    const identity = await readFile(path.join(projectRoot, 'src/main/index.ts'), 'utf8')
+    expect(identity).toContain("join(app.getPath('appData'), 'godot-codely')")
+    expect(identity).toContain("join(app.getPath('appData'), 'godot-codely-dev')")
+    expect(identity).not.toContain("join(app.getPath('appData'), 'dsh-desktop')")
   })
 })
 

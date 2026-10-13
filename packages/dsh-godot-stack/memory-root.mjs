@@ -1,18 +1,16 @@
 /** Shared memory location for the plugin slash commands and the MCP server.
- * Desktop sets DSH_HOME to <userData>/harness; CLI leaves it unset and uses ~/.dsh.
- * Memories ignore that split and stay in ~/.dsh/memories unless GODOT_CODELY_MEMORY_DIR is set.
+ * Desktop sets DSH_HOME to <userData>/harness. The CLI sets DSH_HOME to ~/.godot-codely.
+ * Memories ignore that split and stay in ~/.godot-codely/memories unless GODOT_CODELY_MEMORY_DIR is set.
  * Keep the same rule in godot-mcp-server/src/memory/memory.ts (the MCP bundle cannot import this file).
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join, sep } from 'node:path'
+import { memoryDirectory } from './data-home.mjs'
 
 const MAX_TOPIC_LEN = 64
 
 export function memoryRoot() {
-  const override = process.env.GODOT_CODELY_MEMORY_DIR
-  if (override) return override
-  return join(homedir(), '.dsh', 'memories')
+  return memoryDirectory()
 }
 
 export function legacyMemoryDir() {

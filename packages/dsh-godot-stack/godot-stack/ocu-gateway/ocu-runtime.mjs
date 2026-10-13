@@ -5,9 +5,14 @@ import { fileURLToPath } from 'node:url'
 
 export const OCU_VERSION = '1.0.0'
 
-/** @param {NodeJS.ProcessEnv} [env] */
+/** This file is copied into `<home>/.godot/ocu-gateway` and must stay self-contained.
+ * Keep the fallback directory aligned with `CLI_HOME_DIR` in data-home.mjs.
+ * @param {NodeJS.ProcessEnv} [env]
+ */
 export function ocuHome(env = process.env) {
-  return env.DSH_HOME || join(homedir(), '.dsh')
+  const fromEnv = env.DSH_HOME
+  if (typeof fromEnv === 'string' && fromEnv.trim()) return fromEnv
+  return join(homedir(), '.godot-codely')
 }
 
 // Resolve from our managed runtime, never from the caller's cwd or another app's sandbox.
