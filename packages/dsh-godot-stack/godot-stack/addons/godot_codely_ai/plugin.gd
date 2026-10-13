@@ -19,9 +19,10 @@ func _enter_tree() -> void:
 	add_control_to_dock(DOCK_SLOT_RIGHT_UL, _dock)
 	print("[godot-codely] dock added: ", _dock != null)
 	# 连接后持续发布。只在面板连上 MCP 时写一次会漏掉随后的选择、保存和切场景。
-	scene_changed.connect(_queue_editor_state)
-	scene_closed.connect(_queue_editor_state)
-	scene_saved.connect(_queue_editor_state)
+	# Godot 4 这些信号都带 1 个参数。直接连 0 参方法会在切场景时失败，状态就不再重发。
+	scene_changed.connect(_on_scene_changed)
+	scene_closed.connect(_on_scene_path)
+	scene_saved.connect(_on_scene_path)
 	_selection = EditorInterface.get_selection()
 	if _selection != null:
 		_selection.selection_changed.connect(_queue_editor_state)
@@ -38,6 +39,12 @@ func _exit_tree() -> void:
 		_dock.free()
 		_dock = null
 
+func _on_scene_changed(_scene_root: Node) -> void:
+	_queue_editor_state()
+
+func _on_scene_path(_path: String) -> void:
+	_queue_editor_state()
+
 func _queue_editor_state() -> void:
 	if _state_queued:
 		return
@@ -49,12 +56,12 @@ func _flush_editor_state() -> void:
 	EDITOR_STATE_SCRIPT.write_current()
 
 func _disconnect_editor_state() -> void:
-	if scene_changed.is_connected(_queue_editor_state):
-		scene_changed.disconnect(_queue_editor_state)
-	if scene_closed.is_connected(_queue_editor_state):
-		scene_closed.disconnect(_queue_editor_state)
-	if scene_saved.is_connected(_queue_editor_state):
-		scene_saved.disconnect(_queue_editor_state)
+	if scene_changed.is_connected(_on_scene_changed):
+		scene_changed.disconnect(_on_scene_changed)
+	if scene_closed.is_connected(_on_scene_path):
+		scene_closed.disconnect(_on_scene_path)
+	if scene_saved.is_connected(_on_scene_path):
+		scene_saved.disconnect(_on_scene_path)
 	if _selection != null and _selection.selection_changed.is_connected(_queue_editor_state):
 		_selection.selection_changed.disconnect(_queue_editor_state)
 	if _undo != null and _undo.history_changed.is_connected(_queue_editor_state):
