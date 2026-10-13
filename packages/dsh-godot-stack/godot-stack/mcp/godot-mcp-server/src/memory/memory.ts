@@ -2,7 +2,9 @@
 //
 // 与 AGENTS.md 静态指令链互补：
 //  - AGENTS.md 链：静态、由 dsh-agent-instructions 注入（全局/项目/目录）
-//  - 本模块：动态、agent 主动读写 ~/.dsh/memories/<topic>.md（跨 CLI/桌面端共享）
+//  - 本模块：动态、agent 主动读写 ~/.dsh/memories/<topic>.md。
+//    桌面端 DSH_HOME 指向 <userData>/harness 时也不改这个目录，避免和 CLI 拆成两套。
+//    若旧文件只在 DSH_HOME/memories，首次访问时复制到共享目录，不覆盖已有共享副本。
 //
 // 工具：
 //  - memory_remember(topic, content)  UPSERT 一条长期记忆
@@ -27,13 +29,19 @@ function textResult(text: string, isError = false): McpTextResult {
   return { content: [{ type: 'text', text }], isError }
 }
 
-/** 记忆根目录：GODOT_CODELY_MEMORY_DIR 优先，其次 DSH_HOME，其次 ~/.dsh */
+/** 记忆根目录：GODOT_CODELY_MEMORY_DIR 优先，否则 ~/.dsh/memories。不跟随 DSH_HOME。 */
 export function memoryRoot(): string {
   const override = process.env.GODOT_CODELY_MEMORY_DIR
   if (override) return override
-  const dshHome = process.env.DSH_HOME
-  if (dshHome) return join(dshHome, 'memories')
   return join(homedir(), '.dsh', 'memories')
+}
+
+function legacyMemoryDir(): string {
+  const dshHome = process.env.DSH_HOME
+  if (!dshHome) return ''
+  const legacy = join(dshHome, 'memories')
+  if (legacy === memoryRoot()) return ''
+  return legacy
 }
 
 /** topic 只允许字母数字中划线下划线点与中文（防路径穿越） */
@@ -54,6 +62,25 @@ function isSafeQuery(query: string): boolean {
 function ensureDir(): string {
   const root = memoryRoot()
   mkdirSync(root, { recursive: true })
+  const legacy = legacyMemoryDir()
+  if (!legacy || !existsSync(legacy)) return root
+  let names: string[] = []
+  try {
+    names = readdirSync(legacy)
+  } catch {
+    // The old directory can disappear between the exists check and the read.
+    return root
+  }
+  for (const name of names) {
+    if (!name.endsWith('.md') && !name.endsWith('.md.bak')) continue
+    const dest = join(root, name)
+    if (existsSync(dest)) continue
+    try {
+      writeFileSync(dest, readFileSync(join(legacy, name)))
+    } catch {
+      // One unreadable legacy file must not block new writes.
+    }
+  }
   return root
 }
 

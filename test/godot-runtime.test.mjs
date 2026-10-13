@@ -77,6 +77,36 @@ describe('shipped Godot MCP dependency closure', () => {
     }
   }, 30000)
 
+  it('shares memories across the desktop harness home and the CLI home', async () => {
+    const { home, target } = await fixture()
+    expect(await provisionMcpRuntime(generated, home, target)).toEqual({ status: 'configured' })
+    const desktop = join(home, 'harness')
+    const user = join(home, 'user')
+    await mkdir(join(desktop, 'memories'), { recursive: true })
+    await mkdir(join(user, '.dsh/memories'), { recursive: true })
+    await writeFile(join(desktop, 'memories', 'from_desktop.md'), 'desktop-fact', 'utf8')
+    await writeFile(join(desktop, 'memories', 'only_legacy.md'), 'legacy-fact', 'utf8')
+    await writeFile(join(user, '.dsh/memories/from_desktop.md'), 'keep-shared', 'utf8')
+    const transport = new StdioClientTransport({
+      command: process.execPath, args: [join(target, 'build/index.js')], cwd: home,
+      env: { PATH: process.env.PATH ?? '', HOME: user, USERPROFILE: user, DSH_HOME: desktop },
+      stderr: 'pipe',
+    })
+    const client = new Client({ name: 'memory-home-test', version: '1' })
+    try {
+      await client.connect(transport)
+      const saved = await client.callTool({ name: 'memory_remember', arguments: { topic: 'from_cli', content: 'cli-fact' } })
+      expect(saved.isError).not.toBe(true)
+      expect(await readFile(join(user, '.dsh/memories/from_cli.md'), 'utf8')).toBe('cli-fact')
+      expect(await readFile(join(user, '.dsh/memories/from_desktop.md'), 'utf8')).toBe('keep-shared')
+      expect(await readFile(join(user, '.dsh/memories/only_legacy.md'), 'utf8')).toBe('legacy-fact')
+      expect(await readFile(join(desktop, 'memories/from_desktop.md'), 'utf8')).toBe('desktop-fact')
+      await expect(readFile(join(desktop, 'memories/from_cli.md'))).rejects.toThrow()
+    } finally {
+      await client.close()
+    }
+  }, 30000)
+
   it('provisions the Godot skill bundle into the user skill root', async () => {
     const { home, target } = await fixture()
     expect(await provisionMcpRuntime(generated, home, target)).toEqual({ status: 'configured' })
