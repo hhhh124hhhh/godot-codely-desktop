@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url'
 import os from 'node:os'
 import z from '@deepseek-ai/schemastery'
 import { BridgeServer } from './bridge/bridge.mjs'
+import { provisionOcuGateway } from './godot-stack/ocu-gateway/ocu-runtime.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -106,6 +107,12 @@ async function provisionPreset(home) {
 
 export async function apply(ctx) {
   const home = dshHome()
+  // Refresh only our tiny proxy; native OCU installation is an explicit setup step.
+  try {
+    await provisionOcuGateway(home)
+  } catch (error) {
+    ctx.logger?.warn?.('godot-stack: OCU gateway provisioning failed: %s', error?.message ?? String(error))
+  }
   // 分段 best-effort：preset 与 MCP 互不拖累（asar 内目录 cp 可能因 Electron 文件系统兼容失败）
   try {
     await provisionPreset(home)

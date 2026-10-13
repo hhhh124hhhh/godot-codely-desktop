@@ -175,6 +175,36 @@ godot-codely --permission read-only "任务"             # 只读（安全浏览
 
 ## 开发
 
+### OCU 原生界面操作
+
+OCU 网关源码由本包维护，启动时复制到 `<DSH_HOME>/.godot/ocu-gateway/`。
+原生依赖显式安装到 `<DSH_HOME>/.godot/ocu-runtime/`，不从豆包沙箱、工作区或全局 PATH 查找：
+
+```bash
+node packages/dsh-godot-stack/cli/setup-ocu.mjs --home <DSH_HOME>
+```
+
+安装脚本固定使用 `open-computer-use@1.0.0`（MIT，来源：
+[iFurySt/open-codex-computer-use](https://github.com/iFurySt/open-codex-computer-use)），
+由 npm 写入该独立 runtime 的锁文件和 integrity。新安装先在临时目录完成并检查
+`capabilities --json`，成功后才发布；已安装的同版本可以重复运行检查，失败保留原目录。
+此项依赖包含跨平台原生程序，按需安装避免默认安装包携带全部平台的二进制；启动本身不会联网安装。
+
+脚本打印完整 MCP 配置。把现有 `mcp-ocu` 的 `config` 替换成该配置，保留插件 id/name。
+其中 `command` 是 Node 可执行文件，`args` 只含固定目录内的网关，`env.DSH_HOME` 必须明确传递
+（Harness 会清理继承的 `DSH_*` 环境变量）。更新配置后重启对应 Harness 或重新加载 MCP。
+安装、配置、MCP 握手、工具发现和实际界面操作分别验收；能力检查不代表点击已验证。
+
+网关用参数数组和 `shell: false` 启动，支持 Windows 带空格路径。自定义上游时可使用
+`node ocu-gateway.js -- <node.exe> <OCU bin/ocu> mcp`，不传 `.cmd`、`.bat` 或 `.ps1` shim。
+默认 `write-approve`、`Godot*,godot*,Godot_*` 白名单；缺少 app、未知工具及只读档位的写操作
+返回明确拒绝。程序找不到、管道失败、协议损坏及异常退出在 stderr 保留对应阶段，
+不把退出或工具失败标记为操作成功。
+
+```bash
+npm test -- test/ocu-gateway.test.mjs
+```
+
 ```bash
 npm install            # file: 依赖链接本包
 npm run build          # 编译主进程后打包时插件随 asar 进入

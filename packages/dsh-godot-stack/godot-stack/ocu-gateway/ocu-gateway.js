@@ -1,137 +1,129 @@
 #!/usr/bin/env node
-/**
- * ocu-gateway.js — open-codex-computer-use (OCU) 门禁代理
- *
- * 位置：dsh 的 mcp-ocu 注册 command 指向本文件；
- * 本文件作为 stdio MCP 代理，把请求转发给 OCU server，并在转发前做三层门禁：
- *
- *   1. 工具分类：读类（list/inspect/screenshot）放行；写类（click/type/key/scroll/drag/set_value）受限
- *   2. 档位控制（环境变量 OCU_GATE_LEVEL）：
- *        read-only        → 写类工具一律拒绝（返回 isError）
- *        write-approve    → 写类工具需通过目标 app 白名单（OCU_ALLOWED_APPS，逗号分隔，支持 * 通配）
- *   3. app 白名单：目标窗口 app 名必须匹配 OCU_ALLOWED_APPS 之一（默认 Godot*）
- *
- * 用途：让 AI 能操作 Godot 编辑器 GUI（原生文件对话框/设置面板），
- *       同时不让模型无约束地操作任意窗口。
- *
- * 用法：
- *   OCU_GATE_LEVEL=write-approve OCU_ALLOWED_APPS="Godot*,godot*" \
- *     node ocu-gateway.js -- <ocu-server-command...>
- */
-'use strict';
+// stdio MCP proxy: read tools pass through; writes retain the Godot app allowlist.
+import { spawn } from 'node:child_process'
+import { createInterface } from 'node:readline'
+import { resolveOcuCommand } from './ocu-runtime.mjs'
 
-import { spawn } from 'node:child_process';
-import { createInterface } from 'node:readline';
+const gateLevel = process.env.OCU_GATE_LEVEL || 'write-approve'
+const allowedApps = (process.env.OCU_ALLOWED_APPS || 'Godot*,godot*,Godot_*')
+  .split(',').map(value => value.trim()).filter(Boolean)
+const readTools = new Set(['list_apps', 'get_app_state'])
+const writeTools = new Set(['click', 'drag', 'perform_secondary_action', 'press_key', 'scroll', 'set_value', 'type_text'])
+const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value)
 
-// ── 门禁配置（环境变量）──────────────────────────────
-const GATE_LEVEL = process.env.OCU_GATE_LEVEL || 'write-approve'; // read-only | write-approve
-const ALLOWED_APPS = (process.env.OCU_ALLOWED_APPS || 'Godot*,godot*,Godot_*').split(',').map(s => s.trim()).filter(Boolean);
-
-// ── 工具分类表（按 open-computer-use v1.0.0 真实工具集校准）─────────
-const READ_TOOLS = new Set([
-  'list_apps', 'get_app_state', // 带 readOnlyHint 标注的读类工具
-]);
-const WRITE_TOOLS = new Set([
-  'click', 'drag', 'perform_secondary_action', 'press_key', 'scroll',
-  'set_value', 'type_text',
-]);
-const ALL_TOOLS = new Set([...READ_TOOLS, ...WRITE_TOOLS]);
-
-// ── 匹配辅助 ─────────────────────────────────────────
-function wildcardMatch(name, patterns) {
-  const n = String(name || '').toLowerCase();
-  return patterns.some(p => {
-    const re = p.toLowerCase().replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-    return new RegExp(`^${re}$`).test(n);
-  });
-}
-
-// ── 工具参数里提取目标 app 名（OCU 全部工具都要求 app 参数）────────
-function targetAppOf(tool, params) {
-  const p = params || {};
-  return p.app || null;
-}
-
-// ── 启动 OCU server（剩余参数原样传递）──────────────────
-const ocuArgs = process.argv.slice(2);
-if (ocuArgs.length === 0) {
-  console.error('[ocu-gateway] usage: OCU_GATE_LEVEL=... OCU_ALLOWED_APPS=... node ocu-gateway.js -- <ocu server cmd> [args...]');
-  process.exit(1);
-}
-// 允许 -- 分隔符：剥离首个 '--'
-if (ocuArgs[0] === '--') ocuArgs.shift();
-const ocuCmd = ocuArgs[0];
-const ocuRest = ocuArgs.slice(1);
-
-// server 命令解析：Windows 下 npm bin（ocu.ps1）需要 shell；Unix 直接 spawn
-const child = spawn(ocuCmd, ocuRest, { stdio: ['pipe', 'pipe', 'inherit'], shell: process.platform === 'win32' });
-// 客户端请求流 = 本进程 stdin；OCU 响应流 = child.stdout
-const rl = createInterface({ input: process.stdin });
-
-// 会话内请求 id → 需门禁的工具名（response 阶段不重复判定）
-const pendingGate = new Map();
-
-function send(obj) { process.stdout.write(JSON.stringify(obj) + '\n'); }
-
-// ── 门禁判定 ─────────────────────────────────────────
 function gateTool(tool, params) {
-  if (!ALL_TOOLS.has(tool)) {
-    // 未分类工具：读类默认放行、写类默认拒绝（fail-closed）
-    if (/^(get|list|read|inspect|query|screenshot|status|info|tree)/i.test(tool)) return null;
-    return `[ocu-gateway] 未分类工具 "${tool}" 默认拒绝（fail-closed）`;
-  }
-  if (READ_TOOLS.has(tool)) return null; // 读类放行
-  if (GATE_LEVEL === 'read-only') return `[ocu-gateway] 当前档位 read-only：写类工具 "${tool}" 被拒绝`;
-  // write-approve：目标 app 白名单
-  const app = targetAppOf(tool, params);
-  if (app && !wildcardMatch(app, ALLOWED_APPS)) {
-    return `[ocu-gateway] 目标窗口 "${app}" 不在白名单（${ALLOWED_APPS.join(', ')}），写操作被拒绝`;
-  }
-  return null;
+  if (readTools.has(tool)) return null
+  if (!writeTools.has(tool)) return `未分类工具 "${tool}" 默认拒绝（fail-closed）`
+  if (gateLevel === 'read-only') return `当前档位 read-only：写类工具 "${tool}" 被拒绝`
+  const app = isObject(params) ? params.app : undefined
+  if (typeof app !== 'string' || !app.trim()) return `写类工具 "${tool}" 缺少目标 app，操作被拒绝`
+  const allowed = allowedApps.some(pattern => {
+    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')
+    return new RegExp(`^${escaped}$`, 'i').test(app)
+  })
+  return allowed ? null : `目标窗口 "${app}" 不在白名单（${allowedApps.join(', ')}），写操作被拒绝`
 }
 
-// ── MCP 请求转发 ─────────────────────────────────────
-rl.on('line', line => {
-  if (!line.trim()) return;
-  let msg;
-  try { msg = JSON.parse(line); } catch { return; }
-  if (msg.method === 'tools/call') {
-    const tool = msg.params && msg.params.name;
-    const blocked = gateTool(tool, msg.params && msg.params.arguments);
-    if (blocked) {
-      send({
-        jsonrpc: '2.0',
-        id: msg.id,
-        result: {
-          content: [{ type: 'text', text: blocked }],
-          isError: true,
-        },
-      });
-      return;
-    }
-    if (tool) pendingGate.set(String(msg.id), tool);
+async function main() {
+  if (!['read-only', 'write-approve'].includes(gateLevel)) throw new Error(`invalid OCU_GATE_LEVEL: ${gateLevel}`)
+  let launch
+  try {
+    launch = await resolveOcuCommand(process.argv.slice(2))
+  } catch (error) {
+    throw new Error(`resolve: ${error.message}; install the managed runtime with cli/setup-ocu.mjs`, { cause: error })
   }
-  child.stdin.write(line + '\n');
-});
+  // No shell: Node and launcher paths (including spaces) remain distinct arguments on Windows.
+  const child = spawn(launch.command, launch.args, { stdio: ['pipe', 'pipe', 'inherit'], shell: false, windowsHide: true })
+  const requests = createInterface({ input: process.stdin })
+  const responses = createInterface({ input: child.stdout })
+  const pending = new Map()
+  let failed = false
 
-// ── MCP 响应转发 ─────────────────────────────────────
-const childRl = createInterface({ input: child.stdout });
-childRl.on('line', line => {
-  if (!line.trim()) return;
-  let msg;
-  try { msg = JSON.parse(line); } catch { send(line); return; }
-  // 写类工具成功响应附门禁水印，便于审计
-  if (msg.id && pendingGate.has(String(msg.id))) {
-    const tool = pendingGate.get(String(msg.id));
-    pendingGate.delete(String(msg.id));
-    if (WRITE_TOOLS.has(tool) && msg.result && msg.result.content) {
-      msg.result.content = msg.result.content.concat([
-        { type: 'text', text: `[ocu-gateway] 写操作 ${tool} 已执行（白名单内）` },
-      ]);
-    }
+  function send(message) {
+    if (!process.stdout.destroyed) process.stdout.write(`${JSON.stringify(message)}\n`)
   }
-  send(msg);
-});
 
-child.on('exit', code => process.exit(code || 0));
-process.on('SIGINT', () => child.kill('SIGINT'));
+  function fail(stage, error) {
+    if (failed) return
+    failed = true
+    const detail = `[ocu-gateway] ${stage}: ${error.message}`
+    console.error(detail)
+    for (const { id } of pending.values()) {
+      send({ jsonrpc: '2.0', id, error: { code: -32000, message: detail } })
+    }
+    pending.clear()
+    requests.close()
+    process.stdin.destroy()
+    child.stdin.destroy()
+    child.kill()
+    process.exitCode = 1
+  }
+
+  requests.on('line', line => {
+    if (failed || !line.trim()) return
+    let message
+    try { message = JSON.parse(line) } catch {
+      send({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Invalid JSON' } })
+      return
+    }
+    if (!isObject(message) || message.jsonrpc !== '2.0') {
+      send({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid JSON-RPC request' } })
+      return
+    }
+    const hasId = typeof message.id === 'string' || typeof message.id === 'number'
+    const tool = message.method === 'tools/call' && isObject(message.params) ? message.params.name : undefined
+    if (message.method === 'tools/call') {
+      const blocked = gateTool(tool, message.params?.arguments)
+      if (blocked) {
+        if (hasId) send({ jsonrpc: '2.0', id: message.id, result: {
+          content: [{ type: 'text', text: `[ocu-gateway] ${blocked}` }], isError: true,
+        } })
+        return
+      }
+    }
+    if (hasId) pending.set(message.id, { id: message.id, tool })
+    if (!child.stdin.write(`${line}\n`)) requests.pause()
+  })
+  child.stdin.on('drain', () => requests.resume())
+  requests.on('close', () => { if (!child.stdin.destroyed) child.stdin.end() })
+  process.stdin.on('error', error => fail('client stdin', error))
+  process.stdout.on('error', error => fail('client stdout', error))
+  child.on('error', error => fail('spawn', error))
+  child.stdin.on('error', error => fail('upstream stdin', error))
+  child.stdout.on('error', error => fail('upstream stdout', error))
+
+  responses.on('line', line => {
+    if (!line.trim() || failed) return
+    let message
+    try { message = JSON.parse(line) } catch {
+      fail('upstream protocol', new Error('non-JSON output on MCP stdout'))
+      return
+    }
+    if (!isObject(message) || message.jsonrpc !== '2.0') {
+      fail('upstream protocol', new Error('invalid JSON-RPC response'))
+      return
+    }
+    const request = pending.get(message.id)
+    pending.delete(message.id)
+    if (request && writeTools.has(request.tool) && isObject(message.result) &&
+      !message.result.isError && Array.isArray(message.result.content)) {
+      message.result.content.push({ type: 'text', text: `[ocu-gateway] 写操作 ${request.tool} 已执行（白名单内）` })
+    }
+    send(message)
+  })
+  // close (rather than exit) drains final stdout responses before ending the proxy.
+  child.on('close', (code, signal) => {
+    if (!failed && (code !== 0 || signal || pending.size)) {
+      fail('upstream exit', new Error(`code=${code} signal=${signal || 'none'} pending=${pending.size}`))
+    }
+    requests.close()
+    process.stdin.destroy()
+    process.exitCode = failed ? 1 : 0
+  })
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal))
+}
+
+main().catch(error => {
+  console.error(`[ocu-gateway] ${error.message}`)
+  process.exitCode = 1
+})
