@@ -1,6 +1,6 @@
 # Release automation (Godot Codely)
 
-This fork publishes installers through GitHub Actions. Use **Orchestrate desktop release** as the single entry point; **Release desktop installers** still performs build, signing, and upload.
+This fork publishes installers through GitHub Actions. Use **Orchestrate desktop release** as the single entry point; **Release desktop installers** performs build and upload.
 
 ## One-click flows
 
@@ -8,8 +8,9 @@ Open **Actions → Orchestrate desktop release → Run workflow**.
 
 | Channel | Version example | What happens |
 | --- | --- | --- |
-| **formal** | `0.1.0` (must match `package.json`, no `-rc`) | Creates and pushes `v0.1.0`; **Release desktop installers** runs on the tag and publishes a **Latest** GitHub Release when macOS, Windows signing, and smoke tests succeed. |
-| **prerelease** | `0.1.0-rc.1` | Dispatches **Release desktop installers** with `mode=prerelease`, `target=all`; publishes a **Pre-release** on GitHub when the pipeline succeeds. |
+| **unsigned** (default) | `0.1.0` | Dispatches `mode=unsigned` on GitHub-hosted runners. Builds **Linux AppImage** (`build:linux-pack`, no bundled Office runtime), **macOS DMG/ZIP**, and/or **Windows NSIS** without code signing and publishes **`v0.1.0-unsigned`** on GitHub Releases. Use `target=linux` for a Linux-only release. |
+| **formal** | `0.1.0` (must match `package.json`, no `-rc`) | Creates and pushes `v0.1.0`; signed **Latest** release when Apple secrets and the Windows UKey runner succeed. |
+| **prerelease** | `0.1.0-rc.1` | Signed **Pre-release** when the full signed pipeline succeeds. |
 
 Manual alternative (same result):
 
@@ -18,8 +19,9 @@ Manual alternative (same result):
 
 ## Before the first release
 
-1. Bump **`package.json` `version`** on `main` and merge (required for **formal**).
-2. Configure repository **Settings → Secrets and variables → Actions**:
+1. For **unsigned**, set **`unsigned_version`** / orchestrator **version** to the semver you want (bumping `package.json` is recommended but not enforced).
+2. For **formal**, bump **`package.json` `version`** on `main` and merge.
+3. **Unsigned** needs no signing secrets. **Formal / prerelease** require **Settings → Secrets and variables → Actions**:
    - **macOS**: `DESKTOP_CSC_LINK`, `DESKTOP_CSC_KEY_PASSWORD`, `DESKTOP_APPLE_API_KEY`, `DESKTOP_APPLE_API_KEY_ID`, `DESKTOP_APPLE_API_ISSUER`, `DESKTOP_APPLE_TEAM_ID`
    - **Windows**: `DESKTOP_WINDOWS_SIGNING_PIN` and a self-hosted runner with labels `self-hosted`, `macOS`, `ARM64` (UKey signing host; see [release runbook](release-runbook.md))
 3. Optional:

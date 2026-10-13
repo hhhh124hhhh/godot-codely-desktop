@@ -60,6 +60,23 @@ async function verifyRuntime(appRoot) {
   if (previewCount !== 192) throw new Error('Packaged dsh-ppt contains ' + previewCount + ' previews; expected 192')
 }
 
+function packagedElectronExecutable(context) {
+  const product = context.packager.appInfo.productFilename
+  const platform = context.electronPlatformName
+  if (platform === 'win32') {
+    return path.join(context.appOutDir, `${product}.exe`)
+  }
+  if (platform === 'darwin' || platform === 'mas') {
+    const macContents = path.join(context.appOutDir, `${product}.app`, 'Contents')
+    return path.join(macContents, 'Frameworks', `${product} Helper.app`, 'Contents', 'MacOS', `${product} Helper`)
+  }
+  if (platform === 'linux') {
+    const linuxName = context.packager.config.linux?.executableName ?? 'godot-codely'
+    return path.join(context.appOutDir, linuxName)
+  }
+  throw new Error(`Unsupported platform for packaged PPT verification: ${platform}`)
+}
+
 module.exports = async function verifyPackagedPptRuntime(context) {
   const product = context.packager.appInfo.productFilename
   const macContents = path.join(context.appOutDir, product + '.app', 'Contents')
@@ -75,9 +92,7 @@ module.exports = async function verifyPackagedPptRuntime(context) {
   if (!appRoot) throw new Error('Cannot locate the packaged application runtime')
   // The packaged Electron executable is the only Node runtime the app ships;
   // macOS runs Node work through its Helper, as the Desktop does.
-  const executable = process.platform === 'win32'
-    ? path.join(context.appOutDir, product + '.exe')
-    : path.join(macContents, 'Frameworks', product + ' Helper.app', 'Contents', 'MacOS', product + ' Helper')
+  const executable = packagedElectronExecutable(context)
   if (!require('node:fs').existsSync(executable)) throw new Error('Cannot locate the packaged Electron executable')
   await execFileAsync(executable, [__filename, '--verify-runtime', appRoot], {
     cwd: path.dirname(appRoot),

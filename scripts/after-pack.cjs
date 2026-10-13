@@ -11,5 +11,7 @@ module.exports = async function afterPack(context) {
     : path.join(context.appOutDir, 'resources')
   verifyAsarUnpack(resourcesDir)
   await verifyPackagedPptRuntime(context)
-  await verifyOfficeRuntime(context)
+  if (context.electronPlatformName !== 'linux') {
+    await verifyOfficeRuntime(context)
+  }
 }

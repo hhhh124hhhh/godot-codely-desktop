@@ -1,29 +1,38 @@
 name: Orchestrate desktop release
 
-# Single entry point for formal (v*) and pre-release publication.
-# Formal: creates and pushes an annotated v* tag; release.yml runs on tag push.
-# Prerelease: dispatches release.yml in prerelease mode (target=all).
+# Single entry point: unsigned (default), formal (signed v tag), or prerelease.
 
 on:
   workflow_dispatch:
     inputs:
       channel:
-        description: formal = GitHub Latest release (v tag); prerelease = GitHub Pre-release
+        description: unsigned = GitHub Release without signing; formal = signed v tag; prerelease = signed pre-release
         required: true
-        default: prerelease
+        default: unsigned
         type: choice
         options:
+          - unsigned
           - formal
           - prerelease
       version:
-        description: Semver without v (must match package.json for formal), e.g. 0.1.0 or 0.1.0-rc.1
+        description: Semver without v (formal must match package.json), e.g. 0.1.0 or 0.1.0-rc.1
         required: true
         type: string
       git_ref:
-        description: Branch or commit to release from (formal tags this ref; prerelease builds this ref)
+        description: Branch or commit to build from
         required: false
         default: main
         type: string
+      target:
+        description: Platforms (unsigned only; formal/prerelease always use all)
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - linux
+          - macos
+          - windows
 
 permissions:
   contents: write
@@ -55,11 +64,8 @@ jobs:
             exit 1
           fi
           if [ "$CHANNEL" = 'formal' ] && [[ "$VERSION" == *-* ]]; then
-            echo "::error::formal channel requires a stable semver (no -rc / -beta suffix). Use channel=prerelease instead."
+            echo "::error::formal channel requires a stable semver. Use unsigned or prerelease for suffix versions."
             exit 1
-          fi
-          if [ "$CHANNEL" = 'prerelease' ] && [[ "$VERSION" != *-* ]]; then
-            echo "::warning::prerelease channel usually includes a suffix (e.g. 0.1.0-rc.1); continuing anyway."
           fi
 
       - name: Match package.json for formal releases
@@ -103,7 +109,24 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$tag" -m "Release ${tag}"
           git push origin "$tag"
-          echo "Pushed $tag. Release desktop installers will build, sign, and publish to GitHub Releases."
+          echo "Pushed $tag. Release desktop installers will build, sign, and publish when secrets and runners are configured."
+
+      - name: Dispatch unsigned release pipeline
+        if: inputs.channel == 'unsigned'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          GIT_REF: ${{ inputs.git_ref }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$GIT_REF" \
+            -f mode=unsigned \
+            -f target="$TARGET" \
+            -f "unsigned_version=${VERSION}"
+          echo "Dispatched unsigned release (target=${TARGET}). Track progress under Actions."
 
       - name: Dispatch prerelease pipeline
         if: inputs.channel == 'prerelease'
@@ -119,14 +142,17 @@ jobs:
             -f mode=prerelease \
             -f target=all \
             -f "prerelease_tag=${VERSION}"
-          echo "Dispatched Release desktop installers (prerelease). Track progress under Actions."
+          echo "Dispatched signed prerelease. Track progress under Actions."
 
       - name: Post-run checklist
         env:
           REPO: ${{ github.repository }}
+          CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
-          echo "After jobs finish:"
-          echo "- GitHub Releases: https://github.com/${REPO}/releases"
-          echo "- Required secrets: Apple signing (macOS), DESKTOP_WINDOWS_SIGNING_PIN + self-hosted sign-windows runner"
-          echo "- Optional: MODELSCOPE_TOKEN, FEISHU_RELEASE_WEBHOOK, MODELS_TOKEN (see docs/release-automation.md)"
+          echo "Releases: https://github.com/${REPO}/releases"
+          if [ "$CHANNEL" = 'unsigned' ]; then
+            echo "Unsigned builds need no signing secrets; Linux/macOS/Windows run on GitHub-hosted runners."
+          else
+            echo "Signed channels need Apple secrets and the self-hosted Windows UKey runner."
+          fi
