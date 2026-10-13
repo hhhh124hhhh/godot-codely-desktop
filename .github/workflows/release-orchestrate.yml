@@ -1,8 +1,17 @@
 name: Orchestrate desktop release
 
-# Single entry point: unsigned (default), formal (signed v tag), or prerelease.
+# Manual: unsigned (default), formal, or prerelease.
+# Auto: every push to main (except docs-only) dispatches unsigned release for package.json version.
 
 on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
   workflow_dispatch:
     inputs:
       channel:
@@ -39,12 +48,41 @@ permissions:
   actions: write
 
 concurrency:
-  group: release-orchestrate-${{ github.repository }}-${{ inputs.channel }}-${{ inputs.version }}
-  cancel-in-progress: false
+  group: release-orchestrate-${{ github.repository }}-${{ github.event_name == 'workflow_dispatch' && format('{0}-{1}', inputs.channel, inputs.version) || 'auto-main' }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
+  auto-unsigned-on-main:
+    name: Auto unsigned release (main push)
+    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip release]')
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dispatch unsigned release pipeline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          semver_re='^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'
+          if ! [[ "$VERSION" =~ $semver_re ]]; then
+            echo "::error::package.json version must be semver for auto release: $VERSION"
+            exit 1
+          fi
+          gh workflow run release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$GITHUB_SHA" \
+            -f mode=unsigned \
+            -f target=all \
+            -f "unsigned_version=${VERSION}"
+          echo "Dispatched unsigned release for ${VERSION} at ${GITHUB_SHA}."
+
   orchestrate:
     name: Trigger ${{ inputs.channel }} ${{ inputs.version }}
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
