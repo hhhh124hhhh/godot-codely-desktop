@@ -246,7 +246,7 @@ const P0_TOOLS = [
       '- detect_godot: find Godot binary path',
       '- check: verify project and Godot availability',
       '- auto_setup: locate Godot (config/standard/deep-scan) or download & install if missing',
-      '- state: 桌面端/CLI ↔ 编辑器插件状态同步（读 <DSH_HOME>/.godot/state.json）',
+      '- state: 桌面端/CLI ↔ 编辑器插件状态同步（读 <DSH_HOME>/.godot/state.json，含场景、选中节点和未保存标记）',
     ].join('\n'),
     annotations: createAnnotations('Config', { idempotent: true }),
     inputSchema: {
