@@ -622,6 +622,17 @@ ${cause}`
     }
 
     this.url = url
+    // Godot Codely: 把 launch token 落盘到 DSH home，供编辑器桥（bridge）换取 DSH API cookie
+    try {
+      const tokenFile = join(this.options.dshHome, 'godot-codely-launch-token')
+      // First line stays compatible; the second records the actual random loopback port.
+      const temporary = `${tokenFile}.${process.pid}.tmp`
+      writeFileSync(temporary, `${this.launchToken}\n${this.url}\n`, { encoding: 'utf8', mode: 0o600 })
+      renameSync(temporary, tokenFile)
+      this.writeLog(`[desktop] godot bridge token written to ${tokenFile}`)
+    } catch (error) {
+      this.writeLog(`[desktop] godot bridge token write failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
     this.writeLog('[desktop] Harness is ready')
     this.setState('ready', 'Harness is ready.')
   }
@@ -681,17 +692,6 @@ ${cause}`
       this.launchToken ??= extractLaunchToken(line)
       if (!hadToken && this.launchToken !== undefined) {
         this.writeLog('[desktop] Harness announced its endpoint; probing until it answers')
-        // Godot Codely: 把 launch token 落盘到 DSH home，供编辑器桥（bridge）换取 DSH API cookie
-        try {
-          const tokenFile = join(this.options.dshHome, 'godot-codely-launch-token')
-          // First line stays compatible; the second records the actual random loopback port.
-          const temporary = `${tokenFile}.${process.pid}.tmp`
-          writeFileSync(temporary, `${this.launchToken}\n${this.url}\n`, { encoding: 'utf8', mode: 0o600 })
-          renameSync(temporary, tokenFile)
-          this.writeLog(`[desktop] godot bridge token written to ${tokenFile}`)
-        } catch (error) {
-          this.writeLog(`[desktop] godot bridge token write failed: ${error instanceof Error ? error.message : String(error)}`)
-        }
       }
     }
   }

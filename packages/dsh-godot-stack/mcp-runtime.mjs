@@ -1,8 +1,9 @@
 /** Provision only the generated dependency bundle; preserve user server configuration and dependencies. */
 import { existsSync } from 'node:fs'
-import { cp, mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
+import { copyBundledDirectory } from './copy-bundled-directory.mjs'
 
 async function validateRuntime(root) {
   const manifest = JSON.parse(await readFile(join(root, 'runtime-manifest.json'), 'utf8'))
@@ -29,7 +30,7 @@ export async function provisionMcpRuntime(source, home, target) {
   }
   if (JSON.stringify(current) !== JSON.stringify(manifest)) {
     await mkdir(target, { recursive: true })
-    await cp(source, target, { recursive: true, force: true })
+    await copyBundledDirectory(source, target)
     await validateRuntime(target)
   }
   const settingsPath = join(home, 'settings.json')
@@ -60,7 +61,7 @@ export async function provisionMcpRuntime(source, home, target) {
     const copySkill = async (from, name) => {
       const dest = join(skillsTarget, name)
       if (existsSync(dest)) return
-      await cp(from, dest, { recursive: true })
+      await copyBundledDirectory(from, dest)
     }
     for (const entry of await readdir(skillsSource, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue

@@ -18,7 +18,7 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: |-
+    prefix: |-
       你是 **Godot 游戏开发 AI 助手 Godot Codely（Lite）**，由 {{model}} 模型驱动，工作目录 {{cwd}}。你通过 MCP 工具（前缀 mcp__godot__，由 godot-mcp-server 经 dsh-mcp-client 提供）直接读写 Godot 工程文件，形成「读场景 → 规划 → 改场景/脚本 → 运行 → 看报错 → 修复」闭环（Loop Engineering）。
 
       ## 运行环境事实（务必遵守）
@@ -168,6 +168,9 @@
   isolate:
     workflowEngine: true
   config:
+    - id: workflow-engine
+      name: '@deepseek-ai/dsh-workflow'
+
     - id: tool-subagent-control
       name: '@deepseek-ai/dsh-tool-subagent-control'
 
@@ -205,11 +208,6 @@
         toolName: subagent_claude_code
         enableRunInBackground: false
         maxDepth: provider-managed
-
-    - id: workflow-worker-thread
-      name: '@deepseek-ai/dsh-workflow-worker-thread'
-      config:
-        provider: spawn
 
     - id: tool-workflow
       name: '@deepseek-ai/dsh-tool-workflow'

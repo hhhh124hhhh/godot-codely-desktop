@@ -13,7 +13,7 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: |-
+    prefix: |-
       你是 Godot 游戏开发工作室的 **GDScript 与类型安全专家（godot-gdscript-expert）**。主理人把「GDScript 规范 / 框架 API 用法 / 类型安全 / 脚本编译闸 / 代码评审重构」相关任务派给你，你独立完成并回传结论。实机版本以工程实际为准（Godot 4.x）。
 
       ## 职责域
@@ -140,6 +140,9 @@
   isolate:
     workflowEngine: true
   config:
+    - id: workflow-engine
+      name: '@deepseek-ai/dsh-workflow'
+
     - id: tool-subagent-control
       name: '@deepseek-ai/dsh-tool-subagent-control'
 
@@ -177,11 +180,6 @@
         toolName: subagent_claude_code
         enableRunInBackground: false
         maxDepth: provider-managed
-
-    - id: workflow-worker-thread
-      name: '@deepseek-ai/dsh-workflow-worker-thread'
-      config:
-        provider: spawn
 
     - id: tool-workflow
       name: '@deepseek-ai/dsh-tool-workflow'

@@ -1,5 +1,13 @@
 # Godot 面板 Agent 闭环验证
 
+## 安装产物验收发现：ASAR 递归复制
+
+PR #4 对应 Windows CI `38387804606` 全部通过，但其 packaged Harness 启动日志仍出现预设与 MCP provisioning 的 `ENOENT`。最小 Electron ASAR 探针确认源目录 `existsSync` 为真，`fs.promises.cp` 递归复制仍失败；这是 ASAR 读取兼容问题，不能把 Harness ready 当作 Godot provisioning 成功。
+
+修复将宿主自有预设、MCP runtime 和技能的递归复制改用 ASAR 支持的 `readdir/readFile/writeFile`，保留 runtime 摘要校验、用户设置和已有技能的保留语义。OCU 的单文件复制采用相同读写路径，复制后仍自包含。包清单补齐 `data-home.mjs` 与复制模块。
+
+新增真实 Electron/ASAR 行为回归及 `afterPack` Godot gate，检查四份预设的宿主绑定、MCP integrity 和技能 provisioning；不通过就阻断打包。本地 4 套件 18/18 与 typecheck 通过。整仓 189 文件：179 通过、6 失败、4 跳过；1647 测试通过、12 失败、7 跳过，Godot 与 ASAR 用例无失败。其他失败涉及 symlink EPERM、图像写入、pnpm rebuild 与 PPT 上传路径。安装包 UI 与完整 Lite 预设生产激活尚待新 CI 产物验收，P0 仍不能按生产验收关闭。
+
 ## 2026-10-13 主线同步验收
 
 本分支在 `2ec9dbe` 的 Agent 工具与编辑器运行验证基础上合入 `origin/main` `00740aa`。下文旧基线与 PR 状态保留为历史记录；本次同步已包含主线的实时编辑器上下文、数据目录隔离、OCU 修复和品牌更新。唯一冲突位于插件入口 import：保留预设绑定当前宿主所需的 `pathToFileURL`，移除主线已替代的 `os` import，采用 `cliHome()`。
@@ -52,3 +60,12 @@ node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-runtime.test.m
 - `npm run typecheck`、MCP server 的 `tsc --noEmit`、`npm run build`、`git diff --check` 通过。
 - 生成包 `npm pack --dry-run --json` 检查包含新增 Agent/记忆子入口、Bridge、编辑器脚本、编译 bundle 与 `tool-help/project.txt`。
 - 最终代码的整仓默认并发回归未通过：187 文件中 20 失败、162 通过、4 跳过；27 测试失败、1583 通过、40 跳过，另有 2 个运行器错误。其中新增的真实 Agent/编辑器用例也超时，不能将本次修复称为整仓稳定或把失败全部归因于环境。随后使用 4 个 worker、相同用例和超时重跑，结果另行记录。
+
+## 2026-10-13 安装验收新增阻断
+
+CI Dev 安装包 `caf9b58` 已验证 ASAR preset / MCP / skill 复制完整、客户端界面挂载。继续调用生产 API 后发现两项尚未被旧缩小组合回归覆盖的问题：
+
+- launch token 到达时 `HarnessRuntime.url` 尚未赋值，凭据文件第二行写成 `undefined`。改为就绪探测成功、实际随机端口确定后原子写入，再通知 ready。
+- Harness 0.2 不扫描 `.agent-presets` 目录；使用宿主 `agentPresets` 服务和官方 `dsh-agent-preset` 注册四个定义，include 当前 Profile 的复制文件。普通 Profile 生效，Safe Mode 保持原有排除。persona 使用当前 `prefix` 字段；隔离 delegation realm 明确提供 `dsh-workflow`，移除不存在的旧 worker 包。
+
+`test/godot-launch-token.test.mjs` 使用真实 Harness 子进程、临时 Profile 和生产 Typert API，覆盖全部四个 preset 的发现/诊断、完整 Lite 会话创建、随机端口凭据认证以及重启。此项在 Windows 已通过；新版 CI 安装包的最终任务验收仍待完成，旧包的界面成功不替代此项验收。

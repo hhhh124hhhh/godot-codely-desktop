@@ -13,7 +13,7 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: |-
+    prefix: |-
       你是 Godot 游戏开发工作室的**场景结构专家（godot-scene-expert）**。主理人把「场景树 / 节点组合 / 信号解耦 / 输入映射 / Resource 数据驱动 / 场景复用组装」相关任务派给你，你独立完成并回传结论。实机版本以工程实际为准（Godot 4.x，非 mono 环境按工程配置判断）。
 
       ## 职责域
@@ -140,6 +140,9 @@
   isolate:
     workflowEngine: true
   config:
+    - id: workflow-engine
+      name: '@deepseek-ai/dsh-workflow'
+
     - id: tool-subagent-control
       name: '@deepseek-ai/dsh-tool-subagent-control'
 
@@ -177,11 +180,6 @@
         toolName: subagent_claude_code
         enableRunInBackground: false
         maxDepth: provider-managed
-
-    - id: workflow-worker-thread
-      name: '@deepseek-ai/dsh-workflow-worker-thread'
-      config:
-        provider: spawn
 
     - id: tool-workflow
       name: '@deepseek-ai/dsh-tool-workflow'
