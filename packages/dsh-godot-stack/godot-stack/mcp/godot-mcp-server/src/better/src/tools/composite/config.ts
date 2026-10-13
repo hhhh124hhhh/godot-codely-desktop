@@ -313,7 +313,8 @@ async function handleCheck(_args: Record<string, unknown>, config: GodotConfig) 
 
 /**
  * 桌面端/CLI ↔ 编辑器插件状态同步：
- * 读取 <DSH_HOME>/.godot/state.json（Godot AI 面板连接成功后自动写入），
+ * 读取 <DSH_HOME>/.godot/state.json。编辑器插件在连接、选择、切场景、
+ * 保存和撤销时发布，字段含 selected_nodes / unsaved / scene_path。
  * 合并 server 自身运行时状态，供 CLI/桌面端 agent 观察编辑器当前项目/场景。
  */
 async function handleState(_args: Record<string, unknown>, config: GodotConfig) {

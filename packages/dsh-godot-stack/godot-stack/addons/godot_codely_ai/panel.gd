@@ -7,6 +7,7 @@ extends Control
 const MCP_CLIENT_SCRIPT := "res://addons/godot_codely_ai/mcp_client.gd"
 const LLM_CLIENT_SCRIPT := "res://addons/godot_codely_ai/llm_client.gd"
 const HARNESS_CLIENT_SCRIPT := "res://addons/godot_codely_ai/harness_client.gd"
+const EDITOR_STATE_SCRIPT := preload("res://addons/godot_codely_ai/editor_state.gd")
 
 const MIN_WIDTH := 340
 
@@ -209,43 +210,10 @@ func _on_connected() -> void:
 	_write_state()
 
 
-## 状态同步：把当前项目/场景/版本写入 <DSH_HOME>/.godot/state.json
-## 桌面端/CLI 通过 config/state 工具读取，实现双端同步
+## 状态同步：项目、场景、选中节点和未保存标记写入 <DSH_HOME>/.godot/state.json。
+## 插件在选择、场景切换、保存和撤销栈变化时也会调用同一入口。
 func _write_state() -> void:
-	var home := OS.get_environment("USERPROFILE")
-	if home.is_empty():
-		home = OS.get_environment("HOME")
-	var dsh := OS.get_environment("DSH_HOME")
-	var dsh_home := dsh if not dsh.is_empty() else home + "/.dsh"
-	var dir := dsh_home + "/.godot"
-	var dir_error := DirAccess.make_dir_recursive_absolute(dir)
-	if dir_error != OK:
-		push_warning("[godot-codely] state directory failed: " + str(dir_error))
-		return
-	var ver := Engine.get_version_info()
-	var scene_path := ""
-	if Engine.is_editor_hint():
-		var scene := EditorInterface.get_edited_scene_root()
-		if scene != null:
-			scene_path = scene.scene_file_path
-	var state := {
-		"client": "godot-codely-ai-panel",
-		"project": str(ProjectSettings.get_setting("application/config/name", "unknown")),
-		"project_path": ProjectSettings.globalize_path("res://"),
-		"scene_path": scene_path,
-		"godot_version": str(ver.get("string", "unknown")),
-		"mcp_port": 8785,
-		"connected_at": Time.get_datetime_string_from_system(),
-	}
-	var f := FileAccess.open(dir + "/state.json", FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify(state))
-		var write_error := f.get_error()
-		f.close()
-		if write_error != OK:
-			push_warning("[godot-codely] state write failed: " + str(write_error))
-	else:
-		push_warning("[godot-codely] state open failed: " + str(FileAccess.get_open_error()))
+	EDITOR_STATE_SCRIPT.write_current()
 
 
 func _on_conn_error(message: String) -> void:

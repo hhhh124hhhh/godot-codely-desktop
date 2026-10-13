@@ -7,6 +7,8 @@ func _initialize() -> void:
 func _run() -> void:
 	var panel = load("res://addons/godot_codely_ai/panel.gd").new()
 	root.add_child(panel)
+	# 默认模式是桌面 Agent，不会连接 MCP。状态往返检查的是工具直调。
+	panel._mode.select(1)
 	panel._client._base_url = OS.get_environment("GODOT_TEST_URL")
 	var deadline := Time.get_ticks_msec() + 10000
 	while not panel._connected and Time.get_ticks_msec() < deadline:

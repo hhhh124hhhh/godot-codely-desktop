@@ -51,14 +51,17 @@ SDK 工具注册，但设置 `enableJsonResponse: true`，让 `HTTPRequest` 能�
 SSE 是不同状态。JSON 响应解析后先保存 session header，再发送 `notifications/initialized`。
 `tools/list`、工具错误和 session 删除均由 SDK 处理，不维护另一套工具分发。
 
-面板连接成功后，将项目、当前场景和引擎版本快照写入 `<DSH_HOME>/.godot/state.json`；
-`config` 工具的 `state` 动作读取这份快照。它表示最近一次连接状态，不是实时在线探针。
+编辑器插件把项目、当前场景、选中节点和未保存场景写入 `<DSH_HOME>/.godot/state.json`。
+面板连接时会写一次；之后选择变化、场景切换、场景保存和撤销栈变化会再次发布。
+`config` 工具的 `state` 动作读取这份最新快照。它不是编辑器进程的在线探针，编辑器退出后文件会停在最后一次发布。
 编辑器与 server 必须使用同一个 `DSH_HOME`，两者未设置时回退到用户目录下的 `.dsh`。
 
 HTTP 行为回归：在本目录执行 `npm run test:http`。设置 `GODOT_TEST_BIN` 为本机
 Godot 可执行文件后，还会在临时项目、独立 userData 和 DSH_HOME 中加载真实面板，
 检查“已连接”标签、工具调用以及状态文件往返。未设置时只运行 HTTP 检查。
-同步部署时先确保构建退出码为 0，再复制 `build/` 和插件的 `mcp_client.gd`、`panel.gd`，
+编辑器上下文回归：`npm run test:editor-state`。它不编译 server，但需要本机 Godot；
+未找到二进制时跳过。用例覆盖快照组合，以及 headless 编辑器里的选择、未保存和切场景。
+同步部署时先确保构建退出码为 0，再复制 `build/` 和插件的 `mcp_client.gd`、`panel.gd`、`plugin.gd`、`editor_state.gd`，
 随后重新启动 server 与编辑器；源码更新不代表已运行进程或现有项目插件副本已更新。
 
 ```bash
