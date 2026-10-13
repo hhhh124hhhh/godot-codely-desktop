@@ -8,6 +8,8 @@ extends Node
 signal chunk_received(text: String)
 signal finished(full_text: String)
 signal failed(error_message: String)
+## agentic：LLM 请求调用工具（OpenAI 兼容 tool_calls，流式分片累积后一次性发出）
+signal tool_calls_requested(tool_calls: Array, content_so_far: String)
 
 const DEFAULT_BASE_URL := "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 const DEFAULT_MODEL := "qwen3.8-flash"
@@ -17,6 +19,7 @@ var _buffer := ""
 var _full := ""
 var _done := false
 var _streaming := true
+var _pending_tool_calls: Dictionary = {}
 
 # 配置（运行时可由面板设置）
 var base_url := ""
@@ -83,19 +86,23 @@ func is_configured() -> bool:
 	return base_url != "" and api_key != "" and model != ""
 
 
-## 发起对话（messages: Array of {role, content}）。流式：逐块发 chunk_received，结束发 finished
-func chat(messages: Array) -> void:
+## 发起对话（messages: Array of {role, content}；tools: OpenAI 兼容 function 定义数组，可空）。
+## 流式：逐块发 chunk_received，结束发 finished；若模型请求调用工具则发 tool_calls_requested
+func chat(messages: Array, tools: Array = []) -> void:
 	if not is_configured():
 		failed.emit("LLM 未配置：请用 /model 命令或写入 llm_config.json")
 		return
 	_buffer = ""
 	_full = ""
 	_done = false
+	_pending_tool_calls = {}
 	var url := base_url.trim_suffix("/") + "/chat/completions"
 	var payload := {
 		"model": model,
 		"messages": messages,
 	}
+	if tools.size() > 0:
+		payload["tools"] = tools
 	if _streaming:
 		payload["stream"] = true
 	var body := JSON.stringify(payload)
@@ -152,7 +159,7 @@ func chat(messages: Array) -> void:
 		_parse_sse()
 	if not _done:
 		if _full.is_empty():
-			# 服务器忽略 stream 返回普通 JSON：解析 choices[0].message.content
+			# 服务器忽略 stream 返回普通 JSON：解析 choices[0].message（content / tool_calls）
 			var parsed = JSON.parse_string(_buffer.strip_edges())
 			if parsed is Dictionary:
 				var choices = parsed.get("choices", [])
@@ -161,7 +168,32 @@ func chat(messages: Array) -> void:
 					var content = msg.get("content", "")
 					if content is String and content != "":
 						_full = content
-		_done = true
+					var tcs = msg.get("tool_calls", [])
+					if tcs is Array and tcs.size() > 0:
+						_done = true
+						tool_calls_requested.emit(tcs, _full)
+						return
+		_finish()
+
+
+func _finish() -> void:
+	_done = true
+	if _pending_tool_calls.size() > 0:
+		var keys := _pending_tool_calls.keys()
+		keys.sort()
+		var calls := []
+		for index in keys:
+			var e: Dictionary = _pending_tool_calls[index]
+			calls.append({
+				"id": str(e.get("id", "")),
+				"type": "function",
+				"function": {
+					"name": str(e.get("name", "")),
+					"arguments": str(e.get("arguments", "")),
+				},
+			})
+		tool_calls_requested.emit(calls, _full)
+	else:
 		finished.emit(_full)
 
 
@@ -173,8 +205,7 @@ func _parse_sse() -> void:
 		if line.begins_with("data:"):
 			var data := line.substr(5).strip_edges()
 			if data == "[DONE]":
-				_done = true
-				finished.emit(_full)
+				_finish()
 				return
 			var parsed = JSON.parse_string(data)
 			if parsed is Dictionary:
@@ -185,6 +216,23 @@ func _parse_sse() -> void:
 					if content is String and content != "":
 						_full += content
 						chunk_received.emit(content)
+					# OpenAI 兼容流式 tool_calls：按 index 累积分片
+					if delta.has("tool_calls") and delta["tool_calls"] is Array:
+						for tc in delta["tool_calls"]:
+							var index := int(tc.get("index", 0))
+							if not _pending_tool_calls.has(index):
+								_pending_tool_calls[index] = {"id": "", "name": "", "arguments": ""}
+							var entry: Dictionary = _pending_tool_calls[index]
+							var tc_id = tc.get("id", "")
+							if tc_id is String and tc_id != "":
+								entry["id"] = tc_id
+							var fn = tc.get("function", {})
+							var fname = fn.get("name", "")
+							if fname is String and fname != "":
+								entry["name"] = fname
+							var fargs = fn.get("arguments", "")
+							if fargs is String and fargs != "":
+								entry["arguments"] = str(entry["arguments"]) + fargs
 	if _buffer.length() > 6000:
 		# 防缓冲膨胀：丢弃已完成解析的旧残尾
 		_buffer = _buffer.substr(_buffer.length() - 400)

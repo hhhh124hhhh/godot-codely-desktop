@@ -20,7 +20,9 @@ var _connected := false
 var _mcp_launch_attempted := false
 var _history: Array = []
 var _llm_busy := false
-const _SYSTEM_PROMPT := "你是嵌入 Godot 编辑器的 AI 助手 Godot Codely。帮助用户完成 Godot 开发：场景、GDScript、UI、物理、着色器、导出等。回答简洁、可操作，需要改代码时直接给出 GDScript 代码块。"
+var _tool_rounds := 0
+const _MAX_TOOL_ROUNDS := 8
+const _SYSTEM_PROMPT := "你是嵌入 Godot 编辑器的 AI 助手 Godot Codely。帮助用户完成 Godot 开发：场景、GDScript、UI、物理、着色器、导出等。回答简洁、可操作，需要改代码时直接给出 GDScript 代码块。\n\n你可以调用 MCP 工具在编辑器里实际执行操作。当用户要求创建/修改场景、节点、脚本、运行项目、查询状态时，优先调用对应工具（如 scenes、nodes、scripts、project 等；多数工具用 action 参数区分操作，参数结构以工具定义为准）。工具返回后基于真实结果继续回答。不要编造工具执行结果。"
 
 
 func _ready() -> void:
@@ -113,6 +115,7 @@ func _ready() -> void:
 	_llm.chunk_received.connect(_on_llm_chunk)
 	_llm.finished.connect(_on_llm_finished)
 	_llm.failed.connect(_on_llm_failed)
+	_llm.tool_calls_requested.connect(_on_llm_tool_calls)
 	if _llm.load_default_config():
 		_append_line("[color=#999999]LLM 已配置（%s）[/color]" % _llm.model, Color.WHITE)
 	else:
@@ -247,9 +250,9 @@ func _on_send_pressed() -> void:
 
 ## 模型配置命令：/model base=<url> key=<key> model=<name>（缺省保留现值）
 func _handle_model_cmd(rest: String) -> void:
-	var cfg_base := _llm.base_url
-	var cfg_key := _llm.api_key
-	var cfg_model := _llm.model
+	var cfg_base: String = _llm.base_url
+	var cfg_key: String = _llm.api_key
+	var cfg_model: String = _llm.model
 	for kv in rest.split(" "):
 		var parts := kv.split("=", true, 1)
 		if parts.size() < 2:
@@ -271,7 +274,7 @@ func _handle_model_cmd(rest: String) -> void:
 		_append_line("[color=#E5533D]模型配置保存失败[/color]", Color.WHITE)
 
 
-## Agent 对话：组装消息历史 → LLM 流式生成
+## Agent 对话：组装消息历史 → LLM 流式生成（可调用 MCP 工具，agentic 循环）
 func _start_llm_chat(text: String) -> void:
 	if _llm_busy:
 		_append_line("[color=#999999]上一条仍在生成，请稍候…[/color]", Color.WHITE)
@@ -280,15 +283,76 @@ func _start_llm_chat(text: String) -> void:
 		_append_line("[color=#E5533D]LLM 未配置：/model base=… key=… model=…[/color]", Color.WHITE)
 		return
 	_llm_busy = true
+	_tool_rounds = 0
 	_history.append({"role": "user", "content": text})
 	if _history.size() > 20:
 		_history = _history.slice(_history.size() - 20)
-	var messages: Array = [{"role": "system", "content": _SYSTEM_PROMPT}]
-	messages.append_array(_history)
 	_append_line("[color=#9BBBF4]你：[/color]" + text, Color.WHITE)
 	_log.append_text("[color=#57B44E]AI：[/color]")
 	_log.scroll_to_line(_log.get_line_count() - 1)
-	_llm.chat(messages)
+	var tools: Array = []
+	if _connected:
+		tools = await _client.list_tools()
+		if tools.size() == 0:
+			_append_line("[color=#999999]MCP 工具清单为空，本次仅对话[/color]", Color.WHITE)
+	_llm.chat(_build_messages(), tools)
+
+
+## 组装 system + 历史消息
+func _build_messages() -> Array:
+	var messages: Array = [{"role": "system", "content": _SYSTEM_PROMPT}]
+	messages.append_array(_history)
+	return messages
+
+
+## agentic：LLM 请求调用工具 → 逐条执行 → 结果回喂 → 继续
+func _on_llm_tool_calls(tool_calls: Array, content_so_far: String) -> void:
+	if content_so_far != "":
+		_log.append_text(content_so_far)
+		_log.scroll_to_line(_log.get_line_count() - 1)
+	_tool_rounds += 1
+	if _tool_rounds > _MAX_TOOL_ROUNDS:
+		_log.append_text("\n")
+		_append_line("[color=#E5533D]✗ 工具调用轮次超过 %d，已停止[/color]" % _MAX_TOOL_ROUNDS, Color.WHITE)
+		_history.append({"role": "assistant", "content": content_so_far + "\n（工具调用超限）"})
+		_llm_busy = false
+		return
+	# 记录 assistant 的 tool_calls 消息（OpenAI 兼容：content 可空）
+	var assistant_msg: Dictionary = {"role": "assistant", "content": content_so_far if content_so_far != "" else null}
+	var calls_clean: Array = []
+	for tc in tool_calls:
+		var fn_name := str(tc.get("function", {}).get("name", ""))
+		var fn_args_raw := str(tc.get("function", {}).get("arguments", ""))
+		var tc_id := str(tc.get("id", ""))
+		if fn_name == "":
+			continue
+		calls_clean.append({"id": tc_id, "type": "function", "function": {"name": fn_name, "arguments": fn_args_raw}})
+		_append_line("[color=#9BBBF4]▶ 调用工具 %s %s[/color]" % [fn_name, fn_args_raw], Color.WHITE)
+		var args: Dictionary = {}
+		var parsed = JSON.parse_string(fn_args_raw)
+		if parsed is Dictionary:
+			args = parsed
+		else:
+			_append_line("[color=#E5533D]工具参数解析失败：%s[/color]" % fn_args_raw, Color.WHITE)
+		var result: Dictionary = await _client.call_tool(fn_name, args)
+		_show_result(result)
+		_history.append({"role": "tool", "tool_call_id": tc_id, "content": JSON.stringify(result)})
+	if calls_clean.size() == 0:
+		_log.append_text("\n")
+		_append_line("[color=#E5533D]✗ LLM 返回空工具调用[/color]", Color.WHITE)
+		_history.append({"role": "assistant", "content": content_so_far if content_so_far != "" else "（无有效工具调用）"})
+		_llm_busy = false
+		return
+	assistant_msg["tool_calls"] = calls_clean
+	_history.append(assistant_msg)
+	if _history.size() > 20:
+		_history = _history.slice(_history.size() - 20)
+	_log.append_text("[color=#57B44E]AI：[/color]")
+	_log.scroll_to_line(_log.get_line_count() - 1)
+	var tools: Array = []
+	if _connected:
+		tools = await _client.list_tools()
+	_llm.chat(_build_messages(), tools)
 
 
 func _on_llm_chunk(content: String) -> void:

@@ -80,6 +80,32 @@ func call_tool(tool_name: String, args: Dictionary = {}) -> Dictionary:
 	return parsed
 
 
+## 拉取 MCP 工具清单，映射为 OpenAI 兼容 function 定义（供 LLM 工具调用）
+func list_tools() -> Array:
+	var body := {
+		"jsonrpc": "2.0",
+		"id": _req_id + 1,
+		"method": "tools/list",
+		"params": {},
+	}
+	var result: Dictionary = await _post("", body)
+	var tools: Array = []
+	if result.get("ok", false) and result.has("data"):
+		var data: Dictionary = result["data"]
+		if data.has("result"):
+			var list = data["result"].get("tools", [])
+			for t in list:
+				tools.append({
+					"type": "function",
+					"function": {
+						"name": str(t.get("name", "")),
+						"description": str(t.get("description", "")),
+						"parameters": t.get("inputSchema", {}),
+					},
+				})
+	return tools
+
+
 ## 解析 JSON 响应中的 result 字段
 func _extract_result(result: Dictionary) -> Dictionary:
 	if not result.get("ok", false):
