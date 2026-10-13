@@ -25,8 +25,8 @@
   ],
   "scripts": {
     "postinstall": "patch-package && node scripts/install-brand-assets.mjs && install-electron --no",
-    "dev": "npm run office:prepare && npm run ppt:build && electron-vite dev",
-    "build": "npm run office:prepare && npm run ppt:build && electron-vite build",
+    "dev": "npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite dev",
+    "build": "npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite build",
     "icons:generate": "node scripts/generate-app-icons.mjs",
     "loader:generate": "node scripts/generate-loader-gifs.mjs",
     "preview": "electron-vite preview",
@@ -45,7 +45,8 @@
     "ppt:build": "node scripts/prepare-ppt-runtime.mjs",
     "pretest": "npm run office:prepare && npm run ppt:build",
     "pretest:watch": "npm run office:prepare && npm run ppt:build",
-    "office:prepare": "node scripts/office-runtime/prepare.mjs"
+    "office:prepare": "node scripts/office-runtime/prepare.mjs",
+    "godot:build": "node scripts/build-godot-runtime.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.4",
@@ -297,6 +298,7 @@
     "ws": "^8.21.3"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@types/js-yaml": "4.0.9",
     "@types/node": "24.10.1",
     "@types/qrcode": "^1.5.6",
@@ -304,6 +306,7 @@
     "electron": "43.0.0",
     "electron-builder": "26.15.3",
     "electron-vite": "5.0.0",
+    "esbuild": "0.25.12",
     "fflate": "0.8.3",
     "patch-package": "^8.0.1",
     "tar": "7.5.22",
@@ -343,6 +346,14 @@
     "files": [
       "out/**/*",
       "node_modules/**/*",
+      "!node_modules/dsh-godot-stack{,/**}",
+      {
+        "from": ".build/godot-runtime/packages/dsh-godot-stack",
+        "to": "node_modules/dsh-godot-stack",
+        "filter": [
+          "**/*"
+        ]
+      },
       "!node_modules/dsh-ppt-composer{,/**}",
       "!node_modules/dsh-ppt{,/**}",
       {
