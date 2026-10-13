@@ -95,3 +95,27 @@ P0 为基本交付/主路径阻断；P1 为显著影响开发任务成功率的�
 - 未重新验收当前面板的付费流式对话、全套桌面 UI 或真实 Godot 点击/截图。
 - 旧 AGENTS 进度表与 README 有冲突，工具数 23 已落后于先前实测 29。50–70% token 节省属于历史文案，本次未测量，不作为已验证收益。
 - 历史拆解把 Unity Insight 与 LSP 通道放在同一分类；按当前官方文档，两者应分别对标。不能以 lsp_diagnostics 宣称已具备工程引用索引。
+
+## 2026-10-13 晚间复核
+
+上面的探针 JSON 和「当前不足」表是 `9a2718d` 当时的记录，不改写。这一节只回答那些不足现在还在不在。
+
+复核基线：当日拉取的 `origin/main` `ebf5f95`。`7817adf` 是其祖先。PR #1（`ba309f9`，实时编辑器上下文）仍是草稿，未合入。专家复制和记忆共享有专项回归；没有重跑整仓测试，也没有发布新的安装包。
+
+修完计数：在 `ebf5f95` 上是 **2/13**。随后的分发修补把专家预设复制和记忆共享目录也收口，合入后是 **4/13**。PR #1 仍只把「实时编辑器上下文与操控」从「未修」变成「部分」，不增加已修完项。
+
+| 优先级 | 能力 | origin/main | 含未合入 PR #1 | 证据 |
+| --- | --- | --- | --- | --- |
+| P0 | 首次安装与运行时闭包 | 已修 | 已修 | `e8134a5`。根 `npm run godot:build` 生成独立运行时；`packages/dsh-godot-stack/mcp-runtime.mjs` 在缺产物或摘要不符时拒绝登记。`test/godot-runtime.test.mjs` 覆盖空 home 启动、损坏产物不写 `configured`。尚未据此发布新的安装包 |
+| P0 | 完整 Godot 预设与技能加载 | 已修 | 已修 | `2285e1a` 把 `godot-codely-lite` 恢复成含 `agent.cordis.yml` 的目录，`index.js` 的 `provisionPreset` 会复制它。`ebf5f95` 把 10 个技能平铺到 `<home>/skills`，同文件的回归断言这些 `SKILL.md`。这次没有重跑 FileSystemSkillProvider |
+| P0 | 面板的完整 Agent 执行 | 部分 | 部分 | `033c16c` 的 LLM 工具回喂仍在 `llm_client.gd`。`6afc265` 让面板经 `harness_client.gd` 使用会话、审批、取消和预览，`test/godot-bridge.test.mjs` 覆盖审批领取。建议里的「改跳跃并运行验证」没有做 |
+| P1 | Godot 专家子代理出厂配置 | 已修 | 已修 | `4470733` 写了三份预设的工具域、失败出口，模型沿用父级 `{{model}}`。`index.js` 的 `provisionGodotPresets` 现在和 lite 一起复制到 `.agent-presets`。`test/godot-distribution-gaps.test.mjs` 检查四份预设都进了空 home。没有跑真实模型委派 |
+| P1 | 实时编辑器上下文与操控 | 未修 | 部分 | `origin/main` 的 `panel.gd` `_write_state` 仍在连接时写一次，字段没有选中节点或未保存标记。`registry.ts` 的 editor 动作仍是 `launch`/`status`。PR #1 订阅选择、切场景、保存和撤销并发布这些字段；Play 与编译控制仍没有 |
+| P1 | 工程资产与代码引用索引 | 未修 | 未修 | 仍是场景解析、UID 和搜索。没有统一的入向/出向引用工具 |
+| P1 | LSP 完整语义能力 | 未修 | 未修 | `src/lsp/tools.ts` 只注册 `lsp_diagnostics` |
+| P1 | 视觉与可交互功能验证 | 未修 | 未修 | `42dc1a7` 修的是 OCU 启动。没有游戏视图截图、输入驱动或断言工具 |
+| P1 | 记忆边界与恢复 | 已修 | 已修 | `ebf5f95` 拒绝 `../outside` 并在覆盖前写 `.bak`。记忆目录固定为 `~/.dsh/memories`（或 `GODOT_CODELY_MEMORY_DIR`），不再跟随桌面的 `DSH_HOME`。旧 harness 目录里独有的主题会复制过去，不覆盖已有共享文件。`test/godot-runtime.test.mjs` 与 `test/godot-distribution-gaps.test.mjs` 覆盖这两点。斜杠命令 `/memory` 使用同一目录和同一 topic 校验 |
+| P2 | 模式、审批与改动恢复接缝 | 部分 | 部分 | 面板 Harness 路径有审批、取消和预览。没有计划/仅问答模式，也没有把 diff 接进 Editor Undo |
+| P2 | 会话、上下文与模型统一 | 部分 | 部分 | `harness_client.gd` 把 `sessionId` 存在工程内 `res://.godot/godot-codely-session.json`。独立 LLM 历史仍截到最近 20 条。面板 `llm_config`、CLI Profile 和桌面配置仍是不同入口 |
+| P2 | 完整资产生产流程 | 未修 | 未修 | 图像和 TTS 在写这份清单时已经有。`6fcfbfb` 只增加 `media-generation` 技能说明。没有文生 3D、绑定、音乐或审阅流程 |
+| P2 | 登录态浏览与 IDE 专项接入 | 未修 | 未修 | `skills/godot-web-access/SKILL.md` 仍是浏览方法论。没有 Chrome CDP 或 JetBrains 接入 |
