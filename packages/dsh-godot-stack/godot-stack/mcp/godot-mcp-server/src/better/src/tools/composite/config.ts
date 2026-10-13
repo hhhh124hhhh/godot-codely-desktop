@@ -163,7 +163,7 @@ const DEFAULT_GODOT_VERSION = '4.7.1-stable'
 function persistGodotPath(p: string): void {
   try {
     const home = process.env.USERPROFILE || process.env.HOME || ''
-    const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+    const dshHome = process.env.DSH_HOME || join(home, '.godot-codely')
     const dir = join(dshHome, '.godot')
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, 'godot-path.txt'), p, 'utf8')
@@ -202,7 +202,7 @@ async function downloadWithFallback(urls: string[], dest: string): Promise<boole
 async function installGodotDefault(): Promise<string | null> {
   const version = process.env.GODOT_SETUP_VERSION || DEFAULT_GODOT_VERSION
   const home = process.env.USERPROFILE || process.env.HOME || ''
-  const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+  const dshHome = process.env.DSH_HOME || join(home, '.godot-codely')
   const destDir = join(dshHome, '.godot', 'godot')
   mkdirSync(destDir, { recursive: true })
 
@@ -320,7 +320,7 @@ async function handleState(_args: Record<string, unknown>, config: GodotConfig) 
   let plugin: Record<string, unknown> | null = null
   try {
     const home = process.env.USERPROFILE || process.env.HOME || ''
-    const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+    const dshHome = process.env.DSH_HOME || join(home, '.godot-codely')
     const p = join(dshHome, '.godot', 'state.json')
     if (existsSync(p)) {
       const parsed: unknown = JSON.parse(readFileSync(p, 'utf8'))

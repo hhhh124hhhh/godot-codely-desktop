@@ -41,7 +41,7 @@ A task uses a model configuration you add yourself. The command shape is in the 
 node packages/dsh-godot-stack/cli/godot-codely.mjs "Summarize the current Godot project"
 ```
 
-The profile name is `godot-codely`. With `DSH_HOME` unset, the profile and shared memories live under `~/.dsh`. The desktop window is a separate process and provisions the same Godot preset when it starts:
+The profile name is `godot-codely`. With `DSH_HOME` unset, the command-line profile and shared memories live under `~/.godot-codely`. The desktop window keeps its own data in the `godot-codely` app-data directory (`godot-codely-dev` for a development build) and does not open the upstream `dsh-desktop` directory. It is a separate process and provisions the same Godot preset when it starts:
 
 ```sh
 npm run dev

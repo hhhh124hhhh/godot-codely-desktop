@@ -40,7 +40,7 @@ npm run package:win
 ## 能力对照进度（对标 cowork）
 ✅ #13 多模态资产生成（generate_sprite/generate_image/text_to_speech，headless 通过）
 📌 #14 子代理系统（3 个 Godot 专家预设已配置 + 启动修复；**真机验收待完成**）
-✅ #15 记忆系统（静态 AGENTS.md 链 + 动态 ~/.dsh/memories，已验证注入）
+✅ #15 记忆系统（静态 AGENTS.md 链 + 动态 ~/.godot-codely/memories，已验证注入）
 ✅ #16 安全策略/协作模式（approval + plan/default + 权限降级默认 workspace-write）
 ✅ #17 斜杠命令（godot 领域命令 /memory /status /models）
 ✅ #18 LSP 通道（godot --language-server，agentic 链路 lsp_diagnostics 零错误/警告）

@@ -1,13 +1,14 @@
 import { cp, mkdir, readFile, writeFile, access } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { homedir } from 'node:os'
+import { cliHome } from '../../data-home.mjs'
 import { fileURLToPath } from 'node:url'
 
 export const OCU_VERSION = '1.0.0'
 
 /** @param {NodeJS.ProcessEnv} [env] */
 export function ocuHome(env = process.env) {
-  return env.DSH_HOME || join(homedir(), '.dsh')
+  return cliHome(env, homedir())
 }
 
 // Resolve from our managed runtime, never from the caller's cwd or another app's sandbox.

@@ -14,9 +14,8 @@
  */
 import { createInterface } from 'node:readline'
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
-import { homedir } from 'node:os'
 import { TypertClient } from '../bridge/bridge.mjs'
+import { tokenCandidatePaths } from '../data-home.mjs'
 
 const args = parseArgs(process.argv.slice(2))
 const DSH_PORT = Number(args['dsh-port'] ?? process.env.DSH_HARNESS_PORT ?? 43129)
@@ -26,12 +25,7 @@ const PRESET = args.preset ?? 'godot-codely-lite'
 
 // 桌面端由插件写 token；CLI 独立运行时从常见位置读取
 function discoverTokenFile() {
-  const candidates = [
-    join(process.env.APPDATA ?? '', 'dsh-desktop', 'harness', 'godot-codely-launch-token'),
-    join(homedir(), '.dsh', 'godot-codely-launch-token'),
-  ]
-  for (const p of candidates) if (existsSync(p)) return p
-  return undefined
+  return tokenCandidatePaths().find((candidate) => existsSync(candidate))
 }
 
 const client = new TypertClient(BASE)

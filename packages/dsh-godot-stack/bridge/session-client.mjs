@@ -1,16 +1,10 @@
 /** Adapter for the locked Harness 0.2 Session unary protocol; credentials remain in the host process. */
 import { randomUUID } from 'node:crypto'
 import { readFileSync, existsSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { tokenCandidatePaths } from '../data-home.mjs'
 
 export function defaultTokenFile() {
-  if (process.env.GODOT_CODELY_TOKEN_FILE) return process.env.GODOT_CODELY_TOKEN_FILE
-  const candidates = [
-    ...(process.env.DSH_HOME ? [join(process.env.DSH_HOME, 'godot-codely-launch-token')] : []),
-    ...(process.env.APPDATA ? [join(process.env.APPDATA, 'dsh-desktop', 'harness', 'godot-codely-launch-token')] : []),
-    join(homedir(), '.dsh', 'godot-codely-launch-token'),
-  ]
+  const candidates = tokenCandidatePaths()
   return candidates.find(candidate => existsSync(candidate)) ?? candidates[0]
 }
 

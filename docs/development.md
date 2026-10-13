@@ -21,7 +21,7 @@ npm run dev
 
 `npm ci` runs the repository's `postinstall` hook. It reapplies the tracked `patch-package` patches, installs DSH brand assets into the pinned Harness frontend, and installs Electron.
 
-Development builds use the separate application name `Godot Codely Dev` and the separate user-data directory `dsh-desktop-dev`, so they do not reuse the production directory `dsh-desktop`. Multiple development worktrees still share that development profile by default; avoid running them at the same time when testing profile, plugin, migration, or recovery changes.
+Development builds use the separate application name `Godot Codely Dev` and the separate user-data directory `godot-codely-dev`, so they do not reuse the production directory `godot-codely`. Neither directory is the upstream `dsh-desktop` or `dsh-desktop-dev` folder; data already there is left in place. Multiple development worktrees still share that development profile by default; avoid running them at the same time when testing profile, plugin, migration, or recovery changes.
 
 ## Validation
 

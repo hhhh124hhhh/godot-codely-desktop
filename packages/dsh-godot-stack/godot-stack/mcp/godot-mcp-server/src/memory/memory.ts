@@ -2,7 +2,7 @@
 //
 // 与 AGENTS.md 静态指令链互补：
 //  - AGENTS.md 链：静态、由 dsh-agent-instructions 注入（全局/项目/目录）
-//  - 本模块：动态、agent 主动读写 ~/.dsh/memories/<topic>.md。
+//  - 本模块：动态、agent 主动读写 ~/.godot-codely/memories/<topic>.md。
 //    桌面端 DSH_HOME 指向 <userData>/harness 时也不改这个目录，避免和 CLI 拆成两套。
 //    若旧文件只在 DSH_HOME/memories，首次访问时复制到共享目录，不覆盖已有共享副本。
 //
@@ -29,11 +29,11 @@ function textResult(text: string, isError = false): McpTextResult {
   return { content: [{ type: 'text', text }], isError }
 }
 
-/** 记忆根目录：GODOT_CODELY_MEMORY_DIR 优先，否则 ~/.dsh/memories。不跟随 DSH_HOME。 */
+/** 记忆根目录：GODOT_CODELY_MEMORY_DIR 优先，否则 ~/.godot-codely/memories。不跟随 DSH_HOME，也不使用上游 ~/.dsh。 */
 export function memoryRoot(): string {
   const override = process.env.GODOT_CODELY_MEMORY_DIR
   if (override) return override
-  return join(homedir(), '.dsh', 'memories')
+  return join(homedir(), '.godot-codely', 'memories')
 }
 
 function legacyMemoryDir(): string {

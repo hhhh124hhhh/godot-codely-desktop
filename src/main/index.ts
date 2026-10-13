@@ -512,16 +512,18 @@ function applyWindowChromeTheme(window: BrowserWindow, isDark: boolean): void {
 function configureAppIdentity(): void {
   if (developmentBuild) {
     app.setName('Godot Codely Dev')
-    app.setPath('userData', join(app.getPath('appData'), 'dsh-desktop-dev'))
+    // Separate from upstream dsh-desktop-dev. Harness stores workspaces,
+    // sessions, credentials, and presets under userData, and this fork does
+    // not continue that older directory.
+    app.setPath('userData', join(app.getPath('appData'), 'godot-codely-dev'))
     return
   }
 
   app.setName('Godot Codely')
-  // Keep the historical lowercase directory stable across product-name and
-  // branding changes. Harness stores workspaces, sessions, credentials, and
-  // custom presets below userData, so deriving this path from app.getName()
-  // would make an ordinary upgrade look like a fresh installation.
-  app.setPath('userData', join(app.getPath('appData'), 'dsh-desktop'))
+  // Fixed directory, not app.getName(), so a later display-name change does
+  // not move data again. It is intentionally not upstream `dsh-desktop`:
+  // this fork starts empty instead of opening the original app's data.
+  app.setPath('userData', join(app.getPath('appData'), 'godot-codely'))
 }
 
 async function syncNativeTheme(window: BrowserWindow): Promise<void> {
