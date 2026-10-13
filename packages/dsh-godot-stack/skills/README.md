@@ -17,7 +17,7 @@ skills/godot/
 ├── project-workflow/       # 工程自选、阶段门控、方法论 2.0 细则、四轴
 ├── media-generation/       # 文生图/文生语音（generate_sprite/image/text_to_speech）调用与排错
 ├── godot-web-access/       # 联网检索（网页抓取/搜索）能力说明
-└── godot-memory/           # 跨会话长期记忆读写（~/.dsh/memories/）
+└── godot-memory/           # 跨会话长期记忆读写（~/.godot-codely/memories/）
 ```
 
 ## 路由规则（主提示词如何用）

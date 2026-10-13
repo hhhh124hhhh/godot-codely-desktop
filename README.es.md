@@ -41,7 +41,7 @@ Una tarea usa la configuración de modelo que añadas tú. La forma del comando 
 node packages/dsh-godot-stack/cli/godot-codely.mjs "Resume el proyecto Godot actual"
 ```
 
-El perfil se llama `godot-codely`. Si `DSH_HOME` no está definido, el perfil y las memorias compartidas viven en `~/.dsh`. La ventana de escritorio es otro proceso y, al arrancar, coloca el mismo preset de Godot:
+El perfil se llama `godot-codely`. Si `DSH_HOME` no está definido, el perfil de la línea de comandos y las memorias compartidas viven en `~/.godot-codely`. La ventana de escritorio guarda sus datos en el directorio de datos de la aplicación `godot-codely` (`godot-codely-dev` en una build de desarrollo) y no abre el directorio upstream `dsh-desktop`. Es otro proceso y, al arrancar, coloca el mismo preset de Godot:
 
 ```sh
 npm run dev

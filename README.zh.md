@@ -41,7 +41,7 @@ node packages/dsh-godot-stack/cli/godot-codely.mjs --list-models
 node packages/dsh-godot-stack/cli/godot-codely.mjs "概括当前 Godot 工程"
 ```
 
-Profile 名称是 `godot-codely`。未设置 `DSH_HOME` 时，Profile 和共用记忆在 `~/.dsh`。桌面窗口是另一个进程，启动时会落位同一套 Godot 预设：
+Profile 名称是 `godot-codely`。未设置 `DSH_HOME` 时，命令行 Profile 和共用记忆在 `~/.godot-codely`。桌面窗口的数据在应用数据目录 `godot-codely`（开发构建是 `godot-codely-dev`），不读取上游的 `dsh-desktop`。桌面窗口是另一个进程，启动时会落位同一套 Godot 预设：
 
 ```sh
 npm run dev

@@ -263,7 +263,7 @@ function getSystemPaths(): string[] {
 export function scanGodotCommon(): DetectionResult | null {
   const candidates: string[] = []
   const home = process.env.USERPROFILE || process.env.HOME || ''
-  const dshHome = process.env.DSH_HOME || join(home, '.dsh')
+  const dshHome = process.env.DSH_HOME || join(home, '.godot-codely')
 
   if (process.platform === 'win32') {
     // 各盘根目录便携版（Godot_v*.exe，排除 console 变体）

@@ -574,7 +574,11 @@ describe('prerelease parity workflow', () => {
   it('parametrises the Windows smoke test executable', async () => {
     const yml = await load()
     expect(yml).toContain('SMOKE_EXE')
-    expect(yml).toContain('SMOKE_USERDATA')
+    expect(yml).toContain("&& 'godot-codely' || 'godot-codely-dev'")
+    const identity = await readFile(path.join(projectRoot, 'src/main/index.ts'), 'utf8')
+    expect(identity).toContain("join(app.getPath('appData'), 'godot-codely')")
+    expect(identity).toContain("join(app.getPath('appData'), 'godot-codely-dev')")
+    expect(identity).not.toContain("join(app.getPath('appData'), 'dsh-desktop')")
   })
 })
 

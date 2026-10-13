@@ -33,7 +33,7 @@ const ROOT = path.resolve(__dirname, '..')
 function loadPersistedGodotPath(): string | null {
   try {
     const home = process.env.USERPROFILE || process.env.HOME || ''
-    const dshHome = process.env.DSH_HOME || path.join(home, '.dsh')
+    const dshHome = process.env.DSH_HOME || path.join(home, '.godot-codely')
     const p = path.join(dshHome, '.godot', 'godot-path.txt')
     if (!fs.existsSync(p)) return null
     const value = fs.readFileSync(p, 'utf8').trim()

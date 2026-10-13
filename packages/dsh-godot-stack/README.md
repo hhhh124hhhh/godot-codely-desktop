@@ -10,7 +10,7 @@ Godot Codely 预装插件：把 godot-extensions 全家桶打进出厂配置，�
 | `godot-stack/mcp/godot-mcp-server/`（23 工具 MCP server 源码） | `<dshHome>/.godot/mcp-server` |
 | `skills/godot/`（7 个领域技能 + SKILL.md 索引） | 内置技能，由 DSH skill 系统自动发现（bundled） |
 
-`<dshHome>` = `DSH_HOME` 环境变量，未设置时为 `~/.dsh`。
+`<dshHome>` = `DSH_HOME` 环境变量，未设置时为 `~/.godot-codely`。
 
 ## 工作机制
 
@@ -58,7 +58,7 @@ godot-codely config add \
 ```
 
 - `godot-codely config list` 查看全部套餐（出厂 + 自建）
-- 移除失效套餐：直接编辑 `~/.dsh/cordis.patch.yml`（自建）或 `~/.dsh/profiles/godot-codely/cordis.patch.yml`（出厂）
+- 移除失效套餐：直接编辑 `~/.godot-codely/cordis.patch.yml`（自建）或 `~/.godot-codely/profiles/godot-codely/cordis.patch.yml`（出厂）
 - 桌面端同套配置：桌面端应用配置目录下的 harness settings.yaml（重启自动导入，Models 页可视/可换）
 
 ### 常见模型错误排查（通用指引）
@@ -107,7 +107,7 @@ GODOT_CODELY_TTS_VOICE=Cherry
 ## 子代理系统（Godot 领域专家 agents，对标 cowork agents）
 
 DSH 内核自带完整子代理栈（dsh-subagent 服务 + spawn/fork 后端 + 委派工具）。本包在
-`~/.dsh/profiles/godot-codely/cordis.patch.yml` 追加了 3 个 **Godot 领域专家实例**（每实例 = 一个具名工具，
+`~/.godot-codely/profiles/godot-codely/cordis.patch.yml` 追加了 3 个 **Godot 领域专家实例**（每实例 = 一个具名工具，
 persona 遮蔽全局提示词、spawn 以空对话开始、继承父级 cwd/LLM）：
 
 | 工具 | 领域 | 典型任务 |
@@ -130,10 +130,10 @@ persona 遮蔽全局提示词、spawn 以空对话开始、继承父级 cwd/LLM�
 
 ## 记忆系统（AGENTS.md 注入，对标 cowork 记忆）
 
-DSH 原生按链注入工作区指令（dsh-base 默认开启，预算 64KB）：**全局** `~/.dsh/AGENTS.md` →
+DSH 原生按链注入工作区指令（dsh-base 默认开启，预算 64KB）：**全局** `~/.godot-codely/AGENTS.md` →
 **项目根** AGENTS.md/CLAUDE.md → **目录级** AGENTS.md（更具体者优先，变更增量注入）。
 
-- 全局记忆：`~/.dsh/AGENTS.md`（用户习惯：简体中文、飞书推送节点、3D 低精度偏好、产品背景、模型套餐）。
+- 全局记忆：`~/.godot-codely/AGENTS.md`（用户习惯：简体中文、飞书推送节点、3D 低精度偏好、产品背景、模型套餐）。
 - 项目记忆：仓库根 `AGENTS.md`（上游 DSH 开发约束，保留）+ 本目录 `packages/dsh-godot-stack/AGENTS.md`
   （Godot Codely 定制层：目录地图、命令、陷阱、能力进度）。
 - 验证（2026-10-12，kimi）：CLI 询问产品定位/默认模型/3D 偏好，agent 全部正确回答 ✅。
@@ -153,9 +153,9 @@ godot-codely --permission read-only "任务"             # 只读（安全浏览
 - 协作模式：Web 端可用 `/permission <preset>` 切换（read-only / workspace-write / danger-full-access）。
 
 ### 动态记忆（godot-memory skill + MCP 工具，对标 cowork 独有记忆）
-- 静态链（上文）+ 动态层：agent 主动读写 `~/.dsh/memories/<topic>.md`（`godot-memory` skill 约定，headless 已跑通）。
+- 静态链（上文）+ 动态层：agent 主动读写 `~/.godot-codely/memories/<topic>.md`（`godot-memory` skill 约定，headless 已跑通）。
 - MCP 工具版：`memory_remember / memory_recall / memory_list`（`godot-mcp-server`，单元验证全过；桌面端 harness 可用，headless 因 stdio 握手延迟暂不暴露）。
-- 2026-10-12 真机：full 权限下 CLI 写入 `~/.dsh/memories/verify_test4.md` 并回读一致 ✅；workspace-write 下写记忆目录亦放行（行为观察中）。
+- 2026-10-12 真机：full 权限下 CLI 写入 `~/.godot-codely/memories/verify_test4.md` 并回读一致 ✅；workspace-write 下写记忆目录亦放行（行为观察中）。
 
 ## 斜杠命令（对标 cowork /command 面）
 

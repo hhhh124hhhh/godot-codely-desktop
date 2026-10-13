@@ -12,7 +12,7 @@
  * Godot editor panel talks to (create sessions, prompt, poll events), which in
  * turn calls the DSH Typert API on 127.0.0.1:43129.
  *
- * Expert presets are copied beside godot-codely-lite. Memories use ~/.dsh/memories
+ * Expert presets are copied beside godot-codely-lite. Memories use ~/.godot-codely/memories
  * even when DSH_HOME points at the desktop harness directory.
  *
  * All provisioning is best-effort: failures only log a warning and never
@@ -22,12 +22,12 @@ import { cp, mkdir } from 'node:fs/promises'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import os from 'node:os'
 import z from '@deepseek-ai/schemastery'
 import { BridgeServer } from './bridge/bridge.mjs'
 import { provisionOcuGateway } from './godot-stack/ocu-gateway/ocu-runtime.mjs'
 import { provisionMcpRuntime } from './mcp-runtime.mjs'
 import { adoptLegacyMemories, memoryRoot, sanitizeTopic } from './memory-root.mjs'
+import { cliHome } from './data-home.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -36,11 +36,10 @@ export const inject = []
 export const Config = z.object({ bridge: z.boolean().default(false) })
 
 function dshHome() {
-  // 桌面端由 src/main/index.ts 为 harness 进程设置 DSH_HOME=<userData>\harness；
-  // CLI/headless（dsh 启动器）未设时按 DSH 官方约定落在 ~/.dsh。
-  // 不要自作主张探测 %APPDATA%\dsh-desktop：CLI 环境下该目录存在会误判形态。
-  if (process.env.DSH_HOME) return process.env.DSH_HOME
-  return join(os.homedir(), '.dsh')
+  // 桌面端由 src/main/index.ts 为 harness 进程设置 DSH_HOME=<userData>/harness。
+  // CLI 启动器在调用 dsh 前把 DSH_HOME 设为 ~/.godot-codely。
+  // 未设置时也落在 ~/.godot-codely，不读上游 ~/.dsh 或 %APPDATA%\dsh-desktop。
+  return cliHome()
 }
 
 const PRESET_NAMES = [

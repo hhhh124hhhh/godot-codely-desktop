@@ -41,7 +41,7 @@ node packages/dsh-godot-stack/cli/godot-codely.mjs --list-models
 node packages/dsh-godot-stack/cli/godot-codely.mjs "Кратко опиши текущий проект Godot"
 ```
 
-Имя профиля — `godot-codely`. Если `DSH_HOME` не задан, профиль и общая память лежат в `~/.dsh`. Окно рабочего стола — отдельный процесс; при старте оно размещает тот же пресет Godot:
+Имя профиля — `godot-codely`. Если `DSH_HOME` не задан, профиль командной строки и общая память лежат в `~/.godot-codely`. Окно рабочего стола хранит свои данные в каталоге данных приложения `godot-codely` (`godot-codely-dev` для сборочной версии) и не открывает upstream-каталог `dsh-desktop`. Это отдельный процесс; при старте оно размещает тот же пресет Godot:
 
 ```sh
 npm run dev

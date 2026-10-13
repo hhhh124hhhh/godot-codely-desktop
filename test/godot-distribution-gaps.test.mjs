@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { provisionGodotPresets } from '../packages/dsh-godot-stack/index.js'
 import { adoptLegacyMemories, memoryRoot, sanitizeTopic } from '../packages/dsh-godot-stack/memory-root.mjs'
+import { cliHome, tokenCandidatePaths } from '../packages/dsh-godot-stack/data-home.mjs'
 
 const roots = []
 afterEach(async () => {
@@ -35,10 +36,10 @@ describe('shared memory root', () => {
     const desktop = join(home, 'harness')
     const user = join(home, 'user')
     await mkdir(join(desktop, 'memories'), { recursive: true })
-    await mkdir(join(user, '.dsh/memories'), { recursive: true })
+    await mkdir(join(user, '.godot-codely/memories'), { recursive: true })
     await writeFile(join(desktop, 'memories/only_legacy.md'), 'legacy-fact', 'utf8')
     await writeFile(join(desktop, 'memories/from_desktop.md'), 'desktop-fact', 'utf8')
-    await writeFile(join(user, '.dsh/memories/from_desktop.md'), 'keep-shared', 'utf8')
+    await writeFile(join(user, '.godot-codely/memories/from_desktop.md'), 'keep-shared', 'utf8')
     const previous = {
       HOME: process.env.HOME,
       USERPROFILE: process.env.USERPROFILE,
@@ -50,12 +51,17 @@ describe('shared memory root', () => {
     process.env.DSH_HOME = desktop
     delete process.env.GODOT_CODELY_MEMORY_DIR
     try {
-      expect(memoryRoot()).toBe(join(user, '.dsh', 'memories'))
-      expect(adoptLegacyMemories()).toBe(join(user, '.dsh', 'memories'))
-      expect(await readFile(join(user, '.dsh/memories/only_legacy.md'), 'utf8')).toBe('legacy-fact')
-      expect(await readFile(join(user, '.dsh/memories/from_desktop.md'), 'utf8')).toBe('keep-shared')
+      expect(memoryRoot()).toBe(join(user, '.godot-codely', 'memories'))
+      expect(adoptLegacyMemories()).toBe(join(user, '.godot-codely', 'memories'))
+      expect(await readFile(join(user, '.godot-codely/memories/only_legacy.md'), 'utf8')).toBe('legacy-fact')
+      expect(await readFile(join(user, '.godot-codely/memories/from_desktop.md'), 'utf8')).toBe('keep-shared')
       expect(sanitizeTopic('../outside')).toBeNull()
       expect(sanitizeTopic('topic_a')).toBe('topic_a')
+      expect(cliHome({ DSH_HOME: '' }, user)).toBe(join(user, '.godot-codely'))
+      const tokens = tokenCandidatePaths({ APPDATA: join(user, 'AppData', 'Roaming') }, user)
+      expect(tokens.some((candidate) => candidate.includes(`${join('godot-codely', 'harness')}`))).toBe(true)
+      expect(tokens.some((candidate) => candidate.includes('dsh-desktop'))).toBe(false)
+      expect(tokens.some((candidate) => candidate.endsWith(join('.dsh', 'godot-codely-launch-token')))).toBe(false)
     } finally {
       for (const [key, value] of Object.entries(previous)) {
         if (value === undefined) delete process.env[key]

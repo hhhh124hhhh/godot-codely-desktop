@@ -18,11 +18,14 @@
  */
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { homedir } from 'node:os'
 import { runCli } from '@deepseek-ai/dsh/lib/bin.js'
+import { cliHome } from '../data-home.mjs'
 
 const PROFILE = 'godot-codely'
-const home = process.env.DSH_HOME ?? join(homedir(), '.dsh')
+const home = cliHome()
+// Harness itself defaults to ~/.dsh. Pin this process before boot so profiles
+// and credentials stay in ~/.godot-codely instead of the upstream home.
+if (!process.env.DSH_HOME?.trim()) process.env.DSH_HOME = home
 const profileDir = join(home, 'profiles', PROFILE)
 const profilePatch = join(profileDir, 'cordis.patch.yml')
 
@@ -163,7 +166,7 @@ if (first === 'config') {
       console.error(`\x1b[31mgodot-codely\x1b[0m: --api 仅支持 openai-completions | anthropic-messages`)
       process.exit(2)
     }
-    // 1) 写入 home 级 patch（~/.dsh/cordis.patch.yml，DSH 自动应用到所有 profile）
+    // 1) 写入 home 级 patch（~/.godot-codely/cordis.patch.yml，DSH 自动应用到所有 profile）
     const homePatch = join(home, 'cordis.patch.yml')
     const providerBlock = [
       `- id: llm-pi-ai`,
@@ -183,7 +186,7 @@ if (first === 'config') {
       const cur = readFileSync(homePatch, 'utf8')
       writeFileSync(homePatch, cur.trimEnd() + '\n' + providerBlock + '\n', 'utf8')
     }
-    // 2) 写入 key（~/.dsh/.credentials.yaml 的 refs）
+    // 2) 写入 key（~/.godot-codely/.credentials.yaml 的 refs）
     const credPath = join(home, '.credentials.yaml')
     const cred = readFileSync(credPath, 'utf8')
     if (cred.includes(`\n  ${keyEnv}: `) || cred.includes(`  ${keyEnv}: `)) {

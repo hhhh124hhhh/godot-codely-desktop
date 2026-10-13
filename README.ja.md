@@ -41,7 +41,7 @@ node packages/dsh-godot-stack/cli/godot-codely.mjs --list-models
 node packages/dsh-godot-stack/cli/godot-codely.mjs "現在の Godot プロジェクトを要約する"
 ```
 
-プロファイル名は `godot-codely` です。`DSH_HOME` が未設定なら、プロファイルと共有メモリは `~/.dsh` にあります。デスクトップウィンドウは別プロセスで、起動時に同じ Godot プリセットを配置します。
+プロファイル名は `godot-codely` です。`DSH_HOME` が未設定なら、コマンドラインのプロファイルと共有メモリは `~/.godot-codely` にあります。デスクトップウィンドウのデータはアプリデータディレクトリの `godot-codely`（開発ビルドは `godot-codely-dev`）にあり、上流の `dsh-desktop` は読みません。デスクトップウィンドウは別プロセスで、起動時に同じ Godot プリセットを配置します。
 
 ```sh
 npm run dev

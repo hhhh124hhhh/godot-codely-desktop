@@ -42,7 +42,7 @@ const PLUGIN_NAME = PLUGIN_SPEC.replace(/@[^@/]+$/u, '') || PLUGIN_SPEC
 const HOST_SINGLETONS = [/^react$/u, /^react-dom$/u, /^@deepseek-ai\//u]
 
 function dshHome() {
-  return process.env.DSH_HOME || join(homedir(), 'AppData', 'Roaming', 'dsh-desktop', 'harness')
+  return process.env.DSH_HOME || join(homedir(), 'AppData', 'Roaming', 'godot-codely', 'harness')
 }
 
 /** Where the installation dependency closure lives, one level above every profile. */
