@@ -38,4 +38,4 @@ jobs:
       - run: npm run godot:build
       - run: npm run typecheck
       - name: Harness, MCP, panel and native editor regressions
-        run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-asar-provisioning.test.mjs test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs
+        run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-asar-provisioning.test.mjs test/godot-launch-token.test.mjs test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs

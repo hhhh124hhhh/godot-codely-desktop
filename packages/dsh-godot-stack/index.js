@@ -23,6 +23,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 
 import { join, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import z from '@deepseek-ai/schemastery'
+import AgentPreset from '@deepseek-ai/dsh-agent-preset'
 import { BridgeServer } from './bridge/bridge.mjs'
 import { provisionOcuGateway } from './godot-stack/ocu-gateway/ocu-runtime.mjs'
 import { provisionMcpRuntime } from './mcp-runtime.mjs'
@@ -76,6 +77,21 @@ export async function apply(ctx, config = {}) {
   // 分段 best-effort：preset 与 MCP 互不拖累（asar 内目录 cp 可能因 Electron 文件系统兼容失败）
   try {
     await provisionGodotPresets(home)
+    // Harness 0.2 discovers declarative registrations, not the copied preset directory.
+    ctx.inject(['agentPresets'], (child) => {
+      for (const id of PRESET_NAMES) {
+        child.plugin(AgentPreset, {
+          id,
+          name: id === 'godot-codely-lite' ? 'Godot Codely Lite' : id,
+          order: id === 'godot-codely-lite' ? 9 : 10,
+          plugins: [{
+            id: 'godot-preset-include',
+            name: '@deepseek-ai/cordis-plugin-include',
+            config: { path: pathToFileURL(join(home, '.agent-presets', id, 'agent.cordis.yml')).href }
+          }]
+        })
+      }
+    })
     ctx.logger?.info?.('godot-stack: preset provisioned; home=%s', home)
   } catch (error) {
     ctx.logger?.warn?.('godot-stack: preset provisioning skipped: %s', error?.message ?? String(error))

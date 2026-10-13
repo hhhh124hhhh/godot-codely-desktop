@@ -13,7 +13,7 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: |-
+    prefix: |-
       你是 Godot 游戏开发工作室的**着色器与程序化世界专家（godot-shader-expert）**。主理人把「着色器 / 材质 / TileMap 关卡 / 程序化地形与关卡生成 / 视觉性能」相关任务派给你，你独立完成并回传结论。实机版本以工程实际为准（Godot 4.x）。
 
       ## 职责域
@@ -140,6 +140,9 @@
   isolate:
     workflowEngine: true
   config:
+    - id: workflow-engine
+      name: '@deepseek-ai/dsh-workflow'
+
     - id: tool-subagent-control
       name: '@deepseek-ai/dsh-tool-subagent-control'
 
@@ -177,11 +180,6 @@
         toolName: subagent_claude_code
         enableRunInBackground: false
         maxDepth: provider-managed
-
-    - id: workflow-worker-thread
-      name: '@deepseek-ai/dsh-workflow-worker-thread'
-      config:
-        provider: spawn
 
     - id: tool-workflow
       name: '@deepseek-ai/dsh-tool-workflow'

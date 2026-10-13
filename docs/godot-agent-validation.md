@@ -60,3 +60,12 @@ node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-runtime.test.m
 - `npm run typecheck`、MCP server 的 `tsc --noEmit`、`npm run build`、`git diff --check` 通过。
 - 生成包 `npm pack --dry-run --json` 检查包含新增 Agent/记忆子入口、Bridge、编辑器脚本、编译 bundle 与 `tool-help/project.txt`。
 - 最终代码的整仓默认并发回归未通过：187 文件中 20 失败、162 通过、4 跳过；27 测试失败、1583 通过、40 跳过，另有 2 个运行器错误。其中新增的真实 Agent/编辑器用例也超时，不能将本次修复称为整仓稳定或把失败全部归因于环境。随后使用 4 个 worker、相同用例和超时重跑，结果另行记录。
+
+## 2026-10-13 安装验收新增阻断
+
+CI Dev 安装包 `caf9b58` 已验证 ASAR preset / MCP / skill 复制完整、客户端界面挂载。继续调用生产 API 后发现两项尚未被旧缩小组合回归覆盖的问题：
+
+- launch token 到达时 `HarnessRuntime.url` 尚未赋值，凭据文件第二行写成 `undefined`。改为就绪探测成功、实际随机端口确定后原子写入，再通知 ready。
+- Harness 0.2 不扫描 `.agent-presets` 目录；使用宿主 `agentPresets` 服务和官方 `dsh-agent-preset` 注册四个定义，include 当前 Profile 的复制文件。普通 Profile 生效，Safe Mode 保持原有排除。persona 使用当前 `prefix` 字段；隔离 delegation realm 明确提供 `dsh-workflow`，移除不存在的旧 worker 包。
+
+`test/godot-launch-token.test.mjs` 使用真实 Harness 子进程、临时 Profile 和生产 Typert API，覆盖全部四个 preset 的发现/诊断、完整 Lite 会话创建、随机端口凭据认证以及重启。此项在 Windows 已通过；新版 CI 安装包的最终任务验收仍待完成，旧包的界面成功不替代此项验收。
