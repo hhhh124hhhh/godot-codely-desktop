@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-  A public fork of DSH Desktop for assisting Godot creation, built on
+  A public MIT fork of <a href="https://github.com/dataelement/dsh-desktop">DSH Desktop</a> for assisting Godot creation, built on
   <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.
 </p>
 
@@ -18,128 +18,64 @@
   <img alt="Windows" src="https://img.shields.io/badge/Windows-x64-171513.svg" />
 </p>
 
-![DSH Desktop overview with portable presets, model providers, phone control, and editable PPT generation](docs/images/dsh-desktop-hero-v021.png)
+## This repository
 
-<p align="center"><strong>Edit a Godot project with godot-codely. The desktop host still manages models, portable presets, phone sessions, and editable PPTX decks.</strong></p>
+Godot Codely changes a Godot project from the `godot-codely` command. That command uses the `godot-codely-lite` preset, the Godot skills, and the Godot MCP server. `.tscn` and `.gd` files are edited as text, so the Godot editor does not have to stay open. `project.run`, `project.export`, and `editor.launch` need `GODOT_PATH`.
 
-Godot Codely is this repository. It keeps the DSH Desktop host and adds the godot-codely command, Godot presets and skills, and a Godot MCP server. The host starts Harness automatically, keeps profiles, plugins, workspaces, model settings, and sessions outside the application directory, and opens the Harness interface when the local runtime is ready.
+The desktop host under the command is DSH Desktop, pinned to `@deepseek-ai/dsh@0.2.0-rc.2`. This fork publishes source. Signed macOS builds and the Windows NSIS installer on the [upstream website](https://www.dshdesktop.com/#download) and [upstream GitHub Releases](https://github.com/dataelement/dsh-desktop/releases) are the original DSH Desktop. Those files leave out the Godot command, presets, and MCP from this repository.
 
-> [!IMPORTANT]
-> DSH Desktop is an early preview built on the rapidly evolving `@deepseek-ai/dsh@0.2.0-rc.2`. macOS releases are code-signed and notarized by Apple. Windows x64 installers are code-signed; Windows security warnings may still decrease gradually as the publisher builds download and installation reputation.
+## Run from source
 
-> [!NOTE]
-> This repository is [hhhh124hhhh/godot-codely-desktop](https://github.com/hhhh124hhhh/godot-codely-desktop), a public MIT fork of [dataelement/dsh-desktop](https://github.com/dataelement/dsh-desktop). It keeps the DSH Desktop host and adds a Godot creation path: the `godot-codely` command, Godot presets and skills, and a Godot MCP server. Installers on dshdesktop.com and upstream GitHub Releases are the original DSH Desktop. They do not include this fork's Godot changes. This fork publishes source and does not publish its own installers yet.
-
-## Download
-
-Build this fork from source. The [development guide](docs/development.md) has the full setup:
+Node.js 22 or later.
 
 ```sh
 git clone https://github.com/hhhh124hhhh/godot-codely-desktop.git
 cd godot-codely-desktop
 npm ci
+node packages/dsh-godot-stack/cli/godot-codely.mjs --list-models
+```
+
+A task uses a model configuration you add yourself. The command shape is in the [Godot stack readme](packages/dsh-godot-stack/README.md). Leave API keys out of the repository, issues, and logs.
+
+```sh
+node packages/dsh-godot-stack/cli/godot-codely.mjs "Summarize the current Godot project"
+```
+
+The profile name is `godot-codely`. With `DSH_HOME` unset, the profile and shared memories live under `~/.dsh`. The desktop window is a separate process and provisions the same Godot preset when it starts:
+
+```sh
 npm run dev
 ```
 
-The upstream project still publishes its own installers. The stable build is on the [upstream website](https://www.dshdesktop.com/#download). Preview builds marked **Pre-release** are on [upstream GitHub Releases](https://github.com/dataelement/dsh-desktop/releases). Those files are not builds of this repository.
+Setup, checks, and packaging are in the [development guide](docs/development.md). Runtime boundaries are in the [architecture notes](docs/architecture.md).
 
-Installed builds of the desktop app check for updates shortly after startup and every six hours. When a new version is available, DSH Desktop asks before downloading it; installation begins only after you choose **Restart and install**. You can also check manually from the application menu or skip one version without hiding future releases.
+## Host behavior that comes along
 
-## Community
+These parts belong to the forked desktop host.
+
+- PPT mode writes editable PPTX. Offline DOCX, PPTX, and XLSX skills ship with bundled Python libraries on macOS and Windows. See the [PPT runtime guide](packages/ppt-runtime/README.md).
+- A paired phone can continue a session. Cloudflare Quick Tunnel is the usual remote path. Pinggy is the fallback when Cloudflare is unavailable.
+- Safe Mode blocks third-party plugins and keeps user data. If the window cannot open, pass `--safe-mode`. After you package this fork on macOS: `open -a "Godot Codely" --args --safe-mode`.
+- Portable Agent presets use [`.dshpreset` packages](docs/preset-packages.md).
+- The host can be packaged as a signed macOS DMG/ZIP or a code-signed Windows x64 NSIS installer. This repository has not published those installers. Linux and Windows ARM64 are outside the host's current support. Signing steps for a future package are in the [release runbook](docs/release-runbook.md).
+
+## Upstream community
+
+The WeChat group and Discord below are the upstream DSH Desktop community.
 
 <p align="center">
-  Scan the QR code below with WeChat to join the DSH Desktop community group.<br />
-  <img src="docs/images/wechat-group-20260815.png" width="220" alt="DSH Desktop WeChat group QR code" /><br />
-  Prefer Discord? <a href="https://discord.gg/7Xgf3qe3Qp">Join the DSH Desktop Discord community</a>.
+  <img src="docs/images/wechat-group-20260815.png" width="220" alt="Upstream DSH Desktop WeChat group QR code" /><br />
+  <a href="https://discord.gg/7Xgf3qe3Qp">Upstream DSH Desktop Discord</a>
 </p>
 
-## What DSH Desktop adds
+## Contributing
 
-DeepSeek Harness already provides the Agent runtime and Web UI. DSH Desktop adds the native host capabilities needed for a practical desktop product:
+- [Contributing](CONTRIBUTING.md) — issues and the checks to run before a pull request
+- [Development guide](docs/development.md) — setup, validation, patches, and packaging
+- [Architecture](docs/architecture.md) — startup, data, security boundaries, recovery, phone access, and updates
 
-- Starts and stops Harness without requiring a separate CLI or browser tab
-- Uses the native system directory picker to add and manage project workspaces
-- Supports official DeepSeek models and mainstream third-party model providers
-- Imports and exports complete custom Agent presets as portable [`.dshpreset` packages](docs/preset-packages.md), with conflict checks and a trust warning before installation
-- Turns source material into editable PPTX decks through the built-in PPT mode
-- Includes offline DOCX, PPTX and XLSX skills with bundled Python libraries on macOS and Windows
-- Preserves profiles, plugins, workspaces, sessions, and model settings across app upgrades
-- Detects startup and frontend plugin failures, keeps diagnostics in `harness.log`, and offers guided recovery actions
-- Provides a non-destructive Safe Mode that temporarily blocks third-party plugins
-- Lets a paired phone continue sessions over the local network or an optional temporary public tunnel
-- Checks for desktop updates and keeps download and installation under user control
-- Adapts native menus, titlebar behavior, window focus, theme, and application branding for macOS and Windows
-
-## PPT generation
-
-Enable the **PPT** button, choose a template, and describe the deck you need. The built-in catalog includes **16 templates and 192 layouts** with editable PPTX output. Previews use English; decks can use English or Chinese, with corresponding font settings. Preview language does not determine output language.
-
-PPT is preinstalled, and its automatic instructions apply only to sessions where the PPT button is enabled. See the [PPT runtime guide](packages/ppt-runtime/README.md) for templates, validation, and source acknowledgments.
-
-## Phone access
-
-Choose **Connect Phone…** from the `Harness` menu and scan the pairing code.
-
-- On Wi-Fi, scanning connects immediately.
-- Over the internet tunnel, the phone enters a 6-digit pairing password shown only on the computer. By default the password is temporary (5 minutes, memory only). A durable password is created only after you opt in on the Connect Phone window.
-
-Harness itself remains on a random `127.0.0.1` port. Phone access uses a separate paired bridge. Cloudflare Quick Tunnel is the usual long-lived remote path. Free Pinggy is the fallback when Cloudflare is unavailable (for example in mainland China) and expires after about 60 minutes. Disconnecting the phone from the desktop invalidates the mobile session.
-
-If Cloudflare fails to start, the app tries Pinggy. If a Cloudflare pairing link appears but your phone cannot open it, choose **Can’t open? Try another link** to switch to Pinggy.
-
-## Safe Mode and recovery
-
-If a third-party plugin interferes with startup or rendering, DSH Desktop can identify the implicated plugin from runtime and frontend evidence and open a guided recovery surface.
-
-Choose **Restart as Safe Mode…** from the `Harness` menu to start an isolated profile containing only official core bundles. The Agent, sessions, model settings, and workspaces remain available while third-party plugins from the normal profile stay blocked. You can remove selected plugins or return to a normal launch from the Safe Mode banner.
-
-Recovery screens check for compatible plugin updates. When available, you can upgrade an affected plugin; Safe Mode also offers batch upgrades. For help, hover over **WeChat group** to display its QR code, or click **Discord** to open the community.
-
-If the normal interface cannot be reached, start DSH Desktop with `--safe-mode`. On macOS:
-
-```sh
-open -a "DSH Desktop" --args --safe-mode
-```
-
-## Local data and security
-
-- The Harness Web UI is served only on a random loopback port.
-- The renderer has no Node.js privileges and uses context isolation and sandboxing.
-- Webviews, untrusted in-app navigation, and unexpected permission requests are blocked.
-- External web links open in the system browser.
-- User profiles and sessions live under Electron's per-user application data directory, not inside the installed app.
-- Phone access requires a short-lived pairing token. Wi-Fi connects on scan; the internet tunnel also requires the pairing password shown on the computer.
-
-## Platform support
-
-| Platform | Distribution | Status |
-| --- | --- | --- |
-| macOS Apple Silicon | Signed and notarized DMG/ZIP | Supported |
-| macOS Intel | Signed and notarized DMG/ZIP | Supported |
-| Windows x64 | Code-signed NSIS installer | Supported |
-| Windows ARM64 | — | Not currently supported |
-| Linux | — | Not currently supported |
-
-Harness includes target-native dependencies, so every release artifact is built on the matching operating system and architecture.
-
-## Development and architecture
-
-Contributions are welcome. Start with the public engineering documentation:
-
-- [Contributing](CONTRIBUTING.md) — how to report an issue and what to run before a pull request
-- [Development guide](docs/development.md) — setup, validation, patch maintenance, and target-native packaging
-- [Architecture](docs/architecture.md) — runtime flow, persistent data, security boundaries, recovery, mobile access, and updates
-- [Release runbook](docs/release-runbook.md) — signing and publication controls
-- [Preset package format](docs/preset-packages.md) — portable Agent preset contract
-
-Before submitting a change, run `npm test`, `npm run typecheck`, and `npm run build`, then exercise the affected real application flow. Never include real API keys in issues, logs, screenshots, or test data.
-
-## Friends
-
-[dsh-market](https://github.com/dsh-market/dsh-market) is the community plugin market for DeepSeek Harness. Browse and search plugins, preview screenshots, install or update packages, enable or disable plugins, and switch themes from the Harness interface.
+Before a change, run `npm test`, `npm run typecheck`, and `npm run build`, then exercise the flow you touched.
 
 ## License
 
-DSH Desktop is open source under the [MIT License](LICENSE).
-
-DeepSeek Harness and its dependencies remain subject to their respective upstream licenses and trademark policies. DSH Desktop is an independent community desktop application.
+Godot Codely is released under the [MIT License](LICENSE). The copyright notice in that file stays with DataElement, the upstream desktop authors. DeepSeek Harness and the vendored Godot MCP trees keep their own licenses.
