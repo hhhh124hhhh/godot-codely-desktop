@@ -27,13 +27,23 @@ DSH Desktop packages the local DeepSeek Harness experience as an installed deskt
 > [!IMPORTANT]
 > DSH Desktop is an early preview built on the rapidly evolving `@deepseek-ai/dsh@0.2.0-rc.2`. macOS releases are code-signed and notarized by Apple. Windows x64 installers are code-signed; Windows security warnings may still decrease gradually as the publisher builds download and installation reputation.
 
+> [!NOTE]
+> This repository is [hhhh124hhhh/godot-codely-desktop](https://github.com/hhhh124hhhh/godot-codely-desktop), a public MIT fork of [dataelement/dsh-desktop](https://github.com/dataelement/dsh-desktop). It keeps the DSH Desktop host and adds a Godot creation path: the `godot-codely` command, Godot presets and skills, and a Godot MCP server. Installers on dshdesktop.com and upstream GitHub Releases are the original DSH Desktop. They do not include this fork's Godot changes. This fork publishes source and does not publish its own installers yet.
+
 ## Download
 
-We offer stable and preview releases: download the **stable release**, recommended for everyday use, from our [official website](https://www.dshdesktop.com/#download). To try a **preview release**, choose a version marked **Pre-release** on [GitHub Releases](https://github.com/dataelement/dsh-desktop/releases).
+Build this fork from source. The [development guide](docs/development.md) has the full setup:
 
-Preview releases include our newest features and closely track the latest official DeepSeek Harness versions. They may be incompatible with community plugins and are **not recommended for general users**. Early adopters are welcome to try them and share feedback in our community; we roll out updates to the wider community only after validation by early adopters.
+```sh
+git clone https://github.com/hhhh124hhhh/godot-codely-desktop.git
+cd godot-codely-desktop
+npm ci
+npm run dev
+```
 
-Installed builds check for updates shortly after startup and every six hours. When a new version is available, DSH Desktop asks before downloading it; installation begins only after you choose **Restart and install**. You can also check manually from the application menu or skip one version without hiding future releases.
+The upstream project still publishes its own installers. The stable build is on the [upstream website](https://www.dshdesktop.com/#download). Preview builds marked **Pre-release** are on [upstream GitHub Releases](https://github.com/dataelement/dsh-desktop/releases). Those files are not builds of this repository.
+
+Installed builds of the desktop app check for updates shortly after startup and every six hours. When a new version is available, DSH Desktop asks before downloading it; installation begins only after you choose **Restart and install**. You can also check manually from the application menu or skip one version without hiding future releases.
 
 ## Community
 
@@ -116,6 +126,7 @@ Harness includes target-native dependencies, so every release artifact is built 
 
 Contributions are welcome. Start with the public engineering documentation:
 
+- [Contributing](CONTRIBUTING.md) — how to report an issue and what to run before a pull request
 - [Development guide](docs/development.md) — setup, validation, patch maintenance, and target-native packaging
 - [Architecture](docs/architecture.md) — runtime flow, persistent data, security boundaries, recovery, mobile access, and updates
 - [Release runbook](docs/release-runbook.md) — signing and publication controls

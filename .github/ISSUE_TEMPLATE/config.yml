@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Development guide
+    url: https://github.com/hhhh124hhhh/godot-codely-desktop/blob/main/docs/development.md
+    about: Clone this fork and run the local checks before reporting a bug.
