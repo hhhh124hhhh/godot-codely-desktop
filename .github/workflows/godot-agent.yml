@@ -35,7 +35,8 @@ jobs:
           Expand-Archive -LiteralPath $archive -DestinationPath $destination
           "GODOT_TEST_BIN=$(Join-Path $destination 'Godot_v4.7.1-stable_win64.exe')" >> $env:GITHUB_ENV
       - run: npm ci
-      - run: npm run godot:build
+      # The production-profile regression loads all required Desktop host plugins.
+      - run: npm run build
       - run: npm run typecheck
       - name: Harness, MCP, panel and native editor regressions
         run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-asar-provisioning.test.mjs test/godot-launch-token.test.mjs test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs
