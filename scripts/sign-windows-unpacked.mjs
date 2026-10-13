@@ -62,8 +62,8 @@ export function buildJsignArgs({
   pinFile,
   targetFile,
   tsaUrl = 'http://timestamp.digicert.com',
-  name = 'DSH Desktop',
-  url = 'https://www.dshdesktop.com'
+  name = 'Godot Codely',
+  url = 'https://github.com/hhhh124hhhh/godot-codely-desktop'
 }) {
   return [
     '-jar',

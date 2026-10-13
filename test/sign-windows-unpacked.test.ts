@@ -49,9 +49,9 @@ describe('sign-windows-unpacked', () => {
       '--tsretrywait',
       '10',
       '--name',
-      'DSH Desktop',
+      'Godot Codely',
       '--url',
-      'https://www.dshdesktop.com',
+      'https://github.com/hhhh124hhhh/godot-codely-desktop',
       'C:\\test\\app.exe'
     ])
   })
