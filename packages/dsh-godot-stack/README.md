@@ -25,10 +25,10 @@ Godot Codely 预装插件：把 godot-extensions 全家桶打进出厂配置，�
 
 Godot Codely CLI 出厂预置 2 个实测可用的模型套餐，可在运行/会话间自由切换：
 
-| 套餐 | Provider | 模型 | 验证 |
+| 套餐 | Provider | 模型 | 状态 |
 |---|---|---|---|
-| Token Plan Qwen | `tokenplan-qwen` | qwen3.8-flash / qwen3.8-max / qwen3.7-plus / qwen3.7-max / deepseek-v4-flash-0731 / deepseek-v4-pro | ✅ 实测回复 |
-| Kimi For Coding | `kimi-for-coding` | kimi-for-coding | ✅ 实测回复 |
+| Token Plan Qwen | `tokenplan-qwen` | qwen3.8-flash / qwen3.8-max / qwen3.7-plus / qwen3.7-max / deepseek-v4-flash-0731 / deepseek-v4-pro | 出厂预置 |
+| Kimi For Coding | `kimi-for-coding` | kimi-for-coding | 出厂预置 |
 
 ```bash
 # 查看可换模型
@@ -38,12 +38,12 @@ godot-codely --list-models
 godot-codely --model glm-5.2 "分析场景树"
 godot-codely --provider volcengine --model glm-latest "..."
 
-# 默认模型（tokenplan-qwen / qwen3.8-flash）在 ~/.dsh/profiles/godot-codely/cordis.patch.yml
+# 默认模型配置在用户级 profile 的 cordis.patch.yml（--default 设为默认）
 ```
 
 ### 自建套餐
 
-任何 OpenAI 兼容 / Anthropic 兼容端点都可一条命令接入（key 写入 `~/.dsh/.credentials.yaml`，套餐写入 `~/.dsh/cordis.patch.yml`，DSH 自动应用）：
+任何 OpenAI 兼容 / Anthropic 兼容端点都可一条命令接入（key 写入用户级凭据文件，套餐写入用户级 cordis.patch.yml，DSH 自动应用）：
 
 ```bash
 godot-codely config add \
@@ -59,16 +59,15 @@ godot-codely config add \
 
 - `godot-codely config list` 查看全部套餐（出厂 + 自建）
 - 移除失效套餐：直接编辑 `~/.dsh/cordis.patch.yml`（自建）或 `~/.dsh/profiles/godot-codely/cordis.patch.yml`（出厂）
-- 桌面端同套配置：`%APPDATA%\dsh-desktop\harness\settings.yaml`（重启自动导入，Models 页可视/可换）
+- 桌面端同套配置：桌面端应用配置目录下的 harness settings.yaml（重启自动导入，Models 页可视/可换）
 
-### 失效套餐排查记录（2026-10-12 逐一实测）
+### 常见模型错误排查（通用指引）
 
-| Provider | 结果 | 原因 |
+| 错误码 | 常见原因 | 处理 |
 |---|---|---|
-| zhipu-glm | ❌ 401 | key 失效（身份验证失败） |
-| minimax | ❌ 402 | 余额不足 |
-| volcengine | ❌ 400 | 账号无 CodingPlan 订阅 |
-| deepseek 官方 | ❌ 402 | 余额不足 |
+| 401 | 密钥失效 / 身份验证失败 | 核对并轮换 API key |
+| 402 | 余额不足 / 无对应订阅 | 充值或确认套餐含目标模型/接口 |
+| 400 | 请求参数不符（如网关不透传 images/audio 接口） | 确认端点支持目标接口（images/generations、audio/speech），或用 `ep-` 接入点直调 |
 
 ## 多模态资产生成（MCP：generate_sprite / generate_image / text_to_speech）
 
@@ -82,8 +81,7 @@ Godot Codely 的 MCP server 提供 3 个多模态工具，写入 Godot 工程 `a
 
 ### 文生图（✅ 已通，开箱即用）
 
-- 默认走**火山方舟 doubao-seedream**：MCP 自动从 `~/.claude/skills/volcengine-generation/.env` 加载
-  `VOLCENGINE_API_KEY` + `VOLCENGINE_IMAGE_ENDPOINT=ep-xxxx`（接入点优先于进程级通用 URL）。
+- 默认走**火山方舟 doubao-seedream**：MCP 从用户级技能配置（`.env`，含 `VOLCENGINE_API_KEY` + `VOLCENGINE_IMAGE_ENDPOINT=ep-xxxx`）加载，接入点优先于进程级通用 URL。
 - 实测（2026-10-12）：`generate_image` 真机出图成功（2048x2048，自动落盘 `assets/textures/`）。
 - 兜底：`GODOT_CODELY_IMAGE_BASE_URL` + `GODOT_CODELY_IMAGE_MODEL` + `GODOT_CODELY_IMAGE_API_KEY`
   （任意 OpenAI 兼容 images/generations 端点，如自备 DashScope 原生 key）。
@@ -169,7 +167,7 @@ godot-codely --permission read-only "任务"             # 只读（安全浏览
 
 - **机制**：Godot 原生 GDScript Language Server（`--editor --lsp-port <port> --headless`，TCP JSON-RPC；stdio 模式在 Windows 不可用）
 - **工具**：MCP server 新增 `lsp_diagnostics(path, project_path?)`——打开 .gd 文件收 `publishDiagnostics` + 工作区加载错误，返回结构化诊断（severity/line/column/message）
-- **Godot 探测**：GODOT_PATH → 已知路径（含本机 `D:\Godot_4.7_mono\...\Godot_v4.7-stable_mono_win64.exe`）→ 常见安装位；项目目录从 path 向上找 project.godot 自动定位
+- **Godot 探测**：`GODOT_PATH` → 环境已知安装位 → 常见安装目录扫描；项目目录从 path 向上找 `project.godot` 自动定位
 - **真机验证**：错误文件（未定义函数/未用参数）返回 2 条诊断；干净文件无诊断 ✅
 - **能力意义**：agent 可自审 GDScript（对标 cowork 代码智能），无需人工开编辑器
 
@@ -212,7 +210,7 @@ npm run build          # 编译主进程后打包时插件随 asar 进入
 
 ## 更新资源
 
-改 `D:\godot-extensions` 后重新复制对应目录到本包：
+外部集成资产源（godot-extensions，路径按环境配置）改完后重新复制对应目录到本包：
 - `agent-presets/godot-codely-lite` → `godot-stack/agent-presets/`
 - `godot-codely/godot-mcp-server` → `godot-stack/mcp/`
 - `skills/godot` → `skills/godot`
