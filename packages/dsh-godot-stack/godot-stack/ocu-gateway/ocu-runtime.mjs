@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, writeFile, access } from 'node:fs/promises'
+import { mkdir, readFile, writeFile, access } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -41,7 +41,7 @@ export async function provisionOcuGateway(home) {
   const target = join(home, '.godot', 'ocu-gateway')
   await mkdir(target, { recursive: true })
   for (const name of ['ocu-gateway.js', 'ocu-runtime.mjs']) {
-    await cp(join(source, name), join(target, name))
+    await writeFile(join(target, name), await readFile(join(source, name)))
   }
   // The gateway is outside the plugin's package scope after provisioning.
   await writeFile(join(target, 'package.json'), '{"private":true,"type":"module"}\n')

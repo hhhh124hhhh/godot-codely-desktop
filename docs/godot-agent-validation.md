@@ -1,5 +1,13 @@
 # Godot 面板 Agent 闭环验证
 
+## 安装产物验收发现：ASAR 递归复制
+
+PR #4 对应 Windows CI `38387804606` 全部通过，但其 packaged Harness 启动日志仍出现预设与 MCP provisioning 的 `ENOENT`。最小 Electron ASAR 探针确认源目录 `existsSync` 为真，`fs.promises.cp` 递归复制仍失败；这是 ASAR 读取兼容问题，不能把 Harness ready 当作 Godot provisioning 成功。
+
+修复将宿主自有预设、MCP runtime 和技能的递归复制改用 ASAR 支持的 `readdir/readFile/writeFile`，保留 runtime 摘要校验、用户设置和已有技能的保留语义。OCU 的单文件复制采用相同读写路径，复制后仍自包含。包清单补齐 `data-home.mjs` 与复制模块。
+
+新增真实 Electron/ASAR 行为回归及 `afterPack` Godot gate，检查四份预设的宿主绑定、MCP integrity 和技能 provisioning；不通过就阻断打包。本地 4 套件 18/18 与 typecheck 通过。整仓 189 文件：179 通过、6 失败、4 跳过；1647 测试通过、12 失败、7 跳过，Godot 与 ASAR 用例无失败。其他失败涉及 symlink EPERM、图像写入、pnpm rebuild 与 PPT 上传路径。安装包 UI 与完整 Lite 预设生产激活尚待新 CI 产物验收，P0 仍不能按生产验收关闭。
+
 ## 2026-10-13 主线同步验收
 
 本分支在 `2ec9dbe` 的 Agent 工具与编辑器运行验证基础上合入 `origin/main` `00740aa`。下文旧基线与 PR 状态保留为历史记录；本次同步已包含主线的实时编辑器上下文、数据目录隔离、OCU 修复和品牌更新。唯一冲突位于插件入口 import：保留预设绑定当前宿主所需的 `pathToFileURL`，移除主线已替代的 `os` import，采用 `cliHome()`。

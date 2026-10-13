@@ -1,5 +1,6 @@
 const path = require('node:path')
 const verifyPackagedPptRuntime = require('./verify-packaged-ppt-runtime.cjs')
+const verifyPackagedGodotRuntime = require('./verify-packaged-godot-runtime.cjs')
 const { afterPack: verifyOfficeRuntime } = require('./verify-office-runtime.cjs')
 const { verifyAsarUnpack } = require('./verify-asar-unpack.cjs')
 
@@ -10,6 +11,7 @@ module.exports = async function afterPack(context) {
     ? path.join(context.appOutDir, `${product}.app`, 'Contents', 'Resources')
     : path.join(context.appOutDir, 'resources')
   verifyAsarUnpack(resourcesDir)
+  await verifyPackagedGodotRuntime(context)
   await verifyPackagedPptRuntime(context)
   await verifyOfficeRuntime(context)
 }

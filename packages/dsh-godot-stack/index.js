@@ -18,7 +18,7 @@
  * All provisioning is best-effort: failures only log a warning and never
  * block the Harness boot.
  */
-import { cp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -28,6 +28,7 @@ import { provisionOcuGateway } from './godot-stack/ocu-gateway/ocu-runtime.mjs'
 import { provisionMcpRuntime } from './mcp-runtime.mjs'
 import { adoptLegacyMemories, memoryRoot, sanitizeTopic } from './memory-root.mjs'
 import { cliHome } from './data-home.mjs'
+import { copyBundledDirectory } from './copy-bundled-directory.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -52,10 +53,9 @@ const PRESET_NAMES = [
 export async function provisionGodotPresets(home) {
   await mkdir(join(home, '.agent-presets'), { recursive: true })
   for (const name of PRESET_NAMES) {
-    await cp(
+    await copyBundledDirectory(
       join(here, 'godot-stack', 'agent-presets', name),
       join(home, '.agent-presets', name),
-      { recursive: true, force: true },
     )
     // This is a host-owned extension. Pin only our entry to the currently loaded
     // package, rather than depending on a copied preset finding a Desktop package.
