@@ -1,5 +1,9 @@
 # Desktop release runbook
 
+## Orchestrated release (recommended)
+
+Use **Actions → Orchestrate desktop release** for a one-step formal or prerelease trigger. Formal releases push a `v*` tag (version must match `package.json`); prereleases dispatch **Release desktop installers** with `mode=prerelease` and `target=all`. See [Release automation](release-automation.md).
+
 ## Manual workflow dispatch
 
 The `Release desktop installers` workflow accepts a `mode` on `workflow_dispatch`. `target` is always honored: `macos` does not start Windows jobs, and `windows` does not start macOS jobs.

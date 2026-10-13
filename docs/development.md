@@ -97,6 +97,8 @@ For local unsigned development packages, use the corresponding `package:dev:*` c
 
 Formal release artifacts are built, signed, and published by the tag workflow. A local build or pull-request check is not formal release evidence.
 
+To publish from GitHub Actions, use **Orchestrate desktop release** (formal or prerelease). See [Release automation](release-automation.md) for secrets, runners, and the full pipeline.
+
 ## Contribution hygiene
 
 - Never include real API keys in issues, logs, screenshots, fixtures, or test data.

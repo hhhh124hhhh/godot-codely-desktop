@@ -747,7 +747,7 @@ jobs:
       - name: Upload test installers, verify downloads, and send Feishu notification
         env:
           MODELSCOPE_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
-          MODELSCOPE_REPO_ID: alexyaojin/dsh-desktop
+          MODELSCOPE_REPO_ID: ${{ vars.MODELSCOPE_REPO_ID || github.repository }}
           FEISHU_RELEASE_WEBHOOK: ${{ secrets.FEISHU_RELEASE_WEBHOOK }}
           SIGNED_VERSION: ${{ inputs.signed_version }}
           TEST_TARGET: ${{ inputs.target }}
@@ -862,10 +862,13 @@ jobs:
       - name: Mirror release assets to ModelScope
         env:
           MODELSCOPE_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
-          MODELSCOPE_REPO_ID: alexyaojin/dsh-desktop
+          MODELSCOPE_REPO_ID: ${{ vars.MODELSCOPE_REPO_ID || github.repository }}
         run: |
           set -euo pipefail
-          test -n "$MODELSCOPE_TOKEN" || { echo "::error::Missing secret MODELSCOPE_TOKEN"; exit 1; }
+          if [ -z "${MODELSCOPE_TOKEN:-}" ]; then
+            echo "⚠️ MODELSCOPE_TOKEN not set; skipping ModelScope mirror."
+            exit 0
+          fi
           python3 -m venv "$RUNNER_TEMP/ms-env"
           "$RUNNER_TEMP/ms-env/bin/pip" install -q modelscope
           "$RUNNER_TEMP/ms-env/bin/python3" <<'PY'
@@ -1075,11 +1078,14 @@ jobs:
       - name: Mirror pre-release assets to ModelScope
         env:
           MODELSCOPE_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
-          MODELSCOPE_REPO_ID: alexyaojin/dsh-desktop
+          MODELSCOPE_REPO_ID: ${{ vars.MODELSCOPE_REPO_ID || github.repository }}
           PRERELEASE_TAG: ${{ inputs.prerelease_tag }}
         run: |
           set -euo pipefail
-          test -n "$MODELSCOPE_TOKEN" || { echo "::error::Missing secret MODELSCOPE_TOKEN"; exit 1; }
+          if [ -z "${MODELSCOPE_TOKEN:-}" ]; then
+            echo "⚠️ MODELSCOPE_TOKEN not set; skipping ModelScope mirror."
+            exit 0
+          fi
           python3 -m venv "$RUNNER_TEMP/ms-env"
           "$RUNNER_TEMP/ms-env/bin/pip" install -q modelscope
           "$RUNNER_TEMP/ms-env/bin/python3" <<'PY'

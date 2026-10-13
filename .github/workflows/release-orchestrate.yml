@@ -1,0 +1,132 @@
+name: Orchestrate desktop release
+
+# Single entry point for formal (v*) and pre-release publication.
+# Formal: creates and pushes an annotated v* tag; release.yml runs on tag push.
+# Prerelease: dispatches release.yml in prerelease mode (target=all).
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: formal = GitHub Latest release (v tag); prerelease = GitHub Pre-release
+        required: true
+        default: prerelease
+        type: choice
+        options:
+          - formal
+          - prerelease
+      version:
+        description: Semver without v (must match package.json for formal), e.g. 0.1.0 or 0.1.0-rc.1
+        required: true
+        type: string
+      git_ref:
+        description: Branch or commit to release from (formal tags this ref; prerelease builds this ref)
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: release-orchestrate-${{ github.repository }}-${{ inputs.channel }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  orchestrate:
+    name: Trigger ${{ inputs.channel }} ${{ inputs.version }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+          fetch-depth: 0
+
+      - name: Validate version
+        env:
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -euo pipefail
+          semver_re='^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'
+          if [[ "$VERSION" == v* ]] || ! [[ "$VERSION" =~ $semver_re ]]; then
+            echo "::error::version must be a semver without a leading v (e.g. 0.1.0 or 0.1.0-rc.1)"
+            exit 1
+          fi
+          if [ "$CHANNEL" = 'formal' ] && [[ "$VERSION" == *-* ]]; then
+            echo "::error::formal channel requires a stable semver (no -rc / -beta suffix). Use channel=prerelease instead."
+            exit 1
+          fi
+          if [ "$CHANNEL" = 'prerelease' ] && [[ "$VERSION" != *-* ]]; then
+            echo "::warning::prerelease channel usually includes a suffix (e.g. 0.1.0-rc.1); continuing anyway."
+          fi
+
+      - name: Match package.json for formal releases
+        if: inputs.channel == 'formal'
+        env:
+          VERSION: ${{ inputs.version }}
+          REF: ${{ inputs.git_ref }}
+        run: |
+          set -euo pipefail
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$pkg" != "$VERSION" ]; then
+            echo "::error::package.json version is $pkg but formal release requested $VERSION. Bump package.json on ${REF} first."
+            exit 1
+          fi
+
+      - name: Ensure formal tag does not already exist
+        if: inputs.channel == 'formal'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists locally."
+            exit 1
+          fi
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists on GitHub."
+            exit 1
+          fi
+
+      - name: Create and push formal release tag
+        if: inputs.channel == 'formal'
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release ${tag}"
+          git push origin "$tag"
+          echo "Pushed $tag. Release desktop installers will build, sign, and publish to GitHub Releases."
+
+      - name: Dispatch prerelease pipeline
+        if: inputs.channel == 'prerelease'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          GIT_REF: ${{ inputs.git_ref }}
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$GIT_REF" \
+            -f mode=prerelease \
+            -f target=all \
+            -f "prerelease_tag=${VERSION}"
+          echo "Dispatched Release desktop installers (prerelease). Track progress under Actions."
+
+      - name: Post-run checklist
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "After jobs finish:"
+          echo "- GitHub Releases: https://github.com/${REPO}/releases"
+          echo "- Required secrets: Apple signing (macOS), DESKTOP_WINDOWS_SIGNING_PIN + self-hosted sign-windows runner"
+          echo "- Optional: MODELSCOPE_TOKEN, FEISHU_RELEASE_WEBHOOK, MODELS_TOKEN (see docs/release-automation.md)"
