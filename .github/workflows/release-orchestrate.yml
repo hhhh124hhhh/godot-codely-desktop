@@ -74,11 +74,11 @@ jobs:
           fi
           gh workflow run release.yml \
             --repo "$GITHUB_REPOSITORY" \
-            --ref "$GITHUB_SHA" \
+            --ref "${GITHUB_REF_NAME}" \
             -f mode=unsigned \
             -f target=all \
             -f "unsigned_version=${VERSION}"
-          echo "Dispatched unsigned release for ${VERSION} at ${GITHUB_SHA}."
+          echo "Dispatched unsigned release for ${VERSION} on ref ${GITHUB_REF_NAME} (${GITHUB_SHA})."
 
   orchestrate:
     name: Trigger ${{ inputs.channel }} ${{ inputs.version }}
