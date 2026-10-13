@@ -5,10 +5,12 @@ extends Control
 ## 输入 /tool <名称> <json参数> 直接调用 MCP 工具；按钮一键执行常用操作
 
 const MCP_CLIENT_SCRIPT := "res://addons/godot_codely_ai/mcp_client.gd"
+const LLM_CLIENT_SCRIPT := "res://addons/godot_codely_ai/llm_client.gd"
 
 const MIN_WIDTH := 340
 
 var _client: Node
+var _llm: Node
 var _status_label: Label
 var _log: RichTextLabel
 var _input: TextEdit
@@ -16,6 +18,9 @@ var _mode: OptionButton
 var _connecting := false
 var _connected := false
 var _mcp_launch_attempted := false
+var _history: Array = []
+var _llm_busy := false
+const _SYSTEM_PROMPT := "你是嵌入 Godot 编辑器的 AI 助手 Godot Codely。帮助用户完成 Godot 开发：场景、GDScript、UI、物理、着色器、导出等。回答简洁、可操作，需要改代码时直接给出 GDScript 代码块。"
 
 
 func _ready() -> void:
@@ -78,9 +83,9 @@ func _ready() -> void:
 	mode_row.add_theme_constant_override("separation", 4)
 	root.add_child(mode_row)
 	_mode = OptionButton.new()
-	_mode.add_item("Agent 对话（规划中）")
+	_mode.add_item("Agent 对话")
 	_mode.add_item("工具直调")
-	_mode.select(1)
+	_mode.select(0)
 	mode_row.add_child(_mode)
 	mode_row.add_child(Control.new())
 
@@ -102,6 +107,16 @@ func _ready() -> void:
 	add_child(_client)
 	_client.connected.connect(_on_connected)
 	_client.connection_error.connect(_on_conn_error)
+	# 初始化 LLM 客户端（AI 对话 + 流式）
+	_llm = load(LLM_CLIENT_SCRIPT).new()
+	add_child(_llm)
+	_llm.chunk_received.connect(_on_llm_chunk)
+	_llm.finished.connect(_on_llm_finished)
+	_llm.failed.connect(_on_llm_failed)
+	if _llm.load_default_config():
+		_append_line("[color=#999999]LLM 已配置（%s）[/color]" % _llm.model, Color.WHITE)
+	else:
+		_append_line("[color=#999999]LLM 未配置：/model base=… key=… model=… 可配置后对话[/color]", Color.WHITE)
 	# 等一帧确保子节点（HTTPRequest）已挂载进树，再发起连接
 	await get_tree().process_frame
 	_on_connect_pressed()
@@ -221,9 +236,79 @@ func _on_send_pressed() -> void:
 			else:
 				args = {"action": parts[1].strip_edges()}
 		_run_tool(tool_name, args)
+	elif text.begins_with("/model "):
+		_handle_model_cmd(text.substr(7).strip_edges())
+	elif _mode.selected == 0:
+		_start_llm_chat(text)
 	else:
 		_append_line("[color=#9BBBF4]你：[/color]" + text, Color.WHITE)
-		_append_line("[color=#666666]自然语言对话将在 Agent 模式接入 LLM 后启用；当前请用 /tool 或快捷按钮。[/color]", Color.WHITE)
+		_append_line("[color=#666666]工具直调模式：请用 /tool 或快捷按钮；切换 Agent 对话模式可用自然语言。[/color]", Color.WHITE)
+
+
+## 模型配置命令：/model base=<url> key=<key> model=<name>（缺省保留现值）
+func _handle_model_cmd(rest: String) -> void:
+	var cfg_base := _llm.base_url
+	var cfg_key := _llm.api_key
+	var cfg_model := _llm.model
+	for kv in rest.split(" "):
+		var parts := kv.split("=", true, 1)
+		if parts.size() < 2:
+			continue
+		var k := parts[0].strip_edges()
+		var v := parts[1].strip_edges()
+		if k == "base":
+			cfg_base = v
+		elif k == "key":
+			cfg_key = v
+		elif k == "model":
+			cfg_model = v
+	if cfg_base == "" or cfg_key == "" or cfg_model == "":
+		_append_line("[color=#E5533D]/model 需要 base/key/model 完整（如 /model base=https://… key=sk-… model=qwen3.8-flash）[/color]", Color.WHITE)
+		return
+	if _llm.save_config(cfg_base, cfg_key, cfg_model):
+		_append_line("[color=#57B44E]✓ 模型已保存：%s（base=%s）[/color]" % [cfg_model, cfg_base], Color.WHITE)
+	else:
+		_append_line("[color=#E5533D]模型配置保存失败[/color]", Color.WHITE)
+
+
+## Agent 对话：组装消息历史 → LLM 流式生成
+func _start_llm_chat(text: String) -> void:
+	if _llm_busy:
+		_append_line("[color=#999999]上一条仍在生成，请稍候…[/color]", Color.WHITE)
+		return
+	if not _llm.is_configured():
+		_append_line("[color=#E5533D]LLM 未配置：/model base=… key=… model=…[/color]", Color.WHITE)
+		return
+	_llm_busy = true
+	_history.append({"role": "user", "content": text})
+	if _history.size() > 20:
+		_history = _history.slice(_history.size() - 20)
+	var messages: Array = [{"role": "system", "content": _SYSTEM_PROMPT}]
+	messages.append_array(_history)
+	_append_line("[color=#9BBBF4]你：[/color]" + text, Color.WHITE)
+	_log.append_text("[color=#57B44E]AI：[/color]")
+	_log.scroll_to_line(_log.get_line_count() - 1)
+	_llm.chat(messages)
+
+
+func _on_llm_chunk(content: String) -> void:
+	_log.append_text(content)
+	_log.scroll_to_line(_log.get_line_count() - 1)
+
+
+func _on_llm_finished(full_text: String) -> void:
+	_log.append_text("\n")
+	_log.scroll_to_line(_log.get_line_count() - 1)
+	_history.append({"role": "assistant", "content": full_text})
+	if _history.size() > 20:
+		_history = _history.slice(_history.size() - 20)
+	_llm_busy = false
+
+
+func _on_llm_failed(err: String) -> void:
+	_log.append_text("\n")
+	_append_line("[color=#E5533D]✗ " + err + "[/color]", Color.WHITE)
+	_llm_busy = false
 
 
 func _run_tool(tool_name: String, args: Dictionary) -> void:
