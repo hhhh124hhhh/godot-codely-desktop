@@ -57,7 +57,7 @@ These parts belong to the forked desktop host.
 - A paired phone can continue a session. Cloudflare Quick Tunnel is the usual remote path. Pinggy is the fallback when Cloudflare is unavailable.
 - Safe Mode blocks third-party plugins and keeps user data. If the window cannot open, pass `--safe-mode`. After you package this fork on macOS: `open -a "Godot Codely" --args --safe-mode`.
 - Portable Agent presets use [`.dshpreset` packages](docs/preset-packages.md).
-- The host can be packaged as a signed macOS DMG/ZIP or a code-signed Windows x64 NSIS installer. This repository has not published those installers. Linux and Windows ARM64 are outside the host's current support. Signing steps for a future package are in the [release runbook](docs/release-runbook.md).
+- The host can be packaged as a signed macOS DMG/ZIP or a code-signed Windows x64 NSIS installer. After signing secrets and the Windows self-hosted signer are configured on GitHub, **Orchestrate desktop release** triggers formal or pre-releases into [Releases](https://github.com/hhhh124hhhh/godot-codely-desktop/releases). See [Release automation](docs/release-automation.md) and the [release runbook](docs/release-runbook.md). Linux and Windows ARM64 are outside the host's current support.
 
 ## Upstream community
 
