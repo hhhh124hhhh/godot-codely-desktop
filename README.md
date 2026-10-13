@@ -1,10 +1,10 @@
 <h1 align="center">
-  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="DSH Desktop logo" valign="middle" />
-  DSH Desktop
+  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Godot Codely logo" valign="middle" />
+  Godot Codely
 </h1>
 
 <p align="center">
-  A local-first, cross-platform desktop app for
+  A public fork of DSH Desktop for assisting Godot creation, built on
   <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.
 </p>
 
@@ -20,9 +20,9 @@
 
 ![DSH Desktop overview with portable presets, model providers, phone control, and editable PPT generation](docs/images/dsh-desktop-hero-v021.png)
 
-<p align="center"><strong>Use official DeepSeek models or mainstream third-party providers, manage portable Agent presets, continue Harness sessions from your phone, and turn source material into editable PPTX decks.</strong></p>
+<p align="center"><strong>Edit a Godot project with godot-codely. The desktop host still manages models, portable presets, phone sessions, and editable PPTX decks.</strong></p>
 
-DSH Desktop packages the local DeepSeek Harness experience as an installed desktop application. It starts Harness automatically, keeps profiles, plugins, workspaces, model settings, and sessions outside the application directory, and opens the full Harness interface as soon as the local runtime is ready.
+Godot Codely is this repository. It keeps the DSH Desktop host and adds the godot-codely command, Godot presets and skills, and a Godot MCP server. The host starts Harness automatically, keeps profiles, plugins, workspaces, model settings, and sessions outside the application directory, and opens the Harness interface when the local runtime is ready.
 
 > [!IMPORTANT]
 > DSH Desktop is an early preview built on the rapidly evolving `@deepseek-ai/dsh@0.2.0-rc.2`. macOS releases are code-signed and notarized by Apple. Windows x64 installers are code-signed; Windows security warnings may still decrease gradually as the publisher builds download and installation reputation.

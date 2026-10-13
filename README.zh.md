@@ -1,10 +1,11 @@
 <h1 align="center">
-  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="DSH Desktop Logo" valign="middle" />
-  DSH Desktop
+  <img src="docs/images/readme-logo-black-rounded.svg" width="64" alt="Godot Codely Logo" valign="middle" />
+  Godot Codely
 </h1>
 
 <p align="center">
-  为 <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a> 打造的本地优先、跨平台桌面应用。
+  基于 DSH Desktop 的公开 fork，用来辅助 Godot 创作，运行在
+  <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a> 上。
 </p>
 
 <p align="center">
@@ -19,9 +20,9 @@
 
 ![DSH Desktop 的 Preset、模型提供方、手机控制与可编辑 PPT 生成功能](docs/images/dsh-desktop-hero-v021.png)
 
-<p align="center"><strong>使用 DeepSeek 官方模型或主流第三方模型，管理可移植的 Agent Preset，在手机上继续 Harness 会话，并将材料生成可继续编辑的 PPTX。</strong></p>
+<p align="center"><strong>用 godot-codely 改 Godot 工程。桌面宿主仍负责模型、可移植 Preset、手机会话，以及可继续编辑的 PPTX。</strong></p>
 
-DSH Desktop 把本地 DeepSeek Harness 封装为可安装的桌面应用。它会自动启动 Harness，把 Profile、插件、工作区、模型配置和会话保存在应用安装目录之外，并在本地 Runtime 就绪后直接进入完整 Harness 界面。
+Godot Codely 就是本仓库。它保留 DSH Desktop 宿主，并加上 godot-codely 命令、Godot 预设与技能，以及 Godot MCP。宿主仍会自动启动 Harness，把 Profile、插件、工作区、模型配置和会话保存在应用安装目录之外，并在本地 Runtime 就绪后进入 Harness 界面。
 
 > [!IMPORTANT]
 > DSH Desktop 当前处于早期预览阶段，基于仍在快速迭代的 `@deepseek-ai/dsh@0.2.0-rc.2`。macOS 正式包已完成代码签名并通过 Apple 公证；Windows x64 安装包也已完成代码签名。随着下载量、安装量和发行者信誉逐步积累，Windows 安全提示会逐渐减少，但不会立即消失。
