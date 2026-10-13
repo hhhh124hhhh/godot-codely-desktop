@@ -44,6 +44,13 @@ function sanitizeTopic(topic: string): string | null {
   return topic
 }
 
+/** recall 关键词查询：只挡路径穿越，允许部分词模糊检索（不要求完整 topic 合法性） */
+function isSafeQuery(query: string): boolean {
+  if (!query || query.length > MAX_TOPIC_LEN + 16) return false
+  if (query.includes('..') || query.includes('/') || query.includes('\\') || query.includes(sep)) return false
+  return true
+}
+
 function ensureDir(): string {
   const root = memoryRoot()
   mkdirSync(root, { recursive: true })
@@ -106,13 +113,22 @@ export async function dispatchMemory(name: string, args: Record<string, unknown>
       }
       const root = ensureDir()
       const file = join(root, `${topic}.md`)
+      let backedUp = false
+      if (existsSync(file) && statSync(file).isFile()) {
+        // 覆盖前自动备份旧内容：<topic>.md.bak 保留最近一次覆盖前版本
+        writeFileSync(`${file}.bak`, readFileSync(file, 'utf8'), 'utf8')
+        backedUp = true
+      }
       writeFileSync(file, content, 'utf8')
-      return textResult(`已记忆 topic="${topic}" → ${file}（${Buffer.byteLength(content, 'utf8')} 字节）`)
+      return textResult(
+        `已记忆 topic="${topic}" → ${file}（${Buffer.byteLength(content, 'utf8')} 字节${backedUp ? '；旧内容已备份至 .bak' : ''}）`,
+      )
     }
 
     case 'memory_recall': {
       const query = String(args.topic ?? '')
       if (!query) return textResult('topic 不能为空', true)
+      if (!isSafeQuery(query)) return textResult('topic 非法：禁止路径穿越（.. 或路径分隔符），最长 80 字符', true)
       const root = ensureDir()
       const exact = join(root, `${query}.md`)
       if (existsSync(exact) && statSync(exact).isFile()) {

@@ -85,6 +85,8 @@ for (const directory of [...packages].sort()) {
   }
 }
 await fs.cp(path.join(server, 'src/godot-scripts'), path.join(runtime, 'src/godot-scripts'), { recursive: true })
+// Godot 技能分发：把包内 skills 打进 runtime，供 provisioning 平铺复制到用户技能根（user-dsh root）。
+await fs.cp(path.join(source, 'skills'), path.join(runtime, 'skills'), { recursive: true })
 await fs.writeFile(path.join(runtime, 'package.json'), JSON.stringify({ type: 'module', private: true }) + '\n')
 for (const license of ['LICENSE.md', 'LICENSE-apache.md', 'NOTICE']) {
   await fs.copyFile(path.join(server, license), path.join(runtime, license + '.txt'))

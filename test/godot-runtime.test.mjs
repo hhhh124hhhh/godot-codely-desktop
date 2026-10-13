@@ -48,6 +48,48 @@ describe('shipped Godot MCP dependency closure', () => {
     }
   }, 30000)
 
+  it('rejects path traversal in recall and backs up overwritten memory', async () => {
+    const { home, target } = await fixture()
+    expect(await provisionMcpRuntime(generated, home, target)).toEqual({ status: 'configured' })
+    const memoryDir = join(home, 'memories')
+    await mkdir(memoryDir, { recursive: true })
+    // 在记忆根外的父目录放标记文件（对应检查报告探针 B 场景）
+    await writeFile(join(home, 'outside.md'), 'SECRET-OUTSIDE', 'utf8')
+    const transport = new StdioClientTransport({
+      command: process.execPath, args: [join(target, 'build/index.js')], cwd: home,
+      env: { PATH: process.env.PATH ?? '', DSH_HOME: home, GODOT_CODELY_MEMORY_DIR: memoryDir },
+      stderr: 'pipe',
+    })
+    const client = new Client({ name: 'memory-boundary-test', version: '1' })
+    try {
+      await client.connect(transport)
+      // 1) recall 路径穿越必须被拒，且不泄露根外内容
+      const traversal = await client.callTool({ name: 'memory_recall', arguments: { topic: '../outside' } })
+      expect(traversal.isError).toBe(true)
+      expect(JSON.stringify(traversal)).not.toContain('SECRET-OUTSIDE')
+      // 2) 覆盖自动备份：first → second，.bak 保留 first
+      await client.callTool({ name: 'memory_remember', arguments: { topic: 'topic_a', content: 'first' } })
+      await client.callTool({ name: 'memory_remember', arguments: { topic: 'topic_a', content: 'second' } })
+      expect(await readFile(join(memoryDir, 'topic_a.md.bak'), 'utf8')).toBe('first')
+      expect(await readFile(join(memoryDir, 'topic_a.md'), 'utf8')).toBe('second')
+    } finally {
+      await client.close()
+    }
+  }, 30000)
+
+  it('provisions the Godot skill bundle into the user skill root', async () => {
+    const { home, target } = await fixture()
+    expect(await provisionMcpRuntime(generated, home, target)).toEqual({ status: 'configured' })
+    const skillsRoot = join(home, 'skills')
+    const expected = ['scene-tree', 'gdscript', 'physics-movement', 'ui-ux', 'shader-worldgen', 'quality-gates', 'project-workflow', 'media-generation', 'godot-web-access', 'godot-memory']
+    for (const name of expected) {
+      expect(await readFile(join(skillsRoot, name, 'SKILL.md'), 'utf8'), name).toContain('name:')
+    }
+    // 二次 provisioning 幂等：已存在技能不覆盖、不报错
+    expect(await provisionMcpRuntime(generated, home, target)).toEqual({ status: 'configured' })
+    expect(await readFile(join(skillsRoot, 'scene-tree', 'SKILL.md'), 'utf8')).toContain('name:')
+  }, 30000)
+
   it('serves the panel JSON transport from the packaged executable', async () => {
     const { home, target } = await fixture()
     await provisionMcpRuntime(generated, home, target)
