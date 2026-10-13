@@ -2,7 +2,8 @@
  * dsh-godot-stack - Godot Codely provisioning plugin.
  *
  * On boot it copies the bundled Godot stack into the DSH home:
- *   - agent-presets/godot-codely-lite  -> <dshHome>/.agent-presets/godot-codely-lite
+ *   - agent-presets/godot-codely-lite and the three expert presets
+ *     -> <dshHome>/.agent-presets/<name>
  *   - godot-mcp-server                 -> <dshHome>/.godot/mcp-server
  * and, when the generated MCP runtime passes integrity validation, registers it as mcpServers.godot
  * in <dshHome>/settings.json (without overriding an existing user config).
@@ -11,7 +12,8 @@
  * Godot editor panel talks to (create sessions, prompt, poll events), which in
  * turn calls the DSH Typert API on 127.0.0.1:43129.
  *
- * Skill root wiring and complete preset loading are separate integration stages.
+ * Expert presets are copied beside godot-codely-lite. Memories use ~/.dsh/memories
+ * even when DSH_HOME points at the desktop harness directory.
  *
  * All provisioning is best-effort: failures only log a warning and never
  * block the Harness boot.
@@ -25,6 +27,7 @@ import z from '@deepseek-ai/schemastery'
 import { BridgeServer } from './bridge/bridge.mjs'
 import { provisionOcuGateway } from './godot-stack/ocu-gateway/ocu-runtime.mjs'
 import { provisionMcpRuntime } from './mcp-runtime.mjs'
+import { adoptLegacyMemories, memoryRoot, sanitizeTopic } from './memory-root.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -40,13 +43,22 @@ function dshHome() {
   return join(os.homedir(), '.dsh')
 }
 
-async function provisionPreset(home) {
+const PRESET_NAMES = [
+  'godot-codely-lite',
+  'godot-scene-expert',
+  'godot-shader-expert',
+  'godot-gdscript-expert',
+]
+
+export async function provisionGodotPresets(home) {
   await mkdir(join(home, '.agent-presets'), { recursive: true })
-  await cp(
-    join(here, 'godot-stack', 'agent-presets', 'godot-codely-lite'),
-    join(home, '.agent-presets', 'godot-codely-lite'),
-    { recursive: true, force: true }
-  )
+  for (const name of PRESET_NAMES) {
+    await cp(
+      join(here, 'godot-stack', 'agent-presets', name),
+      join(home, '.agent-presets', name),
+      { recursive: true, force: true },
+    )
+  }
 }
 
 export async function apply(ctx, config = {}) {
@@ -59,7 +71,7 @@ export async function apply(ctx, config = {}) {
   }
   // 分段 best-effort：preset 与 MCP 互不拖累（asar 内目录 cp 可能因 Electron 文件系统兼容失败）
   try {
-    await provisionPreset(home)
+    await provisionGodotPresets(home)
     ctx.logger?.info?.('godot-stack: preset provisioned; home=%s', home)
   } catch (error) {
     ctx.logger?.warn?.('godot-stack: preset provisioning skipped: %s', error?.message ?? String(error))
@@ -101,7 +113,7 @@ export async function apply(ctx, config = {}) {
   // 斜杠命令（桌面端/Web 会话 UI，对标 cowork /command 面）：确定性动作，不产生模型消息。
   // ctx.inject 动态注入：headless 无 commands 服务时静默跳过，不影响 CLI 启动。
   ctx.inject(['commands'], (commandCtx) => {
-    const memDir = join(home, 'memories')
+    const memDir = adoptLegacyMemories() || memoryRoot()
     const listMem = () => {
       if (!existsSync(memDir)) return []
       try {
@@ -118,16 +130,18 @@ export async function apply(ctx, config = {}) {
         const parts = rawInput.trim().split(/\s+/)
         const sub = parts[0]
         if (sub === '记') {
-          const topic = parts[1]
+          const topic = sanitizeTopic(parts[1] ?? '')
           const content = parts.slice(2).join(' ')
-          if (!topic || !content) return { kind: 'error', text: '用法：/memory 记 <topic> <内容>' }
+          if (!topic || !content) return { kind: 'error', text: '用法：/memory 记 <topic> <内容>（topic 不能含路径）' }
           mkdirSync(memDir, { recursive: true })
-          writeFileSync(join(memDir, topic + '.md'), content + '\n', 'utf8')
+          const file = join(memDir, topic + '.md')
+          if (existsSync(file)) writeFileSync(file + '.bak', readFileSync(file, 'utf8'), 'utf8')
+          writeFileSync(file, content + '\n', 'utf8')
           return { kind: 'success', text: `已记忆 ${topic}（${content.length} 字）` }
         }
         if (sub === '查') {
-          const topic = parts[1]
-          if (!topic) return { kind: 'error', text: '用法：/memory 查 <topic>' }
+          const topic = sanitizeTopic(parts[1] ?? '')
+          if (!topic) return { kind: 'error', text: '用法：/memory 查 <topic>（topic 不能含路径）' }
           const f = join(memDir, topic + '.md')
           if (!existsSync(f)) return { kind: 'success', text: `未找到记忆「${topic}」（/memory 列表 查看全部）` }
           return { kind: 'success', text: `【记忆: ${topic}】\n${readFileSync(f, 'utf8').trim()}` }
