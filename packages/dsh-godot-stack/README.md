@@ -71,7 +71,7 @@ godot-codely config add \
 
 ## 多模态资产生成（MCP：generate_sprite / generate_image / text_to_speech）
 
-Godot Codely 的 MCP server 提供 3 个多模态工具，写入 Godot 工程 `assets/`（Godot 4 自动 import，无需手写 meta）：
+操作示例与排错详见 `skills/godot/media-generation/SKILL.md`（已挂技能索引 `skills/godot/SKILL.md`）。Godot Codely 的 MCP server 提供 3 个多模态工具，写入 Godot 工程 `assets/`（Godot 4 自动 import，无需手写 meta）：
 
 | 工具 | 能力 | 落盘 |
 |---|---|---|

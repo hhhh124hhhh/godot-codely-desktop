@@ -16,6 +16,7 @@ description: Godot 技能库索引与路由。当你需要 Godot 开发帮助但
 | `shader-worldgen` | 着色器、TileMap、程序化关卡、地形 | 关卡生成、地形、视觉特效 |
 | `quality-gates` | 三道闸（编译/冒烟/功能）、视觉验证、导出 | 验证、发布、截图对比、性能 |
 | `project-workflow` | 工程自选、阶段门控、方法论 2.0、四轴 | 选工程、阶段规划、PROJECT.md |
+| `media-generation` | generate_sprite / generate_image / text_to_speech 调用与排错 | 生成精灵/概念图/UI 图标/配音 |
 
 ## 23 个 MCP 工具总览（前缀 mcp__godot__）
 
@@ -39,6 +40,8 @@ description: Godot 技能库索引与路由。当你需要 Godot 开发帮助但
 - **list_projects**：纯目录扫描列出本机 Godot 工程（无需 Godot 二进制）
 - **export_mesh_library / get_uid / update_project_uids**：Godot 进程驱动的资源工具
 - **generate_sprite / generate_image**：Volcengine 文生图 → 写 assets/（需 VOLC_ARK_API_KEY）
+- **text_to_speech**：DashScope 文生语音 → 写 assets/audio/（需 GODOT_CODELY_TTS_API_KEY）
+- 多模态调用参数/示例/排错 → 加载 `media-generation` 技能
 
 ## 使用纪律
 

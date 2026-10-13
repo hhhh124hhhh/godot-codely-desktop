@@ -15,6 +15,7 @@ skills/godot/
 ├── shader-worldgen/        # 着色器、TileMap、程序化关卡
 ├── quality-gates/          # 三道闸 + 视觉验证 + 导出发布
 ├── project-workflow/       # 工程自选、阶段门控、方法论 2.0 细则、四轴
+├── media-generation/       # 文生图/文生语音（generate_sprite/image/text_to_speech）调用与排错
 ├── godot-web-access/       # 联网检索（网页抓取/搜索）能力说明
 └── godot-memory/           # 跨会话长期记忆读写（~/.dsh/memories/）
 ```
@@ -41,4 +42,4 @@ skills/godot/
 ## 发现方式与验证
 
 - 技能发现由 dsh-skill-filesystem（filesystem provider 扫描本地 root）完成；本目录 `skills/` 需作为发现 root 接入（见交付说明，由 MCP 运行时在 host 层注册，不修改全局用户目录）。
-- 已验证（2026-10-12）：目录内共 10 个 `SKILL.md`（7 领域 + 索引 + web-access + memory），frontmatter `name` 全部唯一、`description` 均含触发条件；技能内相对资源引用 0 失效。
+- 已验证（2026-10-12）：目录内共 11 个 `SKILL.md`（8 领域 + 索引 + web-access + memory），frontmatter `name` 全部唯一、`description` 均含触发条件；技能内相对资源引用 0 失效。
