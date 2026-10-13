@@ -1,6 +1,6 @@
 # DSH Desktop development guide
 
-This guide covers local development, validation, patch maintenance, and target-native packaging. For the runtime design, see [Architecture](architecture.md). For formal releases, see the [release runbook](release-runbook.md).
+This guide covers local development, validation, patch maintenance, and target-native packaging for [hhhh124hhhh/godot-codely-desktop](https://github.com/hhhh124hhhh/godot-codely-desktop), the public fork that adds the `godot-codely` Godot path on top of DSH Desktop. For the runtime design, see [Architecture](architecture.md). For formal releases, see the [release runbook](release-runbook.md). Upstream installers from dataelement/dsh-desktop do not include this fork's Godot changes.
 
 ## Prerequisites
 
@@ -13,8 +13,8 @@ This baseline pins `@deepseek-ai/dsh@0.2.0-rc.2`. Windows packages run Harness i
 ## Local setup
 
 ```bash
-git clone https://github.com/dataelement/dsh-desktop.git
-cd dsh-desktop
+git clone https://github.com/hhhh124hhhh/godot-codely-desktop.git
+cd godot-codely-desktop
 npm ci
 npm run dev
 ```

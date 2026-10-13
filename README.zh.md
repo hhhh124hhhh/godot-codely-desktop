@@ -26,11 +26,21 @@ DSH Desktop 把本地 DeepSeek Harness 封装为可安装的桌面应用。它�
 > [!IMPORTANT]
 > DSH Desktop 当前处于早期预览阶段，基于仍在快速迭代的 `@deepseek-ai/dsh@0.2.0-rc.2`。macOS 正式包已完成代码签名并通过 Apple 公证；Windows x64 安装包也已完成代码签名。随着下载量、安装量和发行者信誉逐步积累，Windows 安全提示会逐渐减少，但不会立即消失。
 
+> [!NOTE]
+> 本仓库是 [hhhh124hhhh/godot-codely-desktop](https://github.com/hhhh124hhhh/godot-codely-desktop)，即 [dataelement/dsh-desktop](https://github.com/dataelement/dsh-desktop) 的公开 MIT fork。它保留 DSH Desktop 宿主，并加上 Godot 创作路径：`godot-codely` 命令、Godot 预设与技能，以及 Godot MCP。dshdesktop.com 和上游 GitHub Releases 上的安装包是原版 DSH Desktop，不包含本 fork 的 Godot 改动。本 fork 发布源码，尚未发布自己的安装包。
+
 ## 下载安装
 
-我们提供稳定版和预览版：**稳定版**可在[官网](https://dshdesktop.com/zh/)下载，推荐日常使用；**预览版**可在 [GitHub Releases](https://github.com/dataelement/dsh-desktop/releases) 中选择标记为 **Pre-release** 的版本。
+从源码构建本 fork。完整步骤见[开发指南](docs/development.md)：
 
-预览版除了包含我们的新增功能，还会积极跟进 DeepSeek Harness 官方最新版本，可能与社区插件不兼容，**不建议普通用户使用**。欢迎愿意尝鲜的用户体验并在社区反馈；经尝鲜用户验证后，我们才会向全体社区用户推送。
+```sh
+git clone https://github.com/hhhh124hhhh/godot-codely-desktop.git
+cd godot-codely-desktop
+npm ci
+npm run dev
+```
+
+上游项目仍发布自己的安装包。稳定版在[上游网站](https://dshdesktop.com/zh/)。标记为 **Pre-release** 的预览版在[上游 GitHub Releases](https://github.com/dataelement/dsh-desktop/releases)。这些文件不是本仓库的构建产物。
 
 安装版会在启动后及每六小时检查更新。发现新版本时，DSH Desktop 会先询问用户；同意后才开始下载，只有选择“重新启动并安装”后才会进入安装。你也可以从应用菜单手动检查，或跳过当前版本而不影响后续版本提示。
 
@@ -115,6 +125,7 @@ Harness 包含目标平台原生依赖，因此每一种正式安装包都在对
 
 欢迎参与贡献。工程说明已拆分为独立文档：
 
+- [贡献说明](CONTRIBUTING.md) — 如何报告问题，以及提交拉取请求前要跑的检查
 - [开发指南](docs/development.md) — 本地环境、验证、补丁维护与原生平台打包
 - [运行架构](docs/architecture.md) — 启动流程、持久化数据、安全边界、故障恢复、手机连接与更新
 - [发布手册](docs/release-runbook.md) — 签名与正式发布控制
