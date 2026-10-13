@@ -82,4 +82,5 @@ test('editor plugin republishes state on selection, unsaved edits and scene swit
   const result = await done
   assert.equal(result.code, 0, result.output)
   assert.match(result.output, /EDITOR_CONTEXT_LIVE_OK/)
+  assert.doesNotMatch(result.output, /Error calling from signal 'scene_(changed|closed|saved)'/)
 })
