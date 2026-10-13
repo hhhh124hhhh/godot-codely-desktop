@@ -3,6 +3,7 @@ import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import { TypertClient } from './session-client.mjs'
+import { EditorControl } from './editor-control.mjs'
 export { TypertClient, defaultTokenFile } from './session-client.mjs'
 export const BRIDGE_DEFAULT_PORT = 4399
 export const DSH_DEFAULT_PORT = 43129
@@ -27,6 +28,7 @@ export class BridgeServer {
     this.logger = logger ?? console
     this.sessions = new Map()
     this.pending = new Map()
+    this.editorControl = new EditorControl()
   }
 
   async start() {
@@ -49,6 +51,7 @@ export class BridgeServer {
   }
 
   async stop() {
+    this.editorControl.stop()
     for (const request of this.pending.values()) request.finish('cancelled')
     this.sessions.clear()
     if (!this.server) return
@@ -96,6 +99,12 @@ export class BridgeServer {
     if (req.method === 'GET' && url.pathname === '/v1/health') {
       const dsh = await this.client.ping()
       return this.json(res, dsh.ok ? 200 : 503, { ok: dsh.ok, app: 'Godot Codely', dsh })
+    }
+    if (req.method === 'POST' && url.pathname === '/v1/editor/poll') {
+      return this.json(res, 200, { ok: true, commands: this.editorControl.poll(await this.readJson(req)) })
+    }
+    if (req.method === 'POST' && url.pathname === '/v1/editor/execute') {
+      return this.json(res, 200, await this.editorControl.execute(await this.readJson(req)))
     }
     if (req.method === 'POST' && url.pathname === '/v1/sessions') {
       const body = await this.readJson(req)

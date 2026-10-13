@@ -50,7 +50,9 @@ export function safeResolve(baseDir: string, targetPath: string): string {
   // Lexically resolve the requested target first; this is what callers expect
   // back (it keeps not-yet-created paths intact for downstream file writes).
   const resolvedBase = resolve(baseDir)
-  const resolvedTarget = resolve(resolvedBase, targetPath)
+  // Godot resource URIs are project-relative; still apply canonical containment below.
+  const resourcePath = targetPath.startsWith('res://') ? targetPath.slice(6) : targetPath
+  const resolvedTarget = resolve(resolvedBase, resourcePath)
 
   // Canonicalize BOTH sides (realpath the existing portions) so the containment
   // check sees through symlinks/firmlinks rather than trusting lexical strings.

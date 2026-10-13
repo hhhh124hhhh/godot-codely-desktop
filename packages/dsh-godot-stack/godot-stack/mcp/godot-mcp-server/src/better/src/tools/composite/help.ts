@@ -38,6 +38,7 @@ async function getDocsDir(): Promise<string> {
   if (cachedDocsDir) return cachedDocsDir
 
   const candidates = [
+    join(import.meta.dirname || '', '..', 'tool-help'),
     join(import.meta.dirname || '', '..', '..', 'docs'),
     // Bundled CLI at bin/cli.mjs -> ../build/src/docs/
     join(import.meta.dirname || '', '..', 'build', 'src', 'docs'),
@@ -51,7 +52,7 @@ async function getDocsDir(): Promise<string> {
   // to avoid redundant I/O operations and array allocations.
   for (const candidate of candidates) {
     // Validate candidate contains actual tool docs (not a random 'docs' directory)
-    const markerFile = join(candidate, 'help.md')
+    const markerFile = join(candidate, candidate.endsWith('tool-help') ? 'help.txt' : 'help.md')
     if (await pathExists(markerFile)) {
       cachedDocsDir = candidate
       return cachedDocsDir
@@ -67,7 +68,7 @@ async function getDocsDir(): Promise<string> {
  */
 async function loadDoc(topic: string): Promise<string> {
   const docsDir = await getDocsDir()
-  const docPath = join(docsDir, `${topic}.md`)
+  const docPath = join(docsDir, `${topic}.${docsDir.endsWith('tool-help') ? 'txt' : 'md'}`)
 
   // ⚡ Bolt: Using EAFP (Easier to Ask Forgiveness than Permission) pattern
   // to avoid redundant pathExists() syscall before reading the file.

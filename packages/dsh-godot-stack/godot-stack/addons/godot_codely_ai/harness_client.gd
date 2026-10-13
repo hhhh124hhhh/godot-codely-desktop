@@ -23,7 +23,8 @@ func _ready() -> void:
 		var saved = JSON.parse_string(FileAccess.get_file_as_string(CACHE))
 		if saved is Dictionary:
 			session_id = str(saved.get("sessionId", ""))
-			last_seq = int(saved.get("lastSeq", -1))
+			# A new panel has an empty transcript. Replay its durable journal from zero.
+			last_seq = -1
 			if saved.get("pending") is Dictionary:
 				_pending = saved["pending"]
 

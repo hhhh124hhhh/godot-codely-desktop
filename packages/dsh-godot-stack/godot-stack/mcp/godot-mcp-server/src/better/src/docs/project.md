@@ -1,7 +1,7 @@
 # Project Tool - Full Documentation
 
 ## Overview
-Project lifecycle management: info, settings, run, logs, stop.
+Project lifecycle management: info, settings, run, verify, logs, stop.
 
 ## Actions
 
@@ -22,6 +22,13 @@ Run the Godot project. stdout/stderr are captured into a 400-line ring buffer pe
 ```json
 {"action": "run", "project_path": "/path/to/godot/project"}
 ```
+
+### verify
+Load on-disk GDScript and scenes in headless Godot, then boot the main scene for a bounded smoke run. Requires a detected Godot executable. `frames` is an integer from 1 to 600, default 60.
+```json
+{"action": "verify", "frames": 60}
+```
+Results include compile or smoke phase, stdout/stderr and exit status. Parse errors, runtime errors, launch failures and timeouts return an MCP error. Unsaved editor content is not included; use editor scan first when editing an open project. This is not C# compilation or a proof of gameplay correctness; add task-specific assertions such as a jump velocity observation.
 
 ### logs
 Read the last captured stdout/stderr lines from a run started with `run`. Works right after a crash too (logs for

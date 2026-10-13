@@ -18,10 +18,10 @@
  * All provisioning is best-effort: failures only log a warning and never
  * block the Harness boot.
  */
-import { cp, mkdir } from 'node:fs/promises'
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import z from '@deepseek-ai/schemastery'
 import { BridgeServer } from './bridge/bridge.mjs'
 import { provisionOcuGateway } from './godot-stack/ocu-gateway/ocu-runtime.mjs'
@@ -57,6 +57,11 @@ export async function provisionGodotPresets(home) {
       join(home, '.agent-presets', name),
       { recursive: true, force: true },
     )
+    // This is a host-owned extension. Pin only our entry to the currently loaded
+    // package, rather than depending on a copied preset finding a Desktop package.
+    const agentFile = join(home, '.agent-presets', name, 'agent.cordis.yml')
+    const content = await readFile(agentFile, 'utf8')
+    await writeFile(agentFile, content.replace("name: 'dsh-godot-stack/mcp-agent'", 'name: ' + JSON.stringify(pathToFileURL(join(here, 'mcp-agent.mjs')).href)))
   }
 }
 

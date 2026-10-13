@@ -9,7 +9,12 @@ import { replaceInstalledPackages } from './ppt-package-projection.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const source = path.join(root, 'packages/dsh-godot-stack')
-const output = path.join(root, '.build/godot-runtime/packages/dsh-godot-stack')
+const outputIndex = process.argv.indexOf('--output')
+const customOutput = outputIndex < 0 ? undefined : process.argv[outputIndex + 1]
+if (outputIndex >= 0 && (!customOutput || !process.argv.includes('--no-project'))) throw Error('--output requires a path and --no-project')
+const output = customOutput ? path.resolve(customOutput) : path.join(root, '.build/godot-runtime/packages/dsh-godot-stack')
+const outputRelative = path.relative(path.join(root, '.build'), output)
+if (!outputRelative || outputRelative === '..' || outputRelative.startsWith('..' + path.sep) || path.isAbsolute(outputRelative)) throw Error('Godot runtime output must be inside the workspace .build directory')
 const server = path.join(source, 'godot-stack/mcp/godot-mcp-server')
 
 await fs.rm(output, { recursive: true, force: true })
@@ -85,13 +90,22 @@ for (const directory of [...packages].sort()) {
   }
 }
 await fs.cp(path.join(server, 'src/godot-scripts'), path.join(runtime, 'src/godot-scripts'), { recursive: true })
+// Tool help is runtime data. Avoid the builder's node_modules/**/docs exclusion.
+const helpFiles = []
+await fs.mkdir(path.join(runtime, 'tool-help'), { recursive: true })
+for (const name of await fs.readdir(path.join(server, 'src/better/src/docs'))) {
+  if (!name.endsWith('.md')) continue
+  const destination = 'tool-help/' + name.slice(0, -3) + '.txt'
+  await fs.copyFile(path.join(server, 'src/better/src/docs', name), path.join(runtime, destination))
+  helpFiles.push(destination)
+}
 // Godot 技能分发：把包内 skills 打进 runtime，供 provisioning 平铺复制到用户技能根（user-dsh root）。
 await fs.cp(path.join(source, 'skills'), path.join(runtime, 'skills'), { recursive: true })
 await fs.writeFile(path.join(runtime, 'package.json'), JSON.stringify({ type: 'module', private: true }) + '\n')
 for (const license of ['LICENSE.md', 'LICENSE-apache.md', 'NOTICE']) {
   await fs.copyFile(path.join(server, license), path.join(runtime, license + '.txt'))
 }
-const files = ['build/index.js', 'src/godot-scripts/godot_operations.gd', 'package.json']
+const files = ['build/index.js', 'src/godot-scripts/godot_operations.gd', 'package.json', ...helpFiles]
 const hashes = {}
 for (const file of files) hashes[file] = createHash('sha256').update(await fs.readFile(path.join(runtime, file))).digest('hex')
 await fs.writeFile(path.join(runtime, 'runtime-manifest.json'), JSON.stringify({ format: 1, files: hashes }, null, 2) + '\n')

@@ -5,13 +5,17 @@ extends EditorPlugin
 
 const PANEL_SCRIPT := "res://addons/godot_codely_ai/panel.gd"
 const EDITOR_STATE_SCRIPT := preload("res://addons/godot_codely_ai/editor_state.gd")
+const EDITOR_CONTROL_SCRIPT := preload("res://addons/godot_codely_ai/editor_control.gd")
 
 var _dock: Control
 var _selection: EditorSelection
 var _undo: EditorUndoRedoManager
 var _state_queued := false
+var _editor_control: Node
 
 func _enter_tree() -> void:
+	_editor_control = EDITOR_CONTROL_SCRIPT.new()
+	add_child(_editor_control)
 	push_warning("[godot-codely] plugin _enter_tree: add dock")
 	_dock = load(PANEL_SCRIPT).new()
 	_dock.name = "Godot Codely AI"
@@ -33,6 +37,8 @@ func _enter_tree() -> void:
 	_queue_editor_state()
 
 func _exit_tree() -> void:
+	if is_instance_valid(_editor_control):
+		_editor_control.free()
 	_disconnect_editor_state()
 	if _dock:
 		remove_control_from_docks(_dock)
