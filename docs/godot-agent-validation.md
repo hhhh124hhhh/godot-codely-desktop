@@ -1,5 +1,18 @@
 # Godot 面板 Agent 闭环验证
 
+## 当前结论（2026-10-14）
+
+Windows / GDScript 核心链路已完成安装验收，可以进入小项目实战。下文保留各轮发现和当时的限制；其中“完整 Lite 尚待验收”的历史记录已由本节结果补齐。
+
+- [PR #13](https://github.com/hhhh124hhhh/godot-codely-desktop/pull/13) 已合并为 `e723642`。实际验收使用提交 `af80531` 的 CI Dev 安装包，产物 ID `11816387677`，SHA-256 与 GitHub 摘要一致；未替换安装后的产品文件。
+- 空白 Dev Profile 的实际 Electron UI 挂载、四个预设发现与 Lite 选择、生产 Typert 认证通过。真实 Godot 4.7.1 面板创建完整 Lite 会话，Agent-owned MCP 读取脚本、写入 `JUMP_VELOCITY=-600`、执行 `project.verify`；9 个资源编译通过，游戏输出 `JUMP_RESULT velocity=-600.0`，编译和运行均退出 0。
+- 编辑器重启后恢复同一持久会话和工具结果。实际安装包 Bridge 的 status / scan / Play / Stop 均成功，观察到 native `playing=true` 再恢复为 `false`。
+- 验收模型为本机确定性 OpenAI-compatible fixture。辅助标题请求曾打乱 fixture 的步骤计数，修正后重新完成任务。Godot 在默认用户目录环境中曾崩溃；相同工程和编译脚本使用独立 APPDATA 后通过，最终安装验收沿用此隔离目录。没有据此修改产品代码，也不能声称所有用户环境均已覆盖。
+- [专项 CI](https://github.com/hhhh124hhhh/godot-codely-desktop/actions/runs/38401302097) 与 [Windows Dev CI](https://github.com/hhhh124hhhh/godot-codely-desktop/actions/runs/38401302137) 通过。本地最终整仓 1648 测试通过、12 失败、7 跳过；失败在其他模块，不能称本地整仓全绿。
+- 2026-10-14 再核对：远端 `main` 为 `1c0a9f1`，相对已验收主分支只修改发布 dispatch 的 ref。[最新全平台发布运行](https://github.com/hhhh124hhhh/godot-codely-desktop/actions/runs/38411459889) 的 Windows 与两种 macOS 构建成功；Linux 7 项测试失败，涉及未准备 / 不支持的 Office runtime，发布任务因此跳过。Windows unsigned 产物已生成，但没有完成公开 Release。
+
+尚需实际工程与真实模型的首轮任务确认；正式签名发版、Linux 安装运行、C#、Editor Undo 和任意游戏玩法正确性不在此次通过的验收范围内。Linux 的 Office 省略策略、宿主组合和测试前置条件需一致，不能仅跳过失败测试就宣称 Linux 可交付。
+
 ## 安装产物验收发现：ASAR 递归复制
 
 PR #4 对应 Windows CI `38387804606` 全部通过，但其 packaged Harness 启动日志仍出现预设与 MCP provisioning 的 `ENOENT`。最小 Electron ASAR 探针确认源目录 `existsSync` 为真，`fs.promises.cp` 递归复制仍失败；这是 ASAR 读取兼容问题，不能把 Harness ready 当作 Godot provisioning 成功。
