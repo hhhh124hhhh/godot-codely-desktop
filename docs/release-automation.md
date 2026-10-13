@@ -2,7 +2,11 @@
 
 This fork publishes installers through GitHub Actions. Use **Orchestrate desktop release** as the single entry point; **Release desktop installers** performs build and upload.
 
-## One-click flows
+## Automatic unsigned releases
+
+Every push to **`main`** that touches code (not docs-only markdown) runs **Orchestrate desktop release** and dispatches **`mode=unsigned`** with **`target=all`**, using the semver in **`package.json`**. The GitHub Release tag is **`v<version>-unsigned`** (assets are replaced on rebuild). Add **`[skip release]`** to a commit message to skip one push. New pushes cancel an in-progress auto release for the same branch (`cancel-in-progress`).
+
+## Manual flows
 
 Open **Actions → Orchestrate desktop release → Run workflow**.
 
