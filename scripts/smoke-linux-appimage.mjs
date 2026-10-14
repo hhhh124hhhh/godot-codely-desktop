@@ -75,7 +75,7 @@ async function smoke(executable, root, output) {
       }
       if (cdp) {
         const { result, exceptionDetails } = await cdp.send('Runtime.evaluate', {
-          expression: `Boolean(window.__DSH_BOOT__ && [...document.querySelectorAll('#root button, #root textarea')].some(element => Object.keys(element).some(key => key.startsWith('__reactProps$')))))`,
+          expression: `Boolean(window.__DSH_BOOT__ && [...document.querySelectorAll('#root button, #root textarea')].some(element => Object.keys(element).some(key => key.startsWith('__reactProps$'))))`,
           returnByValue: true
         })
         if (exceptionDetails) throw new Error('Renderer evaluation failed')
