@@ -114,4 +114,7 @@ export async function prepareOfficeRuntime({ target = officeTarget(), output = j
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await prepareOfficeRuntime()
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (process.platform === 'linux') console.log('Linux community build omits the Office Python payload')
+  else await prepareOfficeRuntime()
+}

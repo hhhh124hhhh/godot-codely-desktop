@@ -14,6 +14,7 @@ import { zipSync, unzipSync, strToU8 } from 'fflate'
 import { electronExecutable } from '../scripts/electron-node-loader.mjs'
 
 const root = resolve(import.meta.dirname, '..')
+const supportsOffice = process.platform === 'win32' || process.platform === 'darwin'
 const exec = promisify(execFile)
 const scratch = []
 const temporary = async () => {
@@ -31,6 +32,7 @@ describe('Office runtime assembly', () => {
     expect(officeTarget('darwin', 'arm64')).toBe('mac-arm64')
     expect(officeTarget('darwin', 'x64')).toBe('mac-x64')
     expect(() => officeTarget('win32', 'arm64')).toThrow('unsupported native target')
+    expect(() => officeTarget('linux', 'x64')).toThrow('unsupported native target')
   })
 
   it('rejects corrupt cached input and removes stale payload when preparation fails', async () => {
@@ -38,7 +40,8 @@ describe('Office runtime assembly', () => {
     const digest = createHash('sha256').update('good').digest('hex')
     await writeFile(join(cache, digest), 'bad')
     await expect(downloadAsset('https://invalid.example/archive', digest, cache)).rejects.toThrow('checksum mismatch')
-    const target = officeTarget()
+    // Cache integrity and stale-output removal do not execute native payloads.
+    const target = 'win-x64'
     const lock = JSON.parse(await readFile(join(root, 'scripts/office-runtime/lock.json'), 'utf8'))
     await writeFile(join(cache, lock.targets[target].pythonSha256), 'corrupt Python')
     const output = await temporary()
@@ -56,7 +59,7 @@ describe('Office runtime assembly', () => {
     }
   })
 
-  it('creates valid Office packages with the prepared Python and checks them with skill resources', async () => {
+  it.runIf(supportsOffice)('creates valid Office packages with the prepared Python and checks them with skill resources', async () => {
     const output = await temporary()
     const runtime = join(root, '.build/office-runtime/primary-runtime')
     const manifest = JSON.parse(await readFile(join(runtime, 'runtime.json'), 'utf8'))
@@ -91,7 +94,7 @@ with zipfile.ZipFile(p / 'sample.docx') as source, zipfile.ZipFile(p / 'broken.d
   })
 })
 
-it('mounts Office skills and queries the immutable runtime in a real Harness subprocess from a neutral cwd', async () => {
+it.runIf(supportsOffice)('mounts Office skills and queries the immutable runtime in a real Harness subprocess from a neutral cwd', async () => {
   const home = await temporary()
   const neutral = await temporary()
   const diagnostic = join(home, 'office-probe.mjs')
@@ -180,7 +183,7 @@ export async function apply(ctx) {
   }
 }, 60_000)
 
-it('reports a missing Office payload during activation and keeps Safe Mode usable', async () => {
+it.runIf(supportsOffice)('reports a missing Office payload during activation and keeps Safe Mode usable', async () => {
   const home = await temporary()
   const missing = join(home, 'missing-office-payload')
   const source = await readFile(join(root, 'build/dsh-desktop.patch.yml'), 'utf8')
@@ -211,3 +214,37 @@ it('reports a missing Office payload during activation and keeps Safe Mode usabl
     await runtime.stop()
   }
 }, 60_000)
+
+it.runIf(process.platform === 'linux')('boots the Linux host without Office payload and retains Safe Mode', async () => {
+  const home = await temporary()
+  const neutral = await temporary()
+  const runtime = new HarnessRuntime({
+    dshEntryPath: join(root, 'node_modules/@deepseek-ai/dsh/lib/bin.js'),
+    nodeEntryPath: join(root, 'build/harness-node-entry.mjs'),
+    nodeExecutablePath: electronExecutable(root),
+    dshPatchPath: join(root, 'build/dsh-desktop.patch.yml'),
+    dshSafePatchPath: join(root, 'build/dsh-desktop-safe.patch.yml'),
+    dshHome: home,
+    logPath: join(home, 'harness.log'),
+    preferredPort: 0,
+    startupTimeoutMs: 60_000,
+    launchProcess: (executable, args, options) => spawn(executable, args, { ...options, env: { ...options.env, ELECTRON_RUN_AS_NODE: '1' } }),
+    onChanged() {}
+  })
+  try {
+    await runtime.start(neutral)
+    const snapshot = runtime.snapshot()
+    expect(snapshot.phase, snapshot.logs.join('\n')).toBe('ready')
+    const patch = await readFile(join(home, 'desktop-host-sources.patch.yml'), 'utf8')
+    expect(patch).not.toContain('dsh-desktop-office')
+    expect(patch).toContain('dsh-godot-stack')
+    const response = await fetch(`${snapshot.url}/?token=${encodeURIComponent(snapshot.authToken)}`)
+    expect(response.status).toBe(200)
+    await runtime.stop()
+    await ensureSafeModeProfile(home)
+    await runtime.start(neutral, SAFE_MODE_PROFILE)
+    expect(runtime.snapshot().phase, runtime.snapshot().logs.join('\n')).toBe('ready')
+  } finally {
+    await runtime.stop()
+  }
+}, 150_000)

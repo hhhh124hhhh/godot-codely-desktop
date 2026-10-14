@@ -33,7 +33,7 @@ Manual alternative (same result):
    - **Variables** `MODELSCOPE_REPO_ID` — defaults to `owner/repo` for this GitHub repository
    - `FEISHU_RELEASE_WEBHOOK`, `MODELS_TOKEN`, `CRASH_ADMIN_TOKEN`
 
-Without macOS secrets or the Windows signing runner, **Publish GitHub Release** will not run; PR and `development` builds still produce short-lived workflow artifacts only.
+Signed publication requires macOS secrets and the Windows signing runner. Unsigned publication requires neither: all selected targets must pass before **Publish unsigned GitHub Release** runs. PR and `development` builds produce short-lived workflow artifacts only; Linux PR builds include an extracted-AppImage UI smoke.
 
 ## What is automated after you trigger
 
