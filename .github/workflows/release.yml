@@ -530,28 +530,6 @@ jobs:
             }
             if (-not $desktop.HasExited) { Stop-Process -Id $desktop.Id -Force }
           }
-      - name: Verify installed Windows app and upgrades
-        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (inputs.mode == 'development' || inputs.mode == 'unsigned'))
-        timeout-minutes: 15
-        shell: pwsh
-        env:
-          INSTALL_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'unsigned' }}
-        run: |
-          if ($env:INSTALL_RELEASE -eq 'true') {
-            ./scripts/smoke-signed-windows-installer.ps1 -Unsigned `
-              -Installer 'dist/godot-codely-windows-x64-setup.exe'
-          } else {
-            ./scripts/smoke-signed-windows-installer.ps1 -Unsigned `
-              -Installer 'dist-dev/dsh-desktop-dev-windows-x64-setup.exe' `
-              -ExecutableName 'Godot Codely Dev.exe' -UserDataName 'godot-codely-dev'
-          }
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: windows-installed-ui
-          path: ${{ runner.temp }}/dsh-signed-smoke-*/installed-ui.png
-          if-no-files-found: warn
-          retention-days: 7
       - name: Archive unpacked Windows release for inner binary signing
         if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (inputs.mode == 'signed' || inputs.mode == 'prerelease'))
         shell: pwsh
@@ -591,6 +569,47 @@ jobs:
             dist/latest.yml
           compression-level: 0
           if-no-files-found: error
+
+  windows-installed:
+    name: Windows installer and client UI
+    needs: windows-x64
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' &&
+        (inputs.mode == 'development' || inputs.mode == 'unsigned') &&
+        (inputs.target == 'all' || inputs.target == 'windows'))
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # A fresh VM proves first-run setup instead of reusing the unpacked smoke's Profile.
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'unsigned' && 'windows-x64-unsigned-release' || 'windows-x64-dev' }}
+          path: installed-package
+      - name: Verify installed Windows app and upgrades
+        shell: pwsh
+        env:
+          INSTALL_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'unsigned' }}
+        run: |
+          if ($env:INSTALL_RELEASE -eq 'true') {
+            ./scripts/smoke-signed-windows-installer.ps1 -Unsigned `
+              -Installer 'installed-package/godot-codely-windows-x64-setup.exe'
+          } else {
+            ./scripts/smoke-signed-windows-installer.ps1 -Unsigned `
+              -Installer 'installed-package/dsh-desktop-dev-windows-x64-setup.exe' `
+              -ExecutableName 'Godot Codely Dev.exe' -UserDataName 'godot-codely-dev'
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-installed-ui
+          path: ${{ runner.temp }}/dsh-signed-smoke-*/installed-ui.png
+          if-no-files-found: warn
+          retention-days: 7
 
   linux-x64:
     name: Linux x64
@@ -851,6 +870,7 @@ jobs:
     needs:
       - macos
       - windows-x64
+      - windows-installed
       - linux-x64
     if: >-
       always() &&
@@ -860,10 +880,11 @@ jobs:
       (
         (inputs.target == 'linux' && needs.linux-x64.result == 'success') ||
         (inputs.target == 'macos' && needs.macos.result == 'success') ||
-        (inputs.target == 'windows' && needs.windows-x64.result == 'success') ||
+        (inputs.target == 'windows' && needs.windows-x64.result == 'success' && needs.windows-installed.result == 'success') ||
         (inputs.target == 'all' &&
           needs.macos.result == 'success' &&
           needs.windows-x64.result == 'success' &&
+          needs.windows-installed.result == 'success' &&
           needs.linux-x64.result == 'success')
       )
     runs-on: ubuntu-24.04

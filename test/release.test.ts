@@ -16,6 +16,15 @@ const releaseAssets = [
 const HARNESS_VERSION = '0.2.0-rc.2'
 
 describe('GitHub release contract', () => {
+  it('runs installer verification on a fresh runner and requires it before Windows publication', async () => {
+    const workflow = parse(await readFile(path.join(projectRoot, '.github/workflows/release.yml'), 'utf8'))
+    const installed = workflow.jobs['windows-installed']
+    expect(installed.needs).toBe('windows-x64')
+    expect(installed.steps.some((step: { uses?: string }) => step.uses === 'actions/download-artifact@v4')).toBe(true)
+    const publish = workflow.jobs['publish-unsigned-github']
+    expect(publish.needs).toContain('windows-installed')
+    expect(publish.if).toContain("needs.windows-installed.result == 'success'")
+  })
   it('keeps the package and lockfile versions aligned', async () => {
     const packageJson = JSON.parse(
       await readFile(path.join(projectRoot, 'package.json'), 'utf8')

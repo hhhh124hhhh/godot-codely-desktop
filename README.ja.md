@@ -55,7 +55,7 @@ npm run dev
 - ペアリングしたスマートフォンでセッションを続けられます。遠隔経路は通常 Cloudflare Quick Tunnel です。Cloudflare が使えないときは Pinggy です。
 - セーフモードはサードパーティープラグインを止め、ユーザーデータを残します。ウィンドウが開かないときは `--safe-mode` を付けます。この fork を macOS でパッケージしたあと: `open -a "Godot Codely" --args --safe-mode`。
 - 持ち運べる Agent Preset は [`.dshpreset` パッケージ](docs/preset-packages.md) です。
-- ホストは署名済み macOS DMG/ZIP、または署名済み Windows x64 NSIS インストーラーとしてパッケージできます。このリポジトリはそれらを公開していません。Linux と Windows ARM64 はホストの現在のサポート外です。将来の署名手順は[リリース手順](docs/release-runbook.md)。
+- ホストは署名済み macOS DMG/ZIP、または署名済み Windows x64 NSIS インストーラーとしてパッケージできます。このリポジトリはそれらを公開していません。Linux x64 は AppImage ビルドとネイティブ CI 検証に対応しています。利用する Release に実際のファイルがあることを確認してください。Linux に Office runtime は含まれません。Windows ARM64 は非対応です。将来の署名手順は[リリース手順](docs/release-runbook.md)。
 
 ## 上流のコミュニティ
 

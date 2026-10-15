@@ -59,7 +59,7 @@ npm run dev
 - 配对后的手机可以接着会话。远程路径通常是 Cloudflare Quick Tunnel。Cloudflare 不可用时用 Pinggy。
 - 安全模式会挡住第三方插件，并保留用户数据。窗口打不开时加上 `--safe-mode`。本 fork 在 macOS 上打包之后：`open -a "Godot Codely" --args --safe-mode`。
 - 可移植 Agent Preset 使用 [`.dshpreset` 包](docs/preset-packages.md)。
-- 宿主可以打成已签名的 macOS DMG/ZIP，或已签名的 Windows x64 NSIS 安装包。在 GitHub 配好签名 secrets 与 Windows 自托管签名机后，用 Actions 里的 **Orchestrate desktop release** 可一键触发正式版或预发布并写入 [Releases](https://github.com/hhhh124hhhh/godot-codely-desktop/releases)。说明见[发布自动化](docs/release-automation.md)与[发布手册](docs/release-runbook.md)。Linux 和 Windows ARM64 不在宿主当前支持范围内。
+- 宿主可以打成已签名的 macOS DMG/ZIP，或已签名的 Windows x64 NSIS 安装包。在 GitHub 配好签名 secrets 与 Windows 自托管签名机后，用 Actions 里的 **Orchestrate desktop release** 可一键触发正式版或预发布并写入 [Releases](https://github.com/hhhh124hhhh/godot-codely-desktop/releases)。说明见[发布自动化](docs/release-automation.md)与[发布手册](docs/release-runbook.md)。Linux x64 已有 AppImage 构建和原生 CI 验收，以对应 Release 实际提供的文件为准；Linux 不携带 Office runtime。Windows ARM64 暂不支持。
 
 ## 上游社区
 

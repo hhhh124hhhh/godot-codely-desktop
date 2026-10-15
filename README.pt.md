@@ -55,7 +55,7 @@ Preparação, verificações e empacotamento estão no [guia de desenvolvimento]
 - Um celular pareado pode continuar uma sessão. O caminho remoto usual é Cloudflare Quick Tunnel. Quando o Cloudflare não está disponível, usa-se Pinggy.
 - O modo de segurança bloqueia plugins de terceiros e mantém os dados do usuário. Se a janela não abrir, passe `--safe-mode`. Depois de empacotar este fork no macOS: `open -a "Godot Codely" --args --safe-mode`.
 - Presets portáteis de Agent usam [pacotes `.dshpreset`](docs/preset-packages.md).
-- O host pode ser empacotado como um DMG/ZIP assinado do macOS ou um instalador NSIS assinado do Windows x64. Este repositório não publicou esses instaladores. Linux e Windows ARM64 ficam fora do suporte atual do host. Os passos de assinatura para um pacote futuro estão no [guia de lançamento](docs/release-runbook.md).
+- O host pode ser empacotado como um DMG/ZIP assinado do macOS ou um instalador NSIS assinado do Windows x64. Este repositório não publicou esses instaladores. Linux x64 possui build AppImage e verificações nativas de CI; use apenas quando a versão escolhida incluir esse arquivo. Linux não inclui o runtime do Office. Windows ARM64 não é suportado. Os passos de assinatura para um pacote futuro estão no [guia de lançamento](docs/release-runbook.md).
 
 ## Comunidade upstream
 
