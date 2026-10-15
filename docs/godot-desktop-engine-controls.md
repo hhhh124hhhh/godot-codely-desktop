@@ -49,3 +49,18 @@ npm run test:godot-engine:native
 - 原生脚本支持 `GODOT_ENGINE_SMOKE_USER_ENV=1` 使用当前用户环境作诊断；配合 `GODOT_ENGINE_SMOKE_EXPECT_CRASH=1` 检查真实异常状态和展开日志。后者只验收失败反馈，不代表游戏运行成功，也不能替代默认隔离环境下的完整 13 项流程。
 - 本轮类型检查、完整构建和 11 项专项通过；隔离环境真实可见模式的完整 13 项流程再次通过，当前用户环境真实崩溃反馈检查通过。截图时短暂显示不抢焦点的验收窗口，等待绘制后采集再隐藏，避免隐藏窗口返回旧帧；每轮先移除旧报告，`expected-crash` 不作为成功运行报告。
 - 最终串行全量 `CI=1 npx vitest run --maxWorkers=1 --pool=threads`：1675 通过、13 失败、11 跳过。除了基线同样的 12 项，另有 memory root 的 HOME 断言在 threads 池失败；默认 forks 池单独复验该套件 2 项通过。不能把不同池/CI 条件的统计混为同一轮，也不将该额外失败认定为本批产品回归。此前 forks 全量因未完成而中止，不作为最终结果。完整回归仍未全绿，PR 保持草稿。
+
+## 用户目录崩溃修复（2026-10-16）
+
+上节的本机游戏启动阻塞已修复。触发条件定位在 Codex/MSIX 的 AppData 虚拟目录视图与既有 `%APPDATA%\Godot` junction 的交互：原路径为全新目录返回 Win32 `183`（已存在），但随后查询目录不存在；相同物理数据目录和临时标准 junction 均能正常创建、写入。Godot 4.7.1 在此前路径环境下以 `3221225477` 退出。这个结果不能归因于项目或编辑器配置损坏。
+
+排查中复刻了原 junction 的空 PrintName；临时位置仍能正常创建目录，因此空显示名本身不是原因。新建的 Roaming 探针实际落在 `%LOCALAPPDATA%\Packages\<Codex PFN>\LocalCache\Roaming`，确认当前工具进程受到 MSIX 文件重定向影响。[微软的 MSIX 说明](https://learn.microsoft.com/en-us/windows/msix/desktop/flexible-virtualization)描述了 AppData 的私有目录优先与真实目录回退行为。这里确认的是本机可复现的路径触发条件，未定位 Windows 或 Godot 内部的具体缺陷行。
+
+修复保留原链接作回滚，在当前目录视图中重新建立指向**同一物理 Godot 目录**的 junction，确认逻辑路径写入可从物理路径读回。实际生效映射位于 Codex 的 LocalCache Roaming 中；真实用户数据目标保留。修复不包含配置重置、存档迁移或引擎替换，也不把本机缓存路径写入生产启动逻辑。
+
+修复后的证据：
+
+- 原逻辑路径的全新目录创建、文件写入与读取全部恢复。
+- 唯一随机项目名（此前没有 user_data）分别通过默认 APPDATA、物理路径、临时标准 junction 启动，三组均退出 `0`，排除了已有用户目录掩盖故障。
+- `GODOT_ENGINE_SMOKE_USER_ENV=1 npm run test:godot-engine:native` 完整 13 项再次通过：`headless: false`、`isolatedGodotUserDirectories: false`，使用原有真实环境完成游戏启动、stdout、停止、编辑器启动及退出清理。原生文件对话框仍由测试代选。
+- 本次修复位于环境映射层，仓库仅补充诊断记录；原有全量回归失败和正式安装包/其他平台的验收状态沿用上节，不能据本次成功声称全部回归通过。
