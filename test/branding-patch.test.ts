@@ -20,8 +20,9 @@ describe('DSH Desktop sidebar branding', () => {
   it('installs the source logo into the Harness static frontend', async () => {
     const packageJson = JSON.parse(
       await readFile(path.join(projectRoot, 'package.json'), 'utf8')
-    ) as { scripts: { postinstall: string } }
+    ) as { scripts: { postinstall: string; 'brand:prepare': string } }
 
-    expect(packageJson.scripts.postinstall).toContain('node scripts/install-brand-assets.mjs')
+    expect(packageJson.scripts.postinstall).toContain('npm run brand:prepare')
+    expect(packageJson.scripts['brand:prepare']).toContain('node scripts/install-brand-assets.mjs')
   })
 })

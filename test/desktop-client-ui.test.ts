@@ -112,17 +112,17 @@ describe('DSH Desktop client slot occupants', () => {
     const sidebarMark = registrations.find(
       ({ config }) => config.name === 'sidebar.brand.mark'
     )!.component({ size: 24 }) as { type: unknown; props: Record<string, unknown> }
-    expect(sidebarMark.type).toBe('svg')
-    expect(sidebarMark.props.height).toBe(17)
-    const [markPath] = sidebarMark.props.children as Array<{ type: unknown; props: Record<string, unknown> }>
-    if (!markPath) throw new Error('Expected the sidebar brand SVG path')
-    expect(markPath.type).toBe('path')
-    expect(markPath.props.fill).toBe('currentColor')
+    if (typeof sidebarMark.type !== 'function') throw new Error('Expected the shared brand component')
+    const renderedMark = sidebarMark.type(sidebarMark.props) as { type: string; props: { style: Record<string, unknown> } }
+    expect(renderedMark.type).toBe('span')
+    expect(renderedMark.props.style.height).toBe(20)
+    expect(renderedMark.props.style.backgroundColor).toBe('currentColor')
+    expect(renderedMark.props.style.mask).toBe('url(/godot-codely-mark.svg) center / contain no-repeat')
 
     const heroMark = registrations.find(
       ({ config }) => config.name === 'conversation.hero.brand.mark'
     )!.component({ size: 48 }) as { type: unknown; props: Record<string, unknown> }
-    expect(heroMark.type).toBe('svg')
-    expect(heroMark.props.height).toBe(48)
+    expect(heroMark.type).toBe(sidebarMark.type)
+    expect(heroMark.props.size).toBe(48)
   })
 })

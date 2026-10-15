@@ -16,6 +16,7 @@
  * --model/--provider 生成一个临时 overlay patch（agent-default-model），
  * 通过 dsh 的 --patch 机制覆盖默认模型，仅本次运行生效。
  */
+import { cliBrandLabel } from './brand.mjs'
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { runCli } from '@deepseek-ai/dsh/lib/bin.js'
@@ -119,7 +120,7 @@ if (first?.startsWith('/')) {
   }
   if (cmd === 'models') {
     const providers = listModels()
-    console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 模型套餐\n`)
+    console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · 模型套餐\n`)
     for (const [name, info] of providers) {
       console.log(`  ${name}  (${info.displayName})`)
       for (const id of info.models) console.log(`    - ${id}`)
@@ -127,7 +128,7 @@ if (first?.startsWith('/')) {
     process.exit(0)
   }
   if (cmd === 'status') {
-    console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 能力进度（AGENTS.md 摘要）\n`)
+    console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · 能力进度（AGENTS.md 摘要）\n`)
     const agents = join(home, 'AGENTS.md')
     if (existsSync(agents)) {
       const txt = readFileSync(agents, 'utf8')
@@ -201,16 +202,16 @@ if (first === 'config') {
       const dp = readFileSync(defPatch, 'utf8')
       const next = dp.replace(/- id: agent-default-model\n  config:\n    provider: .*\n    model: .*\n/, `- id: agent-default-model\n  config:\n    provider: ${name}\n    model: ${models[0]}\n`)
       writeFileSync(defPatch, next, 'utf8')
-      console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 套餐「${display}」已添加并设为默认（${name}/${models[0]}）`)
+      console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · 套餐「${display}」已添加并设为默认（${name}/${models[0]}）`)
     } else {
-      console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 套餐「${display}」已添加（${name}，${models.length} 个模型）`)
+      console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · 套餐「${display}」已添加（${name}，${models.length} 个模型）`)
     }
     console.log(`  可用：godot-codely --list-models 查看 ｜ godot-codely --model <id> "任务" 切换`)
     process.exit(0)
   }
   if (sub === 'list') {
     const providers = listModels()
-    console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 模型套餐\n`)
+    console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · 模型套餐\n`)
     for (const [name, info] of providers) {
       console.log(`  ${name}  (${info.displayName})`)
       for (const id of info.models) console.log(`    - ${id}`)
@@ -224,7 +225,7 @@ if (first === 'config') {
 // --list-models：枚举并退出
 if (argv.includes('--list-models')) {
   const providers = listModels()
-  console.log(`\x1b[36mGodot Codely CLI\x1b[0m · 可换模型\n`)
+  console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · 可换模型\n`)
   const rows = []
   for (const [name, info] of providers) {
     for (const id of info.models) rows.push([name, info.displayName, id])
@@ -258,7 +259,7 @@ if (permissionMode) {
     process.exit(2)
   }
   process.env.DSH_PERMISSION_MODE = permissionMode
-  console.log(`\x1b[36mGodot Codely CLI\x1b[0m · permission=${permissionMode}`)
+  console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · permission=${permissionMode}`)
 } else {
   process.env.DSH_PERMISSION_MODE ??= 'danger-full-access'
 }
@@ -284,9 +285,9 @@ if (modelId) {
   }
   patchFile = join(profileDir, '.model-override.yml')
   writeFileSync(patchFile, `- id: agent-default-model\n  config:\n    provider: ${resolvedProvider}\n    model: ${modelId}\n`, 'utf8')
-  console.log(`\x1b[36mGodot Codely CLI\x1b[0m · model=${modelId} (${resolvedProvider}) · headless`)
+  console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · model=${modelId} (${resolvedProvider}) · headless`)
 } else {
-  console.log(`\x1b[36mGodot Codely CLI\x1b[0m · profile=${PROFILE} · headless`)
+  console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · profile=${PROFILE} · headless`)
 }
 
 // 组装 dsh 参数

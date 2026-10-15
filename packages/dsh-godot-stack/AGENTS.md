@@ -5,7 +5,7 @@
 
 ## 产品定位
 Godot Codely = 垂直 AI 编程助手：内核 @deepseek-ai/dsh + Godot UI（桌面端）+ headless CLI 双形态，
-能力面标杆 Tuanjie Cowork。品牌：候选B 机器人吉祥物（白底深蓝圆头机器人 + 圆角字标 "Godot Codely"）。
+能力面标杆 Tuanjie Cowork。品牌使用蓝色机器人，唯一图形源为根目录 `build/brand-mark.svg`；桌面图标不含字标，界面使用同一 SVG 的单色轮廓，CLI 使用 `cli/brand.mjs` 的字符版。图标与动画由 `npm run brand:prepare` 生成到 `.build/brand-assets`，不单独维护 PNG/ICO/ICNS 副本。
 
 ## 本目录职责
 - `index.js` —— DSH 插件入口（apply：preset / MCP 复制 / bridge）。**MCP 复制必须增量 + 排除 node_modules**

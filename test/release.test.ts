@@ -186,7 +186,7 @@ describe('GitHub release contract', () => {
       'node_modules/@deepseek-ai/libreoffice-kit-*/**/*'
     ]))
     expect(packageJson.build.extraResources).toContainEqual({
-      from: 'build/app-icon.png',
+      from: '.build/brand-assets/icon.png',
       to: 'icon.png'
     })
     expect(packageJson.build.extraResources).toContainEqual({
@@ -216,11 +216,11 @@ describe('GitHub release contract', () => {
       to: 'splash.html'
     })
     expect(packageJson.build.extraResources).toContainEqual({
-      from: 'build/dsh-loader.gif',
+      from: '.build/brand-assets/dsh-loader.gif',
       to: 'dsh-loader.gif'
     })
     expect(packageJson.build.extraResources).toContainEqual({
-      from: 'build/dsh-loader-dark.gif',
+      from: '.build/brand-assets/dsh-loader-dark.gif',
       to: 'dsh-loader-dark.gif'
     })
     expect(packageJson.build.extraResources).toContainEqual({

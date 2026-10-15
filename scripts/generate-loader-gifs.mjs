@@ -3,8 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
-// Regenerate the startup splash loaders (build/dsh-loader.gif and
-// build/dsh-loader-dark.gif) from the brand mark in build/brand-mark.svg.
+// Generate .build/brand-assets/dsh-loader{,-dark}.gif from build/brand-mark.svg.
 // The mark is quantised onto a 4px pixel grid, bobs gently, and sheds a few
 // square "bubbles" from the window's traffic lights — the same motion the
 // previous hand-drawn loaders used, so splash.html needs no changes.
@@ -24,8 +23,6 @@ const CELL = 4
 const COLS = WIDTH / CELL
 const ROWS = HEIGHT / CELL
 
-/** Tight bounds of the mark inside its 1000x1000 artwork (shared with the sidebar mark). */
-const MARK_VIEWBOX = { x: 42, y: 218, width: 898, height: 564 }
 /** Body width in cells; matches the ~310px silhouette of the previous loader. */
 const BODY_CELLS = 78
 
@@ -48,15 +45,10 @@ const THEMES = {
  */
 async function markMask() {
   const svg = await readFile(markSource, 'utf8')
-  const d = /\sd="([^"]+)"/u.exec(svg)?.[1]
-  if (!d) throw new Error(`No path data in ${path.relative(projectRoot, markSource)}`)
   const width = BODY_CELLS
-  const height = Math.round((BODY_CELLS * MARK_VIEWBOX.height) / MARK_VIEWBOX.width)
-  // Render at 4x cell resolution and average down so thin features (the three
-  // dots, the belly bump) survive the threshold instead of dropping out.
+  const height = BODY_CELLS
   const oversample = 4
-  const probe = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * oversample}" height="${height * oversample}" viewBox="${MARK_VIEWBOX.x} ${MARK_VIEWBOX.y} ${MARK_VIEWBOX.width} ${MARK_VIEWBOX.height}" preserveAspectRatio="none"><path d="${d}" fill="#fff"/></svg>`
-  const { data } = await sharp(Buffer.from(probe)).raw().toBuffer({ resolveWithObject: true })
+  const { data } = await sharp(Buffer.from(svg)).resize(width * oversample, height * oversample).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
   const cells = new Uint8Array(width * height)
   for (let cy = 0; cy < height; cy += 1) {
     for (let cx = 0; cx < width; cx += 1) {
@@ -172,7 +164,7 @@ for (const theme of Object.values(THEMES)) {
   })
     .gif({ delay: Array.from({ length: FRAMES }, () => DELAY_MS), loop: 0, effort: 10 })
     .toBuffer()
-  const destination = path.join(buildDirectory, theme.file)
+  const destination = path.join(projectRoot, '.build/brand-assets', theme.file)
   await writeFile(destination, gif)
   console.log(`Wrote ${path.relative(projectRoot, destination)} (${gif.length} bytes, ${FRAMES} frames)`)
 }

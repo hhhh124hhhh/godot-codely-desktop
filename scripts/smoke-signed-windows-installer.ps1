@@ -47,7 +47,7 @@ function Install-At([string]$directory) {
   # on the runner's local volume, so this also exercises custom directory input.
   $exitCode = Invoke-Installer $directory 'Install'
   if ($exitCode -ne 0) { throw "Installer exited with $exitCode at $directory" }
-  $executable = Join-Path $directory 'DSH Desktop.exe'
+  $executable = Join-Path $directory 'Godot Codely.exe'
   if (-not (Test-Path $executable)) { throw "Installed executable missing: $executable" }
   Assert-Signature $executable $true
   return $executable
@@ -73,7 +73,7 @@ function Get-HarnessLogPaths {
   @($env:APPDATA, [Environment]::GetFolderPath('ApplicationData')) |
     Where-Object { $_ } |
     Select-Object -Unique |
-    ForEach-Object { Join-Path $_ 'dsh-desktop\logs\harness.log' }
+    ForEach-Object { Join-Path $_ 'godot-codely\logs\harness.log' }
 }
 
 function Assert-OfficeRuntime([string]$executable) {
@@ -140,7 +140,7 @@ Assert-InstalledPeSignatures $firstDirectory
 Assert-OfficeRuntime $firstExecutable
 Assert-Starts $firstExecutable
 
-$profileMarker = Join-Path $script:activeAppDataRoot 'dsh-desktop\harness\signed-smoke-marker'
+$profileMarker = Join-Path $script:activeAppDataRoot 'godot-codely\harness\signed-smoke-marker'
 New-Item -ItemType Directory -Path (Split-Path $profileMarker) -Force | Out-Null
 Set-Content -LiteralPath $profileMarker -Value 'keep-user-data'
 

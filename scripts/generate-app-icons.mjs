@@ -1,77 +1,47 @@
-import { execFileSync } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import os from 'node:os'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import sharp from 'sharp'
 
-const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const buildDirectory = path.join(projectRoot, 'build')
-const source = path.join(buildDirectory, 'app-icon.png')
-const iconsetDirectory = path.join(buildDirectory, 'app-icon.iconset')
-const icnsDestination = path.join(buildDirectory, 'icon.icns')
-const icoDestination = path.join(buildDirectory, 'icon.ico')
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const output = path.join(root, '.build/brand-assets')
+const source = await readFile(path.join(root, 'build/brand-mark.svg'), 'utf8')
+await mkdir(output, { recursive: true })
+const raster = (size, svg = source) => sharp(Buffer.from(svg)).resize(size, size).png().toBuffer()
+await writeFile(path.join(output, 'icon.png'), await raster(1024))
+await writeFile(path.join(output, 'logo-light.png'), await raster(256, source.replace('color="#2459d8"', 'color="#111827"')))
+await writeFile(path.join(output, 'logo-dark.png'), await raster(256, source.replace('color="#2459d8"', 'color="#ffffff"')))
 
-await rm(iconsetDirectory, { recursive: true, force: true })
-await mkdir(iconsetDirectory, { recursive: true })
-
-for (const size of [16, 32, 128, 256, 512]) {
-  execFileSync('sips', [
-    '-z',
-    String(size),
-    String(size),
-    source,
-    '--out',
-    path.join(iconsetDirectory, `icon_${size}x${size}.png`)
-  ])
-  execFileSync('sips', [
-    '-z',
-    String(size * 2),
-    String(size * 2),
-    source,
-    '--out',
-    path.join(iconsetDirectory, `icon_${size}x${size}@2x.png`)
-  ])
-}
-
-execFileSync('iconutil', ['-c', 'icns', iconsetDirectory, '-o', icnsDestination])
-
-const icoSizes = [16, 24, 32, 48, 64, 128, 256]
-const icoDirectory = await mkdtemp(path.join(os.tmpdir(), 'dsh-desktop-icons-'))
-const icoImages = []
-for (const size of icoSizes) {
-  const destination = path.join(icoDirectory, `icon-${size}.png`)
-  execFileSync('sips', [
-    '-z',
-    String(size),
-    String(size),
-    source,
-    '--out',
-    destination
-  ])
-  icoImages.push(await readFile(destination))
-}
-const header = Buffer.alloc(6 + icoImages.length * 16)
-header.writeUInt16LE(0, 0)
+const sizes = [16, 24, 32, 48, 64, 128, 256]
+const images = await Promise.all(sizes.map(size => raster(size)))
+const header = Buffer.alloc(6 + images.length * 16)
 header.writeUInt16LE(1, 2)
-header.writeUInt16LE(icoImages.length, 4)
-
+header.writeUInt16LE(images.length, 4)
 let offset = header.length
-for (let index = 0; index < icoImages.length; index += 1) {
-  const size = icoSizes[index]
+for (const [index, image] of images.entries()) {
+  const size = sizes[index]
   const entry = 6 + index * 16
-  header.writeUInt8(size === 256 ? 0 : size, entry)
-  header.writeUInt8(size === 256 ? 0 : size, entry + 1)
-  header.writeUInt8(0, entry + 2)
-  header.writeUInt8(0, entry + 3)
+  header[entry] = size === 256 ? 0 : size
+  header[entry + 1] = header[entry]
   header.writeUInt16LE(1, entry + 4)
   header.writeUInt16LE(32, entry + 6)
-  header.writeUInt32LE(icoImages[index].length, entry + 8)
+  header.writeUInt32LE(image.length, entry + 8)
   header.writeUInt32LE(offset, entry + 12)
-  offset += icoImages[index].length
+  offset += image.length
 }
+await writeFile(path.join(output, 'icon.ico'), Buffer.concat([header, ...images]))
 
-await writeFile(icoDestination, Buffer.concat([header, ...icoImages]))
-await rm(icoDirectory, { recursive: true, force: true })
-
-const icon = await readFile(source)
-console.log(`Generated app icons from ${path.relative(projectRoot, source)} (${icon.length} bytes PNG).`)
+// Modern ICNS entries carry PNG data, so native macOS tools are unnecessary.
+const chunks = []
+for (const [type, size] of [['icp4', 16], ['icp5', 32], ['icp6', 64], ['ic07', 128], ['ic08', 256], ['ic09', 512], ['ic10', 1024]]) {
+  const image = await raster(size)
+  const chunk = Buffer.alloc(8)
+  chunk.write(type)
+  chunk.writeUInt32BE(8 + image.length, 4)
+  chunks.push(chunk, image)
+}
+const icns = Buffer.alloc(8)
+icns.write('icns')
+icns.writeUInt32BE(8 + chunks.reduce((size, chunk) => size + chunk.length, 0), 4)
+await writeFile(path.join(output, 'icon.icns'), Buffer.concat([icns, ...chunks]))
+console.log('Generated PNG, ICO and ICNS from build/brand-mark.svg')

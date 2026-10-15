@@ -8,24 +8,21 @@ window.__ModuleLoader__.load({
     const React = require('react')
     const { MenuItemButton } = require('@deepseek-ai/dsh-client-ui-primitives')
 
-    // Godot Codely node mark (scene-tree node cluster), drawn in currentColor so
-    // it follows the sidebar text color in both themes.
-    const BRAND_MARK_VIEWBOX = { x: 0, y: 0, width: 100, height: 100 }
-    const BRAND_MARK_PATH = 'M34 50a16 16 0 1 0 32 0a16 16 0 1 0 -32 0M42 10a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M9 78a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M75 78a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M50 25a6 6 0 1 0 12 0a6 6 0 1 0 -12 0M22 44a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M68 44a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M22 66a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M68 66a5 5 0 1 0 10 0a5 5 0 1 0 -10 0'
+    // One SVG silhouette serves desktop assets and all themed UI marks.
+    function BrandMark({ size }) {
+      return React.createElement('span', {
+        'aria-hidden': 'true',
+        style: {
+          display: 'inline-block', width: size, height: size, flexShrink: 0,
+          backgroundColor: 'currentColor',
+          mask: 'url(/godot-codely-mark.svg) center / contain no-repeat',
+          WebkitMask: 'url(/godot-codely-mark.svg) center / contain no-repeat'
+        }
+      })
+    }
 
     function DesktopBrandMark() {
-      const height = 17
-      return React.createElement(
-        'svg',
-        {
-          width: height * BRAND_MARK_VIEWBOX.width / BRAND_MARK_VIEWBOX.height,
-          height,
-          viewBox: `${BRAND_MARK_VIEWBOX.x} ${BRAND_MARK_VIEWBOX.y} ${BRAND_MARK_VIEWBOX.width} ${BRAND_MARK_VIEWBOX.height}`,
-          fill: 'none',
-          'aria-hidden': 'true'
-        },
-        React.createElement('path', { d: BRAND_MARK_PATH, fill: 'currentColor' })
-      )
+      return React.createElement(BrandMark, { size: 20 })
     }
 
     function DesktopBrandName() {
@@ -47,18 +44,7 @@ window.__ModuleLoader__.load({
     }
 
     function ConversationBrandMark(props) {
-      const height = props?.size ?? 24
-      return React.createElement(
-        'svg',
-        {
-          width: height * BRAND_MARK_VIEWBOX.width / BRAND_MARK_VIEWBOX.height,
-          height,
-          viewBox: `${BRAND_MARK_VIEWBOX.x} ${BRAND_MARK_VIEWBOX.y} ${BRAND_MARK_VIEWBOX.width} ${BRAND_MARK_VIEWBOX.height}`,
-          fill: 'none',
-          'aria-hidden': 'true'
-        },
-        React.createElement('path', { d: BRAND_MARK_PATH, fill: 'currentColor' })
-      )
+      return React.createElement(BrandMark, { size: props?.size ?? 24 })
     }
 
     function OpenUnpreviewableFile({ absolutePath, openWorkspacePath }) {

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell, desktopCapturer } from 'electron'
 import { strict as assert } from 'node:assert'
 import { mkdirSync, writeFileSync } from 'node:fs'
+import { pathToFileURL } from 'node:url'
 import { join } from 'node:path'
 import { SAFE_MODE_FRAME_CHANNEL, SAFE_MODE_FRAME_UPDATE_CHANNEL, SafeModeFrame } from '../src/main/safe-mode-frame'
 import { buildSafeModeViewModel } from '../src/main/safe-mode'
@@ -88,7 +89,7 @@ async function main(): Promise<void> {
         model.upgradeReadyCount = 3
         model.upgradeAllLabel = locale === 'zh' ? '一键升级 3 个已适配插件' : 'Upgrade 3 compatible plugins'
       }
-      await contents.loadFile(join(process.cwd(), 'build', `${page}.html`), { query: { state: JSON.stringify(model), theme, icon: 'app-icon.png' } })
+      await contents.loadFile(join(process.cwd(), 'build', `${page}.html`), { query: { state: JSON.stringify(model), theme, icon: pathToFileURL(join(process.cwd(), '.build/brand-assets/icon.png')).href } })
       contents.focus()
       await delay(150)
       assert.equal(BrowserWindow.getAllWindows().length, 1, 'The page must not create another native window')

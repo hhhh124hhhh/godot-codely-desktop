@@ -24,10 +24,10 @@
     "game-dev"
   ],
   "scripts": {
-    "postinstall": "patch-package && node scripts/install-brand-assets.mjs && install-electron --no",
-    "dev": "npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite dev",
-    "build": "npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite build",
-    "build:linux-pack": "npm run godot:build && npm run ppt:build && electron-vite build",
+    "postinstall": "patch-package && npm run brand:prepare && install-electron --no",
+    "dev": "npm run brand:prepare && npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite dev",
+    "build": "npm run brand:prepare && npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite build",
+    "build:linux-pack": "npm run brand:prepare && npm run godot:build && npm run ppt:build && electron-vite build",
     "icons:generate": "node scripts/generate-app-icons.mjs",
     "loader:generate": "node scripts/generate-loader-gifs.mjs",
     "preview": "electron-vite preview",
@@ -46,10 +46,11 @@
     "package:linux": "node scripts/verify-target.mjs linux x64 && npm run build:linux-pack && electron-builder --linux --x64 --publish never --config electron-builder.linux.cjs",
     "package:dev:linux": "node scripts/verify-target.mjs linux x64 && npm run build:linux-pack && electron-builder --linux --x64 --publish never --config electron-builder.dev.cjs",
     "ppt:build": "node scripts/prepare-ppt-runtime.mjs",
-    "pretest": "npm run office:prepare && npm run ppt:build",
-    "pretest:watch": "npm run office:prepare && npm run ppt:build",
+    "pretest": "npm run brand:prepare && npm run office:prepare && npm run ppt:build",
+    "pretest:watch": "npm run brand:prepare && npm run office:prepare && npm run ppt:build",
     "office:prepare": "node scripts/office-runtime/prepare.mjs",
-    "godot:build": "node scripts/build-godot-runtime.mjs"
+    "godot:build": "node scripts/build-godot-runtime.mjs",
+    "brand:prepare": "node scripts/generate-app-icons.mjs && node scripts/generate-loader-gifs.mjs && node scripts/install-brand-assets.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.4",
@@ -312,6 +313,7 @@
     "esbuild": "0.25.12",
     "fflate": "0.8.3",
     "patch-package": "^8.0.1",
+    "sharp": "0.35.4",
     "tar": "7.5.22",
     "typescript": "5.9.3",
     "vitest": "^4.1.10",
@@ -404,7 +406,7 @@
     ],
     "extraResources": [
       {
-        "from": "build/app-icon.png",
+        "from": ".build/brand-assets/icon.png",
         "to": "icon.png"
       },
       {
@@ -444,11 +446,11 @@
         "to": "splash.html"
       },
       {
-        "from": "build/dsh-loader.gif",
+        "from": ".build/brand-assets/dsh-loader.gif",
         "to": "dsh-loader.gif"
       },
       {
-        "from": "build/dsh-loader-dark.gif",
+        "from": ".build/brand-assets/dsh-loader-dark.gif",
         "to": "dsh-loader-dark.gif"
       },
       {
@@ -487,7 +489,7 @@
     "artifactName": "godot-codely-${os}-${arch}.${ext}",
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "build/icon.icns",
+      "icon": ".build/brand-assets/icon.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "target": [
@@ -499,7 +501,7 @@
       "format": "UDBZ"
     },
     "win": {
-      "icon": "build/icon.ico",
+      "icon": ".build/brand-assets/icon.ico",
       "verifyUpdateCodeSignature": false,
       "requestedExecutionLevel": "asInvoker",
       "target": [
@@ -520,7 +522,7 @@
       "createStartMenuShortcut": true
     },
     "linux": {
-      "icon": "build/icon.png",
+      "icon": ".build/brand-assets/icon.png",
       "category": "Development",
       "maintainer": "hhhh124hhhh",
       "target": [

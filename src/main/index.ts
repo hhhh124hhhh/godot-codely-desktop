@@ -593,7 +593,11 @@ function harnessNodeEntryPath(): string {
 }
 
 function desktopResourcePath(name: string): string {
-  return app.isPackaged ? join(process.resourcesPath, name) : join(app.getAppPath(), 'build', name)
+  if (app.isPackaged) return join(process.resourcesPath, name)
+  if (['icon.png', 'app-icon.png', 'dsh-loader.gif', 'dsh-loader-dark.gif'].includes(name)) {
+    return join(app.getAppPath(), '.build/brand-assets', name === 'app-icon.png' ? 'icon.png' : name)
+  }
+  return join(app.getAppPath(), 'build', name)
 }
 
 async function loadDesktopResource(
@@ -619,7 +623,7 @@ async function loadDesktopResource(
 function desktopIconPath(): string {
   return app.isPackaged
     ? join(process.resourcesPath, 'icon.png')
-    : join(app.getAppPath(), 'build', 'app-icon.png')
+    : join(app.getAppPath(), '.build/brand-assets', 'icon.png')
 }
 
 function dshBrandLogoPath(variant: 'light' | 'dark'): string {
@@ -1161,7 +1165,7 @@ async function showWebHomeImport(
     await window.loadFile(desktopResourcePath('web-import.html'), {
       query: {
         state: JSON.stringify(state),
-        icon: app.isPackaged ? 'icon.png' : 'app-icon.png',
+        icon: pathToFileURL(desktopIconPath()).href,
         theme: harnessThemePreference()
       }
     })
@@ -1180,7 +1184,7 @@ async function showSplash(): Promise<void> {
   const navigationVersion = ++mainWindowNavigationVersion
   window.webContents.stop()
   await loadDesktopResource(window, desktopResourcePath('splash.html'), {
-    query: { theme: nativeTheme.shouldUseDarkColors ? 'dark' : 'light' }
+    query: { theme: nativeTheme.shouldUseDarkColors ? 'dark' : 'light', icon: pathToFileURL(desktopIconPath()).href }
   })
   if (window.isDestroyed() || navigationVersion !== mainWindowNavigationVersion) return
   raiseWindowWithoutStealingFocus(window, process.platform, () => app.isActive())
@@ -1959,7 +1963,7 @@ async function waitForPluginRecoveryAction(options: {
     await loadDesktopResource(window, desktopResourcePath('plugin-recovery.html'), {
       query: {
         state: JSON.stringify(state),
-        icon: app.isPackaged ? 'icon.png' : 'app-icon.png',
+        icon: pathToFileURL(desktopIconPath()).href,
         theme: harnessThemePreference()
       }
     })
@@ -2443,7 +2447,7 @@ async function waitForSafeModeAction(options: {
   const seq = String(++safeModeLoadSequence)
   window.show(desktopResourceUrl(SAFE_MODE_PAGE, {
     state: JSON.stringify(render({ healthPending: options.healthCheck !== undefined })),
-    icon: app.isPackaged ? 'icon.png' : 'app-icon.png',
+    icon: pathToFileURL(desktopIconPath()).href,
     theme: harnessThemePreference(),
     seq
   }))
