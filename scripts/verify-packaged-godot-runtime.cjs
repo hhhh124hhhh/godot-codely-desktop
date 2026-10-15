@@ -31,8 +31,10 @@ module.exports = async function verifyPackagedGodotRuntime(context) {
   const product = context.packager.appInfo.productFilename
   const macContents = path.join(context.appOutDir, product + '.app', 'Contents')
   const windows = context.electronPlatformName === 'win32'
-  const resources = windows ? path.join(context.appOutDir, 'resources') : path.join(macContents, 'Resources')
+  const linux = context.electronPlatformName === 'linux'
+  const resources = windows || linux ? path.join(context.appOutDir, 'resources') : path.join(macContents, 'Resources')
   const executable = windows ? path.join(context.appOutDir, product + '.exe')
+    : linux ? path.join(context.appOutDir, context.packager.config.linux?.executableName ?? 'godot-codely')
     : path.join(macContents, 'Frameworks', product + ' Helper.app', 'Contents', 'MacOS', product + ' Helper')
   await promisify(execFile)(executable, [__filename, '--verify-runtime', path.join(resources, 'app.asar')], {
     cwd: resources,

@@ -38,8 +38,15 @@ function hostPluginNames(source: string): HostPluginName[] {
   return names
 }
 
-export function hostInsertedPluginNames(source: string, disabled: readonly string[] = []): string[] {
-  const omitted = new Set(disabled)
+function omittedHostPlugins(disabled: readonly string[], platform: NodeJS.Platform): string[] {
+  // Linux community builds intentionally carry no Office Python payload.
+  // Filter at composition, before resolution and client discovery, rather than
+  // hiding a missing payload during plugin activation on supported platforms.
+  return platform === 'linux' ? [...disabled, 'dsh-desktop-office'] : [...disabled]
+}
+
+export function hostInsertedPluginNames(source: string, disabled: readonly string[] = [], platform: NodeJS.Platform = process.platform): string[] {
+  const omitted = new Set(omittedHostPlugins(disabled, platform))
   return hostPluginNames(source).map(({ name }) => name).filter((name) => !omitted.has(name))
 }
 
@@ -74,12 +81,13 @@ function withoutDisabledInsertions(source: string, disabled: readonly string[]):
 export async function prepareHostPluginSourcesPatch(
   dshHome: string,
   desktopPatchPath: string,
-  hostModuleAnchor: string
+  hostModuleAnchor: string,
+  platform: NodeJS.Platform = process.platform
 ): Promise<string> {
   const original = await readFile(desktopPatchPath, 'utf8')
   const source = withoutDisabledInsertions(
     original,
-    await readDisabledHostPlugins(dshHome)
+    omittedHostPlugins(await readDisabledHostPlugins(dshHome), platform)
   )
   const names = hostPluginNames(source)
   if (names.length === 0 && source === original) return desktopPatchPath

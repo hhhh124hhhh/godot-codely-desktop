@@ -60,7 +60,7 @@ env:
   RELEASE_NOTES_MODEL: gpt-6-luna
 
 concurrency:
-  # Platform-only retries have independent artifacts and never publish.
+  # Platform-only builds have independent artifacts; unsigned builds can publish.
   group: desktop-release-${{ github.ref }}-${{ inputs.target || 'all' }}
   cancel-in-progress: false
 
@@ -596,9 +596,10 @@ jobs:
     name: Linux x64
     needs: validate-dispatch
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      inputs.mode == 'unsigned' &&
-      (inputs.target == 'all' || inputs.target == 'linux')
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.mode == 'unsigned' || inputs.mode == 'development') &&
+       (inputs.target == 'all' || inputs.target == 'linux'))
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -621,7 +622,17 @@ jobs:
       - name: Build unsigned Linux AppImage
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npx --no-install electron-builder --linux --x64 --publish never --config electron-builder.linux.cjs
+        run: node scripts/verify-target.mjs linux x64 && npx --no-install electron-builder --linux --x64 --publish never --config electron-builder.linux.cjs
+      - name: Smoke extracted AppImage with isolated Profile and real UI
+        run: xvfb-run -a node scripts/smoke-linux-appimage.mjs
+        timeout-minutes: 5
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-desktop-smoke
+          retention-days: 7
+          path: artifacts/linux-smoke/
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: linux-x64-unsigned
