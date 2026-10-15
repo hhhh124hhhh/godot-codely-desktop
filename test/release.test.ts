@@ -502,6 +502,9 @@ describe('GitHub release contract', () => {
   it('does not change Windows security settings during installation', async () => {
     const installer = await readFile(path.join(projectRoot, 'build', 'installer.nsh'), 'utf8')
     expect(installer).not.toMatch(/Add-MpPreference|HKLM|ExecShell\s+"runas"/)
+    expect(installer).not.toContain('$APPDATA\\dsh-desktop\\')
+    expect(installer).toContain('$APPDATA\\godot-codely-dev\\desktop-service\\session.json')
+    expect(installer).toContain('$APPDATA\\godot-codely\\desktop-service\\session.json')
   })
 
   it('routes stable downloads through the website and previews through GitHub', async () => {

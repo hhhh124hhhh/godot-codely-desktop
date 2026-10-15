@@ -58,6 +58,8 @@ while (Date.now() < deadline) {
       }
       const project = join(harnessHome, 'seed-smoke-project')
       await mkdir(project, { recursive: true })
+      const workspace = await client.call('workspace/create', { request: { path: project } })
+      if (!workspace.workspace?.workspaceId) throw new Error('Installed workspace creation failed')
       const session = await client.createSession({ cwd: project, preset: 'godot-codely-lite' })
       if (session.agentPreset !== 'godot-codely-lite') throw new Error('Installed Lite session creation failed')
       console.log('Installed four Godot presets and production Lite session creation passed')
