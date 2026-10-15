@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Seed user guide / 种子用户上手
+    url: https://github.com/hhhh124hhhh/godot-codely-desktop/blob/main/docs/seed-user-guide.md
+    about: 安装、第一次 Godot 任务和脱敏反馈方式。
   - name: Development guide
     url: https://github.com/hhhh124hhhh/godot-codely-desktop/blob/main/docs/development.md
     about: Clone this fork and run the local checks before reporting a bug.

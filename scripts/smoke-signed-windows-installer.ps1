@@ -1,9 +1,20 @@
 param(
   [Parameter(Mandatory = $true)][string]$Installer,
-  [Parameter(Mandatory = $true)][string]$PublisherName
+  [string]$PublisherName,
+  [switch]$Unsigned,
+  [string]$ExecutableName = 'Godot Codely.exe',
+  [string]$UserDataName = 'godot-codely'
 )
 
 $ErrorActionPreference = 'Stop'
+# Installation changes shortcuts and registration even with a custom /D path.
+# Run only on disposable GitHub-hosted Windows runners, never a developer PC.
+if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
+  throw 'Installer smoke requires a disposable GitHub-hosted runner.'
+}
+if (-not $Unsigned -and [string]::IsNullOrWhiteSpace($PublisherName)) {
+  throw 'Signed installer smoke requires PublisherName.'
+}
 $installer = (Resolve-Path $Installer).Path
 $root = Join-Path $env:RUNNER_TEMP ('dsh-signed-smoke-' + [guid]::NewGuid().ToString('N'))
 $env:APPDATA = Join-Path $root 'appdata'
@@ -11,6 +22,7 @@ $env:LOCALAPPDATA = Join-Path $root 'localappdata'
 New-Item -ItemType Directory -Path $env:APPDATA, $env:LOCALAPPDATA -Force | Out-Null
 
 function Assert-Signature([string]$path, [bool]$requirePublisher = $false) {
+  if ($Unsigned) { return }
   $signature = Get-AuthenticodeSignature -FilePath $path
   if ($signature.Status -ne 'Valid') { throw "Invalid signature on ${path}: $($signature.Status)" }
   if ($requirePublisher) {
@@ -24,7 +36,7 @@ function Assert-Signature([string]$path, [bool]$requirePublisher = $false) {
 
 function Invoke-Installer([string]$directory, [string]$stage) {
   Write-Host "$stage at $directory"
-  $process = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$directory") -PassThru
+  $process = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$directory") -WindowStyle Hidden -PassThru
   $deadline = (Get-Date).AddMinutes(5)
   while (-not $process.HasExited) {
     if ((Get-Date) -ge $deadline) {
@@ -47,13 +59,14 @@ function Install-At([string]$directory) {
   # on the runner's local volume, so this also exercises custom directory input.
   $exitCode = Invoke-Installer $directory 'Install'
   if ($exitCode -ne 0) { throw "Installer exited with $exitCode at $directory" }
-  $executable = Join-Path $directory 'Godot Codely.exe'
+  $executable = Join-Path $directory $ExecutableName
   if (-not (Test-Path $executable)) { throw "Installed executable missing: $executable" }
   Assert-Signature $executable $true
   return $executable
 }
 
 function Assert-InstalledPeSignatures([string]$directory) {
+  if ($Unsigned) { return }
   $count = 0
   foreach ($file in Get-ChildItem -LiteralPath $directory -File -Recurse -Force) {
     $stream = [System.IO.File]::OpenRead($file.FullName)
@@ -73,7 +86,7 @@ function Get-HarnessLogPaths {
   @($env:APPDATA, [Environment]::GetFolderPath('ApplicationData')) |
     Where-Object { $_ } |
     Select-Object -Unique |
-    ForEach-Object { Join-Path $_ 'godot-codely\logs\harness.log' }
+    ForEach-Object { Join-Path $_ "$UserDataName\logs\harness.log" }
 }
 
 function Assert-OfficeRuntime([string]$executable) {
@@ -85,7 +98,8 @@ function Assert-OfficeRuntime([string]$executable) {
 function Assert-Starts([string]$executable) {
   $logPaths = @(Get-HarnessLogPaths)
   $launchTime = (Get-Date).ToUniversalTime().AddSeconds(-2)
-  $desktop = Start-Process -FilePath $executable -WorkingDirectory (Split-Path $executable) -PassThru
+  $desktop = Start-Process -FilePath $executable -WorkingDirectory (Split-Path $executable) `
+    -ArgumentList @('--remote-debugging-port=49329', '--remote-debugging-address=127.0.0.1') -WindowStyle Hidden -PassThru
   try {
     $deadline = (Get-Date).AddMinutes(3)
     while ((Get-Date) -lt $deadline) {
@@ -99,13 +113,16 @@ function Assert-Starts([string]$executable) {
           $urlMatches = [regex]::Matches($log, 'dsh web: (http://127\.0\.0\.1:\d+/\?token=[^\s]+)')
           if ($urlMatches.Count -gt 0) {
             $match = $urlMatches[$urlMatches.Count - 1]
+            $response = $null
             try {
               $response = Invoke-WebRequest -UseBasicParsing -Uri $match.Groups[1].Value -TimeoutSec 3
-              if ($response.StatusCode -eq 200) {
+            } catch { Start-Sleep -Milliseconds 500 }
+              if ($response -and $response.StatusCode -eq 200) {
                 $script:activeAppDataRoot = Split-Path (Split-Path (Split-Path $logPath -Parent) -Parent) -Parent
+                & node (Join-Path $PSScriptRoot 'verify-installed-ui.mjs') 'http://127.0.0.1:49329' (Join-Path $root 'installed-ui.png')
+                if ($LASTEXITCODE -ne 0) { throw 'Installed client UI did not mount.' }
                 return
               }
-            } catch { Start-Sleep -Milliseconds 500 }
           }
         }
       }
@@ -140,7 +157,7 @@ Assert-InstalledPeSignatures $firstDirectory
 Assert-OfficeRuntime $firstExecutable
 Assert-Starts $firstExecutable
 
-$profileMarker = Join-Path $script:activeAppDataRoot 'godot-codely\harness\signed-smoke-marker'
+$profileMarker = Join-Path $script:activeAppDataRoot "$UserDataName\harness\signed-smoke-marker"
 New-Item -ItemType Directory -Path (Split-Path $profileMarker) -Force | Out-Null
 Set-Content -LiteralPath $profileMarker -Value 'keep-user-data'
 
@@ -175,4 +192,5 @@ Assert-Signature $firstExecutable $true
 Assert-InstalledPeSignatures $secondDirectory
 Assert-OfficeRuntime $secondExecutable
 Assert-Starts $secondExecutable
-Write-Host 'Final signed installer passed first install, same-path upgrade, custom directory, signature and startup checks.'
+Write-Host 'Installer passed first install, locked upgrade rollback, same-path upgrade, custom directory and client UI checks.'
+if (-not $Unsigned) { Write-Host 'Installed PE signature checks passed.' }

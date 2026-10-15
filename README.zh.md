@@ -26,6 +26,8 @@ Godot Codely 用 `godot-codely` 命令改 Godot 工程。命令走 `godot-codely
 
 ## 从源码运行
 
+种子用户请先阅读[安装与首次任务指南](docs/seed-user-guide.md)，从本 fork 的 [Releases](https://github.com/hhhh124hhhh/godot-codely-desktop/releases) 下载，并核对该版本的平台和已知限制。
+
 需要 Node.js 22 或更新版本。
 
 ```sh

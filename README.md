@@ -26,6 +26,8 @@ The desktop host under the command is DSH Desktop, pinned to `@deepseek-ai/dsh@0
 
 ## Run from source
 
+Early testers: use this fork's [Releases](https://github.com/hhhh124hhhh/godot-codely-desktop/releases) and check the version's supported platforms and known limitations. See the [seed user guide (Chinese)](docs/seed-user-guide.md) for installation, a first task and feedback.
+
 Node.js 22 or later.
 
 ```sh
