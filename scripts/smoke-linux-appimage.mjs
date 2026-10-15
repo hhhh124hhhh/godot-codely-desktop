@@ -50,6 +50,11 @@ async function connect(url) {
 
 async function smoke(executable, root, output) {
   const config = join(root, 'config')
+  // A fresh CI HOME has no desktop user-dir configuration. Supply the same
+  // Documents entry a normal Linux desktop provides, inside this fixture only.
+  await mkdir(join(root, 'Documents'), { recursive: true })
+  await mkdir(config, { recursive: true })
+  await writeFile(join(config, 'user-dirs.dirs'), 'XDG_DOCUMENTS_DIR="$HOME/Documents"\n')
   const port = await debugPort()
   const environment = { ...process.env, HOME: root, XDG_CONFIG_HOME: config, XDG_CACHE_HOME: join(root, 'cache'), XDG_DATA_HOME: join(root, 'data') }
   delete environment.ELECTRON_RUN_AS_NODE
@@ -81,8 +86,6 @@ async function smoke(executable, root, output) {
         })
         if (exceptionDetails) throw new Error('Renderer evaluation failed')
         if (result.value) {
-          const image = await cdp.send('Page.captureScreenshot', { format: 'png' })
-          await writeFile(join(output, 'desktop.png'), Buffer.from(image.data, 'base64'))
           const home = join(config, 'godot-codely', 'harness')
           const patch = await readFile(join(home, 'desktop-host-sources.patch.yml'), 'utf8')
           assert(!patch.includes('dsh-desktop-office'), 'Linux must not activate the omitted Office payload')
@@ -92,7 +95,18 @@ async function smoke(executable, root, output) {
             const preset = presets.find(preset => preset.id === id)
             assert(preset && !preset.broken, `Missing or broken packaged preset: ${id}`)
           }
+          const project = join(root, 'Godot project')
+          await mkdir(project)
+          const workspace = await client.call('workspace/create', { request: { path: project } })
+          assert(workspace.workspace?.workspaceId, 'Packaged workspace creation failed')
+          const session = await client.createSession({ cwd: project, preset: 'godot-codely-lite' })
+          assert.equal(session.agentPreset, 'godot-codely-lite')
+          await cdp.send('Runtime.evaluate', { expression: `[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Maybe later')?.click()` })
+          await delay(1000)
+          const image = await cdp.send('Page.captureScreenshot', { format: 'png' })
+          await writeFile(join(output, 'desktop.png'), Buffer.from(image.data, 'base64'))
           console.log('Linux extracted AppImage: authenticated Harness, four presets, bootstrap and hydrated React UI passed')
+          console.log('Packaged workspace and complete Lite session creation passed')
           return
         }
       }
