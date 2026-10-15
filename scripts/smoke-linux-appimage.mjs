@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { createServer } from 'node:net'
+import { TypertClient } from '../packages/dsh-godot-stack/bridge/session-client.mjs'
 
 const exec = promisify(execFile)
 const delay = ms => new Promise(done => setTimeout(done, ms))
@@ -80,25 +81,17 @@ async function smoke(executable, root, output) {
         })
         if (exceptionDetails) throw new Error('Renderer evaluation failed')
         if (result.value) {
+          const image = await cdp.send('Page.captureScreenshot', { format: 'png' })
+          await writeFile(join(output, 'desktop.png'), Buffer.from(image.data, 'base64'))
           const home = join(config, 'godot-codely', 'harness')
           const patch = await readFile(join(home, 'desktop-host-sources.patch.yml'), 'utf8')
           assert(!patch.includes('dsh-desktop-office'), 'Linux must not activate the omitted Office payload')
-          const [token, endpoint] = (await readFile(join(home, 'godot-codely-launch-token'), 'utf8')).trim().split(/\r?\n/)
-          const login = await fetch(`${endpoint}/?token=${encodeURIComponent(token)}`, { redirect: 'manual' })
-          const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ')
-          const response = await fetch(`${endpoint}/api/agentPresets/list`, {
-            method: 'POST', headers: { Cookie: cookie, 'content-type': 'application/json' },
-            body: JSON.stringify({ type: 'client-request', rpcId: 'linux-smoke', method: 'agentPresets/list', payload: { args: { request: {} } } })
-          })
-          const envelope = await response.json()
-          assert(envelope.result?.ok, 'Packaged preset discovery failed')
-          const presets = envelope.result.value.presets
+          const client = new TypertClient('http://127.0.0.1:1', { tokenFile: join(home, 'godot-codely-launch-token') })
+          const { presets } = await client.call('agentPresets/list', {})
           for (const id of ['godot-codely-lite', 'godot-scene-expert', 'godot-shader-expert', 'godot-gdscript-expert']) {
             const preset = presets.find(preset => preset.id === id)
             assert(preset && !preset.broken, `Missing or broken packaged preset: ${id}`)
           }
-          const image = await cdp.send('Page.captureScreenshot', { format: 'png' })
-          await writeFile(join(output, 'desktop.png'), Buffer.from(image.data, 'base64'))
           console.log('Linux extracted AppImage: authenticated Harness, four presets, bootstrap and hydrated React UI passed')
           return
         }
