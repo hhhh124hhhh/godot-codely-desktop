@@ -20,6 +20,15 @@ $root = Join-Path $env:RUNNER_TEMP ('dsh-signed-smoke-' + [guid]::NewGuid().ToSt
 $env:APPDATA = Join-Path $root 'appdata'
 $env:LOCALAPPDATA = Join-Path $root 'localappdata'
 New-Item -ItemType Directory -Path $env:APPDATA, $env:LOCALAPPDATA -Force | Out-Null
+# Simulate a separate web installation without reading the runner's real home.
+# os.homedir() on Windows resolves USERPROFILE; Windows known AppData remains
+# covered by Get-HarnessLogPaths below.
+$env:USERPROFILE = Join-Path $root 'fixture-user'
+$env:HOME = $env:USERPROFILE
+$webHome = Join-Path $env:USERPROFILE '.dsh'
+New-Item -ItemType Directory -Path (Join-Path $webHome 'sessions\upstream-only-session') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $webHome 'settings.yaml') -Value 'seed_fixture: upstream-only'
+$webSettingsHash = (Get-FileHash -LiteralPath (Join-Path $webHome 'settings.yaml')).Hash
 
 function Assert-Signature([string]$path, [bool]$requirePublisher = $false) {
   if ($Unsigned) { return }
@@ -122,6 +131,12 @@ function Assert-Starts([string]$executable) {
               $harnessHome = Join-Path $script:activeAppDataRoot "$UserDataName\harness"
               & node (Join-Path $PSScriptRoot 'verify-installed-ui.mjs') 'http://127.0.0.1:49329' (Join-Path $root 'installed-ui.png') $harnessHome
               if ($LASTEXITCODE -ne 0) { throw 'Installed client UI did not mount.' }
+              if ((Get-FileHash -LiteralPath (Join-Path $webHome 'settings.yaml')).Hash -ne $webSettingsHash) {
+                throw 'Normal launch modified the independent web home.'
+              }
+              if (Test-Path (Join-Path $harnessHome 'sessions\upstream-only-session')) {
+                throw 'Normal launch imported upstream sessions without a request.'
+              }
               return
             }
           }
