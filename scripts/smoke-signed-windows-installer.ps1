@@ -119,7 +119,8 @@ function Assert-Starts([string]$executable) {
             } catch { Start-Sleep -Milliseconds 500 }
               if ($response -and $response.StatusCode -eq 200) {
                 $script:activeAppDataRoot = Split-Path (Split-Path (Split-Path $logPath -Parent) -Parent) -Parent
-                & node (Join-Path $PSScriptRoot 'verify-installed-ui.mjs') 'http://127.0.0.1:49329' (Join-Path $root 'installed-ui.png')
+                $harnessHome = Join-Path $script:activeAppDataRoot "$UserDataName\harness"
+                & node (Join-Path $PSScriptRoot 'verify-installed-ui.mjs') 'http://127.0.0.1:49329' (Join-Path $root 'installed-ui.png') $harnessHome
                 if ($LASTEXITCODE -ne 0) { throw 'Installed client UI did not mount.' }
                 return
               }

@@ -1,8 +1,10 @@
-import { writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { TypertClient } from '../packages/dsh-godot-stack/bridge/session-client.mjs'
 
 // Observe the installed Electron renderer through loopback CDP. HTTP readiness
 // alone cannot prove that the bootstrap registered or React mounted.
-const [endpoint, screenshot] = process.argv.slice(2)
+const [endpoint, screenshot, harnessHome] = process.argv.slice(2)
 if (!endpoint || new URL(endpoint).hostname !== '127.0.0.1') throw new Error('Loopback CDP endpoint required')
 const deadline = Date.now() + 90_000
 let lastFailure = 'No application renderer found'
@@ -47,6 +49,18 @@ while (Date.now() < deadline) {
     const state = result.result?.value
     if (!state?.bootstrap || !state.composer || !state.navigation || state.recovery) {
       throw new Error(`Installed renderer state: ${JSON.stringify(state)}`)
+    }
+    if (harnessHome) {
+      const client = new TypertClient('http://127.0.0.1:1', { tokenFile: join(harnessHome, 'godot-codely-launch-token') })
+      const { presets } = await client.call('agentPresets/list', {})
+      for (const id of ['godot-codely-lite', 'godot-scene-expert', 'godot-shader-expert', 'godot-gdscript-expert']) {
+        if (!presets.some(preset => preset.id === id && !preset.broken)) throw new Error(`Missing or broken installed preset: ${id}`)
+      }
+      const project = join(harnessHome, 'seed-smoke-project')
+      await mkdir(project, { recursive: true })
+      const session = await client.createSession({ cwd: project, preset: 'godot-codely-lite' })
+      if (session.agentPreset !== 'godot-codely-lite') throw new Error('Installed Lite session creation failed')
+      console.log('Installed four Godot presets and production Lite session creation passed')
     }
     if (screenshot) {
       const capture = await send('Page.captureScreenshot', { format: 'png' })
