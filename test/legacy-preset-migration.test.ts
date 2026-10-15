@@ -10,6 +10,33 @@ import { HarnessRuntime } from '../src/main/runtime/harness-runtime'
 import { resolveTestNodeExecutable } from './node-executable'
 
 const homes: string[] = []
+
+it('removes duplicate migrated host presets while preserving custom rows and their original files', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'godot-preset-ownership-'))
+  homes.push(home)
+  const ids = ['godot-codely-lite', 'godot-scene-expert', 'godot-shader-expert', 'godot-gdscript-expert']
+  const composition = '- id: persona\n  name: "@deepseek-ai/dsh-persona"\n'
+  for (const id of [...ids, 'my-custom']) {
+    await mkdir(join(home, '.agent-presets', id), { recursive: true })
+    await writeFile(join(home, '.agent-presets', id, 'agent.cordis.yml'), composition)
+  }
+  const patchFile = join(home, 'profiles', 'web', 'cordis.patch.yml')
+  await mkdir(join(home, 'profiles', 'web'), { recursive: true })
+  const row = (id: string) => `- insert:\n    - id: preset-${id}\n      name: '@deepseek-ai/dsh-agent-preset'\n      config:\n        id: ${id}\n        plugins: []\n`
+  const previous = `# user comment\n- id: unrelated\n  disabled: true\n\n# dsh-desktop legacy presets begin\n${[...ids, 'my-custom'].map(row).join('\n')}# dsh-desktop legacy presets end\n`
+  await writeFile(patchFile, previous)
+  await migrateLegacyAgentPresets(home, () => {})
+  const result = await readFile(patchFile, 'utf8')
+  for (const id of ids) {
+    expect(result).not.toContain(`id: preset-${id}`)
+    expect(await readFile(join(home, '.agent-presets', id, 'agent.cordis.yml'), 'utf8')).toBe(composition)
+  }
+  expect(result).toContain('# user comment\n- id: unrelated\n  disabled: true')
+  expect(result).toContain('id: preset-my-custom')
+  expect(await readFile(`${patchFile}.pre-0.1.7-backup`, 'utf8')).toBe(previous)
+  await migrateLegacyAgentPresets(home, () => {})
+  expect(await readFile(patchFile, 'utf8')).toBe(result)
+})
 afterEach(async () => {
   await Promise.all(homes.splice(0).map((home) => rm(home, { recursive: true, force: true })))
 })

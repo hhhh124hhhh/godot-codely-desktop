@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path'
 import { expect, it } from 'vitest'
 import { HarnessRuntime } from '../src/main/runtime/harness-runtime'
 import { TypertClient } from '../packages/dsh-godot-stack/bridge/session-client.mjs'
+import { migrateLegacyAgentPresets } from '../src/main/state/legacy-preset-migration'
 
 it('persists the actual endpoint for bridge authentication across runtime restarts', async () => {
   const home = await mkdtemp(join(tmpdir(), 'godot-launch-token-'))
@@ -42,6 +43,9 @@ it('persists the actual endpoint for bridge authentication across runtime restar
       const session = await client.createSession({ cwd: home, preset: 'godot-codely-lite' })
       expect(session.agentPreset).toBe('godot-codely-lite')
       await runtime.stop()
+      // Desktop maintenance runs between boots and must not re-register the
+      // host plugin's copied presets as independent legacy user entries.
+      await migrateLegacyAgentPresets(home, () => {})
     }
   } finally {
     await runtime.stop()

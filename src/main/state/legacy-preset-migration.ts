@@ -1,13 +1,46 @@
 import { constants } from 'node:fs'
 import { cp, copyFile, mkdir, readFile, readdir, rename, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { isSeq, parse, parseDocument } from 'yaml'
+import { isMap, isScalar, isSeq, parse, parseDocument } from 'yaml'
 import { writeTextAtomically } from './persona-prefix-migration'
 
 const PRESET_ID = /^[a-z0-9][a-z0-9-]*$/
 const START = '# dsh-desktop legacy presets begin'
 const END = '# dsh-desktop legacy presets end'
 const BUILT_IN_PRESETS = new Set(['standard', 'ptc', 'minimal', 'cordis'])
+// These four IDs belong to dsh-godot-stack's live registrations. Directory
+// copies are provisioning inputs, not legacy user presets to register again.
+const HOST_MANAGED_PRESETS = new Set(['godot-codely-lite', 'godot-scene-expert', 'godot-shader-expert', 'godot-gdscript-expert'])
+
+function removeMigratedHostPresets(generated: string): string {
+  if (!generated) return generated
+  const document = parseDocument(generated)
+  if (document.errors.length || !isSeq(document.contents)) throw new Error('legacy preset section is not a YAML patch list')
+  const items = document.contents.items
+  const removals: Array<[number, number]> = []
+  for (const [index, item] of items.entries()) {
+    if (!isMap(item)) continue
+    const insert = item.get('insert')
+    if (!isSeq(insert) || insert.items.length !== 1) continue
+    const preset = insert.items[0]
+    if (!isMap(preset)) continue
+    const name: unknown = preset.get('name', true)
+    const id: unknown = preset.getIn(['config', 'id'], true)
+    const entryId: unknown = preset.get('id', true)
+    if (!isScalar(name) || name.value !== '@deepseek-ai/dsh-agent-preset' ||
+      !isScalar(id) || typeof id.value !== 'string' || !HOST_MANAGED_PRESETS.has(id.value) ||
+      !isScalar(entryId) || entryId.value !== `preset-${id.value}`) continue
+    const offset = item.range?.[0]
+    if (offset === undefined) throw new Error('legacy preset row has no source range')
+    const nextOffset = items[index + 1]?.range?.[0]
+    const start = generated.lastIndexOf('\n', offset) + 1
+    const end = nextOffset === undefined ? generated.length : generated.lastIndexOf('\n', nextOffset) + 1
+    removals.push([start, end])
+  }
+  let result = generated
+  for (const [start, end] of removals.reverse()) result = result.slice(0, start) + result.slice(end)
+  return result.trim()
+}
 
 function yamlString(value: string): string {
   return JSON.stringify(value)
@@ -41,7 +74,7 @@ export async function migrateLegacyAgentPresets(dshHome: string, note: (line: st
   }
   const sections: Array<{ id: string; patch: string }> = []
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (!entry.isDirectory() || !PRESET_ID.test(entry.name)) continue
+    if (!entry.isDirectory() || !PRESET_ID.test(entry.name) || HOST_MANAGED_PRESETS.has(entry.name)) continue
     try {
       const composition = await readFile(join(sourceRoot, entry.name, 'agent.cordis.yml'), 'utf8')
       const document = parseDocument(composition.replace(/^\uFEFF/u, ''))
@@ -57,7 +90,6 @@ export async function migrateLegacyAgentPresets(dshHome: string, note: (line: st
       note(`[desktop] legacy preset ${entry.name} could not be converted: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
-  if (sections.length === 0) return
 
   const profilePatch = join(dshHome, 'profiles', 'web', 'cordis.patch.yml')
   await mkdir(join(dshHome, 'profiles', 'web'), { recursive: true })
@@ -85,11 +117,14 @@ export async function migrateLegacyAgentPresets(dshHome: string, note: (line: st
     [...base.matchAll(/^(?:- id:|    - id:) preset-([a-z0-9-]+)\s*$/gmu)].map((match) => match[1])
   )
   const pending = sections.filter(({ id }) => !existingIds.has(id))
-  if (pending.length === 0) return
-  const generated = start === -1 ? '' : base.slice(start + START.length, end).trim()
+  const originalGenerated = start === -1 ? '' : base.slice(start + START.length, end).trim()
+  const generated = removeMigratedHostPresets(originalGenerated)
+  if (pending.length === 0 && generated === originalGenerated) return
   const withoutGenerated = start === -1 ? base : base.slice(0, start) + base.slice(end + END.length).replace(/^\r?\n/u, '')
   const generatedRows = [generated, ...pending.map(({ patch }) => patch.trimEnd())].filter(Boolean).join('\n\n')
-  const next = `${withoutGenerated.trimEnd()}\n\n${START}\n${generatedRows}\n${END}\n`
+  const next = generatedRows
+    ? `${withoutGenerated.trimEnd()}\n\n${START}\n${generatedRows}\n${END}\n`
+    : `${withoutGenerated.trimEnd() || '[]'}\n`
   if (next === previous) return
 
   const backupRoot = join(dshHome, '.agent-presets.pre-0.1.7-backup')

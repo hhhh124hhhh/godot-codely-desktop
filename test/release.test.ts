@@ -353,7 +353,7 @@ describe('GitHub release contract', () => {
     expect(packageJson.scripts['package:dev:win']).toContain('verify-target.mjs win32 x64')
     expect(packageJson.scripts['package:dev:win']).toContain('electron-builder.dev.cjs')
     expect(packageJson.scripts['package:dev:win']).toContain('--publish never')
-    expect(developmentConfig.appId).toBe('io.dsh.desktop.dev')
+    expect(developmentConfig.appId).toBe('io.godot.codely.dev')
     expect(developmentConfig.productName).toBe('Godot Codely Dev')
     expect(developmentConfig.directories.output).toBe('dist-dev')
     expect(developmentConfig.extraMetadata.dshDesktopChannel).toBe('development')

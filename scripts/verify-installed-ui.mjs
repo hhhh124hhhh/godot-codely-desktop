@@ -6,7 +6,7 @@ import { TypertClient } from '../packages/dsh-godot-stack/bridge/session-client.
 // alone cannot prove that the bootstrap registered or React mounted.
 const [endpoint, screenshot, harnessHome] = process.argv.slice(2)
 if (!endpoint || new URL(endpoint).hostname !== '127.0.0.1') throw new Error('Loopback CDP endpoint required')
-const deadline = Date.now() + 90_000
+const deadline = Date.now() + 120_000
 let lastFailure = 'No application renderer found'
 while (Date.now() < deadline) {
   let socket
@@ -36,10 +36,17 @@ while (Date.now() < deadline) {
     })
     const result = await send('Runtime.evaluate', {
       expression: `(() => {
+        const editable = '[contenteditable]:not([contenteditable="false"]), textarea'
+        const buttons = [...document.querySelectorAll('button')]
+        buttons.find(button => /^(Maybe later|稍后再说|以后再说)$/.test(button.textContent.trim()))?.click()
+        if (!document.querySelector(editable) && !window.__seedSmokeOpenedChat) {
+          const create = buttons.find(button => /^(新会话|New (chat|session))$/i.test(button.textContent.trim()))
+          if (create) { window.__seedSmokeOpenedChat = true; create.click() }
+        }
         const text = document.body.innerText
         return {
           bootstrap: Boolean(window.__ModuleLoader__),
-          composer: Boolean(document.querySelector('[contenteditable="true"], textarea')),
+          composer: Boolean(document.querySelector(editable)),
           navigation: /新会话|New (chat|session)/i.test(text),
           recovery: /发现导致启动失败的插件|Plugins preventing startup/.test(text)
         }

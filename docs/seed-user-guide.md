@@ -10,6 +10,8 @@ Windows x64 使用 `godot-codely-windows-x64-setup.exe`。当前早期包未签�
 
 Godot Codely 使用独立的数据目录。默认启动不扫描、提示导入或加载本机 DSH 网页版的会话、插件和密钥；已有 DSH 可以继续使用。只有用户显式使用 `--import-web-home` 启动、且桌面 Profile 尚未使用时，才提供一次复制导入；安全模式不执行该入口。
 
+早期版本通过本仓库 Releases 手动更新，不连接 DSH 的自动更新或故障上报服务。Dev 包使用独立应用 ID `io.godot.codely.dev`，正式包使用 `io.godot.codely`。已经显式导入过的数据会保留，不会因关闭自动探测而删除。
+
 Linux 和 macOS 只有在对应版本说明列出原生验收及下载文件后才作为支持平台；CI 产物存在不等于已发布。Linux Office 功能不作为首批测试目标。
 
 ## 第一次任务

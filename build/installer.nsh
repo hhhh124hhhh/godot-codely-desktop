@@ -84,7 +84,7 @@
       ; CHECK_APP_RUNNING force-kills the previous process, so will-quit never
       ; clears the session marker. Same-version overwrite would otherwise look
       ; like an unclean-exit. Delete is a no-op when the file is absent.
-      !if "${APP_ID}" == "io.dsh.desktop.dev"
+      !if "${APP_ID}" == "io.godot.codely.dev"
         Delete "$APPDATA\godot-codely-dev\desktop-service\session.json"
       !else if "${APP_ID}" == "io.godot.codely"
         Delete "$APPDATA\godot-codely\desktop-service\session.json"
