@@ -24,6 +24,8 @@
     "game-dev"
   ],
   "scripts": {
+    "website:build": "node scripts/website.mjs",
+    "website:preview": "node scripts/website.mjs --serve",
     "postinstall": "patch-package && npm run brand:prepare && install-electron --no",
     "dev": "npm run brand:prepare && npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite dev",
     "build": "npm run brand:prepare && npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite build",

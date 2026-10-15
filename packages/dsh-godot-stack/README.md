@@ -12,6 +12,14 @@ Godot Codely 预装插件：把 godot-extensions 全家桶打进出厂配置，�
 
 `<dshHome>` = `DSH_HOME` 环境变量，未设置时为 `~/.godot-codely`。
 
+## 桌面开发工作台
+
+当前开发源码提供 Godot 项目概览、Lite 开发会话和编辑器基础控制。重建桌面后，在“工作台 → 已安装”启用 **Godot 开发**，再从工作台菜单进入；选择包含 `project.godot` 的项目根目录。
+
+“开始开发”显式使用 `godot-codely-lite`，并保留原生模型选择、审批和取消。检查连接、编辑器运行/停止和刷新资源需要项目中的 Godot Codely 插件已启用并连接。编辑器超时表示结果未知，请检查实际状态后再重试；未保存场景需在 Godot 中处理。
+
+独立引擎启动、路径设置、进程日志面板和结构化变更审查尚未纳入这批界面。已安装发行版是否包含工作台，以具体构建为准。实施计划见 [Issue #20](https://github.com/hhhh124hhhh/godot-codely-desktop/issues/20)。
+
 ## 工作机制
 
 - 插件随 `build/dsh-desktop.patch.yml` 的 `- insert: dsh-godot-stack` 挂载，每次 Harness 启动时 `apply()` 执行。

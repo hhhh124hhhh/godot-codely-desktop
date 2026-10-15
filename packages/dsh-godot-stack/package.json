@@ -9,12 +9,15 @@
   },
   "exports": {
     ".": "./index.js",
+    "./client": "./client.js",
     "./mcp-agent": "./mcp-agent.mjs",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
   "files": [
     "index.js",
+    "client.js",
+    "desktop-api.mjs",
     "data-home.mjs",
     "copy-bundled-directory.mjs",
     "memory-root.mjs",
@@ -51,6 +54,10 @@
     "@deepseek-ai/cordis-plugin-include": "1.0.9"
   },
   "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": ["dsh-desktop-workbenches", "@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-workspace"]
+    },
     "bundle": {
       "patch": "./cordis.patch.yml"
     }

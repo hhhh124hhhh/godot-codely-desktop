@@ -73,8 +73,8 @@ export class TypertClient {
     }
   }
 
-  createSession({ cwd, preset } = {}) {
-    return this.call('session/create', { request: { ...(cwd ? { cwd } : {}), ...(preset ? { agentPreset: preset } : {}) } })
+  createSession({ cwd, workspaceId, preset } = {}) {
+    return this.call('session/create', { request: { ...(workspaceId ? { workspaceId } : cwd ? { cwd } : {}), ...(preset ? { agentPreset: preset } : {}) } })
   }
 
   prompt(sessionId, text, requestId = randomUUID()) {

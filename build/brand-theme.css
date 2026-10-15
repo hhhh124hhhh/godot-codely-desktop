@@ -1,0 +1,45 @@
+/* Host palette; plugins consume the existing Harness semantic aliases. */
+html body:not([data-ds-dark-theme]) {
+  --dsw-alias-bg-base: #eef2f8;
+  --dsw-alias-bg-layer-1: #ffffff;
+  --dsw-alias-bg-layer-2: #e5ebf5;
+  --dsw-alias-bg-layer-3: #dce4f1;
+  --dsw-alias-border-l2: #d5deec;
+  --dsw-alias-label-primary: #1d2c46;
+  --dsw-alias-label-secondary: #52637d;
+  --dsw-alias-label-caption: #61718a;
+  --dsw-alias-state-business-primary: #2459d8;
+  --dsw-alias-button-primary-fill: #2459d8;
+  --dsw-alias-button-primary-hover: #1c48b5;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-alias-button-info-fill: #2459d8;
+  --dsw-alias-button-info-hover: #1c48b5;
+  --dsw-alias-interactive-bg-hover: #e3eaf6;
+  --dsw-specific-sidebar-fill: #e3eaf5;
+  --dsw-specific-sidebar-nav-item-active: #d6e3fb;
+  --dsw-specific-sidebar-nav-item-active-accent: #d6e3fb;
+  --dsw-specific-sidebar-nav-item-hover: #dbe5f5;
+  --dsw-specific-input-major: #ffffff;
+}
+html body[data-ds-dark-theme] {
+  --dsw-alias-bg-base: #131c2c;
+  --dsw-alias-bg-layer-1: #1b273a;
+  --dsw-alias-bg-layer-2: #24334b;
+  --dsw-alias-bg-layer-3: #2d3e58;
+  --dsw-alias-border-l2: #354660;
+  --dsw-alias-label-primary: #e7edf8;
+  --dsw-alias-label-secondary: #aebdd3;
+  --dsw-alias-label-caption: #9caec9;
+  --dsw-alias-state-business-primary: #8bb2ff;
+  --dsw-alias-button-primary-fill: #3869de;
+  --dsw-alias-button-primary-hover: #4778ef;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-alias-button-info-fill: #3869de;
+  --dsw-alias-button-info-hover: #4778ef;
+  --dsw-alias-interactive-bg-hover: #293c59;
+  --dsw-specific-sidebar-fill: #101827;
+  --dsw-specific-sidebar-nav-item-active: #2b446d;
+  --dsw-specific-sidebar-nav-item-active-accent: #2b446d;
+  --dsw-specific-sidebar-nav-item-hover: #24334b;
+  --dsw-specific-input-major: #202e45;
+}

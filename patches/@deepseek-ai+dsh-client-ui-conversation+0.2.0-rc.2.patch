@@ -1,5 +1,5 @@
 diff --git a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js
-index 7f3f791..a03a091 100644
+index 7f3f791..d87a11a 100644
 --- a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js
 +++ b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js
 @@ -15795,12 +15795,13 @@ window.__ModuleLoader__.load({
@@ -25,7 +25,17 @@ index 7f3f791..a03a091 100644
  			"heroWorkspaceRow": "wSkVaW_heroWorkspaceRow",
  			"root": "wSkVaW_root",
  			"scrollBody": "wSkVaW_scrollBody",
-@@ -16280,12 +16282,17 @@ window.__ModuleLoader__.load({
+@@ -16210,7 +16212,8 @@ window.__ModuleLoader__.load({
+ 		* @returns the Conversation view, Composer, and optional width controls.
+ 		*/
+ 		function ConversationContent(props) {
+-			const { sessionId, phase, hero, useSession, useSessions, useSessionStatus, useWorkspaces, useInput, useComposerBlock, renderSlot, renderSlotChain, selectWorkspace, t, useFactorySlot } = props;
++			const { sessionId, phase, hero, useSession, useSessions, useSessionStatus, useWorkspaces, useInput, useComposerBlock, renderSlot, renderSlotChain, selectWorkspace, t: nativeT, presentationT, useFactorySlot } = props;
++			const t = presentationT ?? nativeT;
+ 			const session = useSession((snapshot) => snapshot);
+ 			const Views = useFactorySlot("views", ConversationSessionView);
+ 			const WidthControls = useFactorySlot("widthControls", NoConversationWidthControls);
+@@ -16280,12 +16283,17 @@ window.__ModuleLoader__.load({
  							setPickerOpen(false);
  						}
  					}),
@@ -44,7 +54,7 @@ index 7f3f791..a03a091 100644
  				...inert ? {
  					disabled: true,
  					placeholder: t("placeholder.workspace"),
-@@ -16307,7 +16314,8 @@ window.__ModuleLoader__.load({
+@@ -16307,7 +16315,8 @@ window.__ModuleLoader__.load({
  					}),
  					hero && heroWorkspaceRow,
  					zone !== void 0 && renderSlot("conversation.input.dock", zone),
@@ -54,7 +64,7 @@ index 7f3f791..a03a091 100644
  				]
  			});
  			const composer = renderSlotChain("conversation.composer", {
-@@ -16351,7 +16359,8 @@ window.__ModuleLoader__.load({
+@@ -16351,7 +16360,8 @@ window.__ModuleLoader__.load({
  		* @returns the Conversation subtree.
  		*/
  		function ConversationPanel({ renderSlot }) {
@@ -64,7 +74,7 @@ index 7f3f791..a03a091 100644
  		}
  		//#endregion
  		//#region lib/types/client/skeleton/ConversationHeader.js
-@@ -17169,13 +17178,16 @@ window.__ModuleLoader__.load({
+@@ -17169,13 +17179,16 @@ window.__ModuleLoader__.load({
  		}
  		//#endregion
  		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-conversation/src/client/skeleton/InputBar.module.css.mjs
@@ -82,7 +92,7 @@ index 7f3f791..a03a091 100644
  			document.head.appendChild(tag);
  		}
  		var InputBar_module_css_default = {
-@@ -17197,6 +17209,7 @@ window.__ModuleLoader__.load({
+@@ -17197,6 +17210,7 @@ window.__ModuleLoader__.load({
  			"pending": "uV2eYG_pending",
  			"placeholder": "uV2eYG_placeholder",
  			"primary": "uV2eYG_primary",
@@ -90,16 +100,17 @@ index 7f3f791..a03a091 100644
  			"retry": "uV2eYG_retry",
  			"root": "uV2eYG_root",
  			"row": "uV2eYG_row",
-@@ -17223,7 +17236,7 @@ window.__ModuleLoader__.load({
+@@ -17223,7 +17237,8 @@ window.__ModuleLoader__.load({
  		* The no-session state renders the SAME div inert as the Workspace-picker
  		* trigger instead of a parallel tree.
  		*/
 -		const InputBar = (0, react.memo)(function InputBar({ useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments, retryFileUpload, toggleCommandMenu, stop, t, renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher, useStopShortcut, useProjection, sessionId, variant, disabled: inert = false, blocked, workspacePickerOpen = false, onRequestWorkspace, placeholder, accessory }) {
-+		const InputBar = (0, react.memo)(function InputBar({ useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments, retryFileUpload, toggleCommandMenu, stop, t, renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher, useStopShortcut, useProjection, sessionId, variant, disabled: inert = false, blocked, workspacePickerOpen = false, onRequestWorkspace, placeholder, accessory, extensionZone, openUploadedFile }) {
++		const InputBar = (0, react.memo)(function InputBar({ useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments, retryFileUpload, toggleCommandMenu, stop, t: nativeT, presentationT, renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher, useStopShortcut, useProjection, sessionId, variant, disabled: inert = false, blocked, workspacePickerOpen = false, onRequestWorkspace, placeholder, accessory, extensionZone, openUploadedFile }) {
++			const t = presentationT ?? nativeT;
  			const input = useInput((s) => s);
  			const notice = useNotices((s) => s);
  			const busyEnter = useBusyEnter((s) => s);
-@@ -17451,10 +17464,6 @@ window.__ModuleLoader__.load({
+@@ -17451,10 +17466,6 @@ window.__ModuleLoader__.load({
  								className: InputBar_module_css_default.overlayAnchor,
  								children: renderSlot("conversation.input.overlay", {})
  							}),
@@ -110,7 +121,7 @@ index 7f3f791..a03a091 100644
  							renderSlot("conversation.input.attachments", {
  								attachments,
  								canAcceptDrop,
-@@ -17466,25 +17475,35 @@ window.__ModuleLoader__.load({
+@@ -17466,25 +17477,35 @@ window.__ModuleLoader__.load({
  								onRetryFile: (id) => {
  									retryFileUpload?.(id);
  								},
@@ -160,7 +171,7 @@ index 7f3f791..a03a091 100644
  							}),
  							(0, react_jsx_runtime.jsxs)("div", {
  								ref: rowRef,
-@@ -17612,7 +17631,7 @@ window.__ModuleLoader__.load({
+@@ -17612,7 +17633,7 @@ window.__ModuleLoader__.load({
  					}),
  					(0, react_jsx_runtime.jsxs)("div", {
  						className: InputBar_module_css_default.dock,
@@ -169,7 +180,25 @@ index 7f3f791..a03a091 100644
  							useProjection,
  							t
  						})]
-@@ -18179,6 +18198,14 @@ window.__ModuleLoader__.load({
+@@ -17951,7 +17972,16 @@ window.__ModuleLoader__.load({
+ 				zh,
+ 				en
+ 			}), "ui-conversation: dictionaries");
+-			const t = ctx.locale.bind(NS);
++			const defaultT = ctx.locale.bind(NS);
++			const presentationT = ctx.locale.bind("conversation.presentation");
++			const presentationKeys = new Set(["hero.headline", "hero.preview", "placeholder.hero", "placeholder.default", "placeholder.workspace", "placeholder.plan"]);
++			const t = (key, params) => {
++				if (presentationKeys.has(key)) {
++					const text = presentationT(key, params);
++					if (text !== key) return text;
++				}
++				return defaultT(key, params);
++			};
+ 			const conversationStore = createConversationStore();
+ 			const submissionPolicy = new ComposerSubmissionPolicy(ctx.configForms.get(CONVERSATION_SETTINGS_NAMESPACE));
+ 			ctx.effect(() => () => {
+@@ -18179,6 +18209,14 @@ window.__ModuleLoader__.load({
  					"conversation.hero.agentPreset": {
  						kind: "single",
  						scope: "session-maybe"
@@ -184,7 +213,15 @@ index 7f3f791..a03a091 100644
  					}
  				},
  				slots: {
-@@ -18302,6 +18329,10 @@ window.__ModuleLoader__.load({
+@@ -18186,6 +18224,7 @@ window.__ModuleLoader__.load({
+ 					widthControls: { scope: "root" }
+ 				},
+ 				inject: (sessionId) => ({
++					presentationT: t,
+ 					hooks: { composerBlock: sessionId === void 0 ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId) },
+ 					selectWorkspace: (workspaceId) => workspaceNavigation.openWorkspace(workspaceId, (nextId) => {
+ 						if (sessionId !== void 0 && nextId !== sessionId) {
+@@ -18302,6 +18341,10 @@ window.__ModuleLoader__.load({
  						kind: "list",
  						scope: "session"
  					},
@@ -195,7 +232,13 @@ index 7f3f791..a03a091 100644
  					"conversation.input.permission": {
  						kind: "single",
  						scope: "session"
-@@ -18338,6 +18369,7 @@ window.__ModuleLoader__.load({
+@@ -18333,11 +18376,13 @@ window.__ModuleLoader__.load({
+ 				},
+ 				inject: (sessionId) => {
+ 					if (sessionId === void 0) return {
++						presentationT: t,
+ 						keyboard: void 0,
+ 						addFiles: void 0,
  						removeAttachment: void 0,
  						resolveDraftAttachments: void 0,
  						retryFileUpload: void 0,
@@ -203,7 +246,15 @@ index 7f3f791..a03a091 100644
  						toggleCommandMenu: void 0,
  						stop: void 0,
  						hooks: {
-@@ -18404,6 +18436,11 @@ window.__ModuleLoader__.load({
+@@ -18354,6 +18399,7 @@ window.__ModuleLoader__.load({
+ 					const inputTriggers = inputHub.inputTriggers(sessionId);
+ 					const bridge = hostPathBridge();
+ 					return {
++						presentationT: t,
+ 						keyboard: shell,
+ 						addFiles: (files, directories = /* @__PURE__ */ new Set()) => {
+ 							if (sessions.binding(sessionId) === void 0) return t("file.sessionUnavailable");
+@@ -18404,6 +18450,11 @@ window.__ModuleLoader__.load({
  						retryFileUpload: (id) => {
  							if (sessions.binding(sessionId) !== void 0) conversation.retryFileUpload(sessionId, id);
  						},
@@ -215,7 +266,7 @@ index 7f3f791..a03a091 100644
  						toggleCommandMenu: inputTriggers === void 0 ? void 0 : (selection) => {
  							shell.dismissPopup();
  							const snapshot = shell.snapshot;
-@@ -18436,10 +18473,7 @@ window.__ModuleLoader__.load({
+@@ -18436,10 +18487,7 @@ window.__ModuleLoader__.load({
  				yield slots.register({
  					name: "main",
  					key: "conversation",
@@ -228,7 +279,7 @@ index 7f3f791..a03a091 100644
  				yield registerConversationRoot();
  				yield registerConversationContent();
 diff --git a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts
-index 74f5846..66e825e 100644
+index 74f5846..a0c86f5 100644
 --- a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts
 +++ b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts
 @@ -118,6 +118,12 @@ export type UseConversation = SnapshotSelectorHook<ConversationSnapshot>;
@@ -281,7 +332,7 @@ index 74f5846..66e825e 100644
          };
          /** Compact controls at the left of the composer tool row. */
          'conversation.input.left': {
-@@ -440,8 +465,10 @@ export interface ComposerBarOwnerProps {
+@@ -440,11 +465,15 @@ export interface ComposerBarOwnerProps {
      /** Open the Workspace picker from the inert composer surface. */
      onRequestWorkspace?: () => void;
      placeholder?: string;
@@ -293,7 +344,12 @@ index 74f5846..66e825e 100644
  }
  /** Package-private operations injected into the resident composer bar. */
  export interface ComposerBarInjected {
-@@ -486,7 +513,7 @@ export interface InputActivityOwnerProps extends InputControlOwnerProps {
++    /** Optional host copy adapter; native error/status wording is preserved. */
++    presentationT?: PropsLocale<'conversation'>['t'];
+     keyboard: ComposerKeyboard | undefined;
+     /**
+      * Register one picked batch; resolves to the rejection copy or null. Where
+@@ -486,7 +515,7 @@ export interface InputActivityOwnerProps extends InputControlOwnerProps {
      onActiveChange: (active: boolean) => void;
  }
  /** Full props of the resident composer bar. */
@@ -302,6 +358,33 @@ index 74f5846..66e825e 100644
  /** Owner values used to elect a composer takeover. */
  export interface ComposerChainProps {
      /** Current Session identity used by temporary business-owned entries. */
+@@ -507,6 +536,8 @@ export interface HeroBrandMarkOwnerProps {
+ export type ConversationSlotProps = PropsRuntime<'main.conversation'> & PropsRenderSlots<'conversation.header'> & PropsRenderFactories;
+ /** Inputs shared by main and embedded Conversation content occurrences. */
+ export interface ConversationContentInputProps {
++    /** Optional host copy adapter for the hero and workspace hint. */
++    presentationT?: PropsLocale<'conversation'>['t'];
+     variant: 'main' | 'embedded';
+     phase: 'settling' | 'hero' | 'active';
+     hero: boolean;
+diff --git a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/index.d.ts b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/index.d.ts
+index ed59077..c116bbc 100644
+--- a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/index.d.ts
++++ b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/index.d.ts
+@@ -28,6 +28,13 @@ export type { ComposerAttachment, ComposerAttachmentsOwnerProps, ComposerAttachm
+ export type { BeginCommandRequest, CommandClaim, ConsumeTokenRequest, DraftAttachmentId, InputActions, InputState, InsertReferenceRequest, InsertTextRequest, PickOutcome, SessionInput, SessionInputResolver, SubmitAttachment, SubmitOutcome, } from './contract/input.ts';
+ export type { ArbitrateKey, ArbitrateOutcome, ReferenceInsert, TokenSpan } from './contract/draft-editor.ts';
+ export type { ComposerBlock, ComposerBlocks } from './contract/composer-blocks.ts';
++/** Optional host presentation text. Missing keys keep the native conversation copy. */
++export type ConversationPresentationKey = 'hero.headline' | 'hero.preview' | 'placeholder.hero' | 'placeholder.default' | 'placeholder.workspace' | 'placeholder.plan';
++declare module '@deepseek-ai/dsh-client-ui-slots' {
++    interface LocaleNamespaceMap {
++        'conversation.presentation': ConversationPresentationKey;
++    }
++}
+ declare module '@deepseek-ai/cordis' {
+     interface Context {
+         /** Scope-addressed Conversation actions and per-Session input registry. */
 diff --git a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/skeleton/ConversationPanel.d.ts b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/skeleton/ConversationPanel.d.ts
 index 046ea88..aed438a 100644
 --- a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/skeleton/ConversationPanel.d.ts
