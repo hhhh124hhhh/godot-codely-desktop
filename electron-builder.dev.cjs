@@ -2,14 +2,14 @@ const packageJson = require('./package.json')
 
 module.exports = {
   ...packageJson.build,
-  appId: 'io.dsh.desktop.dev',
+  appId: 'io.godot.codely.dev',
   productName: 'Godot Codely Dev',
   directories: {
     ...packageJson.build.directories,
     output: 'dist-dev'
   },
   extraMetadata: {
-    name: 'dsh-desktop-dev',
+    name: 'godot-codely-dev',
     productName: 'Godot Codely Dev',
     dshDesktopChannel: 'development'
   },

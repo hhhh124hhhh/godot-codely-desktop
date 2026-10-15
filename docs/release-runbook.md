@@ -1,5 +1,7 @@
 # Desktop release runbook
 
+Godot Codely early builds use manual updates from this fork's GitHub Releases. The inherited DSH update, version-index and failure-report services are disabled; packaging or signing a build does not enable them. Dev and production builds have independent Godot Codely application IDs and data directories. Seed-user acceptance and current native evidence are recorded in [seed readiness](seed-user-readiness.md).
+
 ## Orchestrated release (recommended)
 
 Use **Actions → Orchestrate desktop release** for a one-step formal or prerelease trigger. Formal releases push a `v*` tag (version must match `package.json`); prereleases dispatch **Release desktop installers** with `mode=prerelease` and `target=all`. See [Release automation](release-automation.md).

@@ -61,7 +61,7 @@ export function registerUpdateHandlers(): void {
   ipcMain.handle('updates:install', () => installDownloadedUpdate())
   ipcMain.handle('updates:skip', (_event, version: unknown) => skipUpdate(version))
   ipcMain.handle('updates:download', () => downloadAvailableUpdate())
-  ipcMain.handle('updates:list-versions', () => fetchAvailableReleases(app.getVersion()))
+  ipcMain.handle('updates:list-versions', () => supportsUpdates() ? fetchAvailableReleases(app.getVersion()) : Promise.resolve([]))
   ipcMain.handle('updates:install-version', (_event, version: unknown) =>
     installSpecificVersion(version)
   )
@@ -102,7 +102,7 @@ export function startUpdateManager(options: { prepareToInstall: () => Promise<vo
   if (!supportsUpdates()) {
     transition({
       type: 'unsupported',
-      message: 'Updates are available in installed macOS and Windows builds.'
+      message: 'Update this preview manually from the Godot Codely GitHub Releases page.'
     })
     return
   }
@@ -121,7 +121,7 @@ export async function checkForUpdates(manual = false): Promise<UpdateStatus> {
     transition(
       {
         type: 'unsupported',
-        message: 'Update checks are only available in installed macOS and Windows builds.'
+        message: 'Update this preview manually from the Godot Codely GitHub Releases page.'
       },
       manual
     )

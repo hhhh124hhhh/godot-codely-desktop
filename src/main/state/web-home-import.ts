@@ -73,6 +73,18 @@ export function defaultWebHome(): string {
   return join(homedir(), '.dsh')
 }
 
+/** The fork owns an independent Profile; discovering upstream data is opt-in. */
+export async function webHomeImportSourceForLaunch(options: {
+  args: readonly string[]
+  desktopHome: string
+  safeMode: boolean
+  sourceHome?: () => string
+}): Promise<string | undefined> {
+  if (options.safeMode || !options.args.includes('--import-web-home')) return undefined
+  const source = (options.sourceHome ?? defaultWebHome)()
+  return await shouldOfferWebHomeImport(options.desktopHome, source) ? source : undefined
+}
+
 export function importDecisionPath(desktopHome: string): string {
   return join(desktopHome, DECISION_FILE)
 }

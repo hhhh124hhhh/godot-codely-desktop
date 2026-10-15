@@ -162,10 +162,9 @@ import {
 import { buildPluginRecoveryViewModel } from './plugin-recovery-view'
 import { buildWebImportViewModel } from './web-import-view'
 import {
-  defaultWebHome,
   importWebHome,
   previewWebHome,
-  shouldOfferWebHomeImport,
+  webHomeImportSourceForLaunch,
   writeSkipDecision
 } from './state/web-home-import'
 import {
@@ -1109,9 +1108,12 @@ async function openHarness(
 }
 
 async function maybeImportWebHome(dshHome: string): Promise<void> {
-  if (startInSafeMode) return
-  const webHome = defaultWebHome()
-  if (!await shouldOfferWebHomeImport(dshHome, webHome)) return
+  const webHome = await webHomeImportSourceForLaunch({
+    args: process.argv,
+    desktopHome: dshHome,
+    safeMode: startInSafeMode
+  })
+  if (!webHome) return
 
   let notice: string | undefined
   while (!quitting) {

@@ -25,6 +25,8 @@ Development builds use the separate application name `Godot Codely Dev` and the 
 
 ## Validation
 
+Godot Codely does not discover or offer to import the upstream `~/.dsh` home on normal startup. Migration is an explicit, one-time action into an unused desktop Profile: launch the installed executable with `--import-web-home` (`open -a "Godot Codely" --args --import-web-home` on macOS). Safe Mode ignores this flag. Imported data is copied, and existing upstream data and existing desktop Profiles are not overwritten. Choosing Start empty is remembered for that Profile. An isolated test Profile without that decision is a different installation context; automation must not import real user data.
+
 Run the core checks before submitting a change:
 
 ```bash

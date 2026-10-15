@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildWebImportViewModel } from '../src/main/web-import-view'
 import {
   communityPluginNames,
@@ -13,6 +13,7 @@ import {
   previewWebHome,
   readImportDecision,
   shouldOfferWebHomeImport,
+  webHomeImportSourceForLaunch,
   writeSkipDecision
 } from '../src/main/state/web-home-import'
 
@@ -95,6 +96,25 @@ describe('web home import', () => {
     const dest = join(tmpdir(), 'harness')
     expect(importTmpPath(dest)).toBe(`${resolve(dest)}.import-tmp`)
     expect(importTmpPath(`${dest}${sep}`)).toBe(importTmpPath(dest))
+  })
+
+  it('does not discover upstream data on normal launches or in Safe Mode', async () => {
+    const sourceHome = vi.fn(() => { throw new Error('Must not inspect upstream home') })
+    for (const args of [[], ['--some-other-flag'], ['--import-web-home=false']]) {
+      expect(await webHomeImportSourceForLaunch({ args, desktopHome: 'unused', safeMode: false, sourceHome })).toBeUndefined()
+    }
+    expect(await webHomeImportSourceForLaunch({ args: ['--import-web-home'], desktopHome: 'unused', safeMode: true, sourceHome })).toBeUndefined()
+    expect(sourceHome).not.toHaveBeenCalled()
+  })
+
+  it('only offers explicit migration into an empty desktop and remembers skipping', async () => {
+    const source = await createWebHome()
+    const desktopHome = join(await createRoot('dsh-explicit-import-'), 'harness')
+    const options = { args: ['--import-web-home'], desktopHome, safeMode: false, sourceHome: () => source }
+    expect(await webHomeImportSourceForLaunch(options)).toBe(source)
+    await writeSkipDecision(desktopHome, source)
+    expect(await webHomeImportSourceForLaunch(options)).toBeUndefined()
+    expect(await inspectWebHome(source)).toBe(true)
   })
 
   it('recognizes a legal, empty, or missing web home', async () => {

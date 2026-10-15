@@ -16,6 +16,15 @@ const releaseAssets = [
 const HARNESS_VERSION = '0.2.0-rc.2'
 
 describe('GitHub release contract', () => {
+  it('runs installer verification on a fresh runner and requires it before Windows publication', async () => {
+    const workflow = parse(await readFile(path.join(projectRoot, '.github/workflows/release.yml'), 'utf8'))
+    const installed = workflow.jobs['windows-installed']
+    expect(installed.needs).toBe('windows-x64')
+    expect(installed.steps.some((step: { uses?: string }) => step.uses === 'actions/download-artifact@v4')).toBe(true)
+    const publish = workflow.jobs['publish-unsigned-github']
+    expect(publish.needs).toContain('windows-installed')
+    expect(publish.if).toContain("needs.windows-installed.result == 'success'")
+  })
   it('keeps the package and lockfile versions aligned', async () => {
     const packageJson = JSON.parse(
       await readFile(path.join(projectRoot, 'package.json'), 'utf8')
@@ -344,7 +353,7 @@ describe('GitHub release contract', () => {
     expect(packageJson.scripts['package:dev:win']).toContain('verify-target.mjs win32 x64')
     expect(packageJson.scripts['package:dev:win']).toContain('electron-builder.dev.cjs')
     expect(packageJson.scripts['package:dev:win']).toContain('--publish never')
-    expect(developmentConfig.appId).toBe('io.dsh.desktop.dev')
+    expect(developmentConfig.appId).toBe('io.godot.codely.dev')
     expect(developmentConfig.productName).toBe('Godot Codely Dev')
     expect(developmentConfig.directories.output).toBe('dist-dev')
     expect(developmentConfig.extraMetadata.dshDesktopChannel).toBe('development')
@@ -493,6 +502,9 @@ describe('GitHub release contract', () => {
   it('does not change Windows security settings during installation', async () => {
     const installer = await readFile(path.join(projectRoot, 'build', 'installer.nsh'), 'utf8')
     expect(installer).not.toMatch(/Add-MpPreference|HKLM|ExecShell\s+"runas"/)
+    expect(installer).not.toContain('$APPDATA\\dsh-desktop\\')
+    expect(installer).toContain('$APPDATA\\godot-codely-dev\\desktop-service\\session.json')
+    expect(installer).toContain('$APPDATA\\godot-codely\\desktop-service\\session.json')
   })
 
   it('routes stable downloads through the website and previews through GitHub', async () => {
