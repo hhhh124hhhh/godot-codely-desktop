@@ -12,6 +12,7 @@
  *   node cli/cli.mjs --preset godot-codely-lite
  *   node cli/cli.mjs --once "改一下 player.gd 的跳跃力度"   # 单次问答
  */
+import { cliBrandLabel } from './brand.mjs'
 import { createInterface } from 'node:readline'
 import { existsSync } from 'node:fs'
 import { TypertClient } from '../bridge/bridge.mjs'
@@ -119,7 +120,7 @@ function parseArgs(argv) {
 async function main() {
   await authOrExit()
   const sessionId = await findOrCreateSession()
-  console.log(`\x1b[36mGodot Codely CLI\x1b[0m · preset=${PRESET} · cwd=${CWD}`)
+  console.log(`\x1b[36m${cliBrandLabel()}\x1b[0m · preset=${PRESET} · cwd=${CWD}`)
   console.log(`\x1b[90m会话 ${sessionId.slice(0, 24)}… 输入 /quit 退出，/new 新建会话\x1b[0m\n`)
 
   if (args.once) {

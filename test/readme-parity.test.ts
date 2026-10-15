@@ -78,7 +78,7 @@ describe('localized README parity', () => {
       expect(content).not.toContain(upstreamClone)
       expect(content).toMatch(/<h1[^>]*>[\s\S]*\n\s*Godot Codely\s*\n<\/h1>/)
       expect(content).not.toMatch(/<h1[^>]*>[\s\S]*\n\s*DSH Desktop\s*\n<\/h1>/)
-      expect(content).toContain('build/app-icon.png')
+      expect(content).toContain('build/brand-mark.svg')
       expect(content).not.toContain('readme-logo-black-rounded.svg')
       expect(content).toContain('godot-codely-lite')
       expect(content).toContain('GODOT_PATH')

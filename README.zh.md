@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="build/app-icon.png" width="96" alt="Godot Codely Logo" valign="middle" />
+  <img src="build/brand-mark.svg" width="96" alt="Godot Codely Logo" valign="middle" />
   Godot Codely
 </h1>
 

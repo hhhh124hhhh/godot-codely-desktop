@@ -11,8 +11,8 @@
 # upstream __DSH_DIRECTORY_PICKER__ bridge exposed by preload.
 
 # Disable the stock single-slot occupant before mounting Desktop's equivalent;
-# two occupants cannot share either brand seat. The Desktop plugin preserves
-# the stock conversation mark. The phone remains in the settings row because
+# two occupants cannot share either brand seat. The Desktop plugin uses the
+# shared robot mark in the sidebar and conversation. The phone remains in the settings row because
 # the public footer-action slot is a separate row. Window chrome geometry
 # remains a native-shell concern.
 - id: ui-brand-official

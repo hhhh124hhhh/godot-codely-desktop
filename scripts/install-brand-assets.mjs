@@ -3,9 +3,9 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const source = path.join(projectRoot, 'build', 'icon.png')
-const lightSource = path.join(projectRoot, 'build', 'logo-light.png')
-const darkSource = path.join(projectRoot, 'build', 'logo-dark.png')
+const source = path.join(projectRoot, '.build/brand-assets', 'icon.png')
+const lightSource = path.join(projectRoot, '.build/brand-assets', 'logo-light.png')
+const darkSource = path.join(projectRoot, '.build/brand-assets', 'logo-dark.png')
 const destinationDirectory = path.join(
   projectRoot,
   'node_modules',
@@ -65,12 +65,13 @@ function replaceManifestIcon(contents, file) {
     throw new Error(`Could not update DSH Desktop branding in ${file}: no icon entry to replace`)
   }
   target.src = '/dsh-desktop-logo.png'
-  target.sizes = '1254x1254'
+  target.sizes = '1024x1024'
   target.type = 'image/png'
   return `${JSON.stringify(manifest, null, 2)}\n`
 }
 
 await mkdir(destinationDirectory, { recursive: true })
+await copyFile(path.join(projectRoot, 'build/brand-mark.svg'), path.join(destinationDirectory, 'godot-codely-mark.svg'))
 await copyFile(source, destination)
 await copyFile(lightSource, lightDestination)
 await copyFile(darkSource, darkDestination)
