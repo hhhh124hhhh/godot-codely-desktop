@@ -5,6 +5,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'godot-desktop'
     const zh = {
+      engineCrashed: 'Godot 游戏进程异常退出', engineCrashHelp: '请查看下方崩溃日志，并尝试在 Godot 中直接运行项目。可修正项目后重试，或更换引擎；桌面端会保留本次输出。',
       engine: 'Godot 引擎', engineChoose: '选择引擎', engineChange: '更换引擎', engineOpen: '打开 Godot', engineRun: '独立运行游戏', engineStop: '停止独立运行', engineLogs: '运行日志', engineRefresh: '刷新状态与日志', engineNoLogs: '尚无独立运行日志。', engineTruncated: '仅保留最近的日志。', engineDesktopOnly: '请在桌面应用中设置引擎和运行游戏。', engineRunHelp: '独立运行使用已保存的项目。请先保存编辑器中的修改。', engineHelp: '选择 Godot 4 可执行文件。更换后下次启动生效，已有工具连接需重连。', engineStopped: '独立游戏未运行', engineRunning: '独立游戏运行中', engineStarted: '编辑器进程已启动', engineExited: '上次退出码', engineUnchecked: '启动时检查版本', engineUnavailable: '桌面引擎控制暂不可用。',
       ENGINE_UNAVAILABLE: '请回到正常模式的桌面工作台操作。', ENGINE_MISSING: '请先选择 Godot 4 可执行文件。', ENGINE_INVALID: '无法运行此引擎，请重新选择有效的 Godot 可执行文件。', ENGINE_VERSION: '需要 Godot 4.1 或更新的 Godot 4 版本。', ENGINE_BUSY: '引擎正在处理其他操作，请稍后重试。', ENGINE_ALREADY_RUNNING: '此项目已有对应的运行进程。', ENGINE_START_FAILED: '引擎启动失败，请重新检查路径。', ENGINE_STOP_FAILED: '未能停止游戏，请检查实际运行状态。', ENGINE_STOP_TIMEOUT: '停止超时，运行结果未知，请刷新状态。', ENGINE_REQUEST_FAILED: '引擎操作失败，请检查桌面日志后重试。', NO_MAIN_SCENE: '请先在 Godot 中设置并保存启动场景。',
       title: 'Godot 开发', description: '围绕游戏项目进行开发、运行与排错。', projects: '游戏项目', import: '打开项目文件夹', choose: '选择项目', overview: '项目概览', conversation: '开发会话',
@@ -21,6 +22,7 @@ window.__ModuleLoader__.load({
       ORIGIN_REJECTED: '请求来源不匹配，请从桌面应用重新打开。', requestFailed: '无法连接 Harness，请确认服务就绪后重试。', editorFailed: '编辑器未完成操作，请查看下方返回信息。', sessionFailed: '创建开发会话失败，请检查 Harness 日志后重试。'
     }
     const en = {
+      engineCrashed: 'Godot game process crashed', engineCrashHelp: 'Review the crash output below and try running the project directly in Godot. Retry after fixing the project, or choose another engine. Desktop keeps the output from this run.',
       engine: 'Godot engine', engineChoose: 'Choose engine', engineChange: 'Change engine', engineOpen: 'Open Godot', engineRun: 'Run game independently', engineStop: 'Stop independent game', engineLogs: 'Run logs', engineRefresh: 'Refresh status and logs', engineNoLogs: 'No independent run logs yet.', engineTruncated: 'Only recent output is retained.', engineDesktopOnly: 'Use the desktop app to configure the engine and run games.', engineRunHelp: 'Independent runs use the saved project. Save editor changes first.', engineHelp: 'Choose the Godot 4 executable. Changes apply to the next launch; reconnect existing tool connections.', engineStopped: 'Independent game is stopped', engineRunning: 'Independent game is running', engineStarted: 'Editor process started', engineExited: 'Last exit code', engineUnchecked: 'Version checked at launch', engineUnavailable: 'Desktop engine controls are unavailable.',
       ENGINE_UNAVAILABLE: 'Use the normal desktop workbench for this action.', ENGINE_MISSING: 'Choose a Godot 4 executable first.', ENGINE_INVALID: 'Cannot run this engine. Choose a valid Godot executable.', ENGINE_VERSION: 'Godot 4.1 or a newer Godot 4 release is required.', ENGINE_BUSY: 'Another engine action is in progress. Retry shortly.', ENGINE_ALREADY_RUNNING: 'This project already has a corresponding running process.', ENGINE_START_FAILED: 'The engine failed to start. Check its path.', ENGINE_STOP_FAILED: 'Could not stop the game. Check its running state.', ENGINE_STOP_TIMEOUT: 'Stopping timed out. The outcome is unknown; refresh its state.', ENGINE_REQUEST_FAILED: 'Engine action failed. Check the desktop log and retry.', NO_MAIN_SCENE: 'Set and save the main scene in Godot first.',
       title: 'Godot Development', description: 'Develop, run, and troubleshoot your game project.', projects: 'Game projects', import: 'Open project folder', choose: 'Choose project', overview: 'Project overview', conversation: 'Development session',
@@ -107,19 +109,22 @@ window.__ModuleLoader__.load({
         return () => window.clearInterval(timer)
       }, [workspaceId, active, snapshot?.running, snapshot?.editorRunning])
       const action = (key, method, disabled) => h('button', { type: 'button', disabled: busy || disabled, onClick: () => perform(method) }, t(key))
+      // Windows NTSTATUS exits can reach Node as either signed or unsigned integers.
+      const crashed = !snapshot?.running && snapshot?.exitCode != null && (snapshot.exitCode >>> 0) >= 0x80000000
       return h('section', { className: 'gcSection', 'aria-label': t('engine') }, h('h2', null, t('engine')),
         h('p', { className: 'gcMuted' }, snapshot ? snapshot.path || t('ENGINE_MISSING') : t('loading')),
         snapshot?.path && h('p', { className: 'gcMuted' }, snapshot.version || t('engineUnchecked')),
-        h('p', { role: 'status' }, busy ? t('busy') : t(error || !snapshot ? 'unknown' : snapshot.running ? 'engineRunning' : 'engineStopped')),
+        h('p', { role: 'status' }, busy ? t('busy') : t(error || !snapshot ? 'unknown' : snapshot.running ? 'engineRunning' : crashed ? 'engineCrashed' : 'engineStopped')),
         snapshot?.editorRunning && h('p', { className: 'gcMuted' }, t('engineStarted')),
         snapshot?.exitCode != null && h('p', { className: 'gcMuted' }, t('engineExited') + ': ' + snapshot.exitCode),
         error && h('p', { role: 'alert' }, t(error)),
+        crashed && h('p', { role: 'alert' }, t('engineCrashHelp')),
         h('div', { className: 'gcActions' }, action(snapshot?.path ? 'engineChange' : 'engineChoose', 'choose', false),
           action('engineOpen', 'open', !workspaceId || !snapshot?.path || snapshot?.editorRunning),
           action('engineRun', 'run', !workspaceId || !snapshot?.path || snapshot?.running),
           action('engineStop', 'stop', !workspaceId || !snapshot?.running), action('engineRefresh', 'status', false)),
         h('p', { className: 'gcMuted' }, t('engineRunHelp')), h('p', { className: 'gcMuted' }, t('engineHelp')),
-        h('details', null, h('summary', null, t('engineLogs')), snapshot?.truncated && h('p', { className: 'gcMuted' }, t('engineTruncated')),
+        h('details', { key: crashed ? 'crashed' : 'normal', ...(crashed ? { open: true } : {}) }, h('summary', null, t('engineLogs')), snapshot?.truncated && h('p', { className: 'gcMuted' }, t('engineTruncated')),
           h('pre', { className: 'gcEngineLogs', tabIndex: 0, 'aria-label': t('engineLogs') }, snapshot?.logs || t('engineNoLogs'))))
     }
     function Desktop({ service, entry, active, conversation, ctx, t }) {

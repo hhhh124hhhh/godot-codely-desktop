@@ -9,6 +9,7 @@ import { createRequire } from 'node:module'
 if (!process.env.GODOT_TEST_BIN) throw Error('Set GODOT_TEST_BIN to a real Godot 4 executable')
 const output = resolve('.build/godot-engine-acceptance')
 await mkdir(output, { recursive: true })
+await rm(join(output, 'result.json'), { force: true })
 const root = await mkdtemp(join(tmpdir(), 'godot-engine-native-'))
 const entry = join(output, 'smoke.mjs')
 const require = createRequire(import.meta.url)

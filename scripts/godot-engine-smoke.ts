@@ -25,6 +25,15 @@ let service: GodotEngineService | undefined
 let window: BrowserWindow | undefined
 let otherWindow: BrowserWindow | undefined
 const editors: ChildProcess[] = []
+async function captureWorkbench(filename: string): Promise<void> {
+  if (!window) throw Error('Workbench window is unavailable')
+  // A hidden Electron window can return an older compositor frame despite fresh DOM state.
+  window.showInactive()
+  try {
+    await delay(500)
+    await writeFile(join(output, filename), (await window.webContents.capturePage()).toPNG())
+  } finally { window.hide() }
+}
 
 async function main(): Promise<void> {
   await app.whenReady()
@@ -46,10 +55,11 @@ async function main(): Promise<void> {
   assert.equal(snapshot.phase, 'ready', snapshot.logs.join('\n'))
   assert.ok(snapshot.url && snapshot.authToken)
   const preload = resolve('out/preload/index.cjs')
-  window = new BrowserWindow({ width: 1280, height: 900, show: false, webPreferences: { preload, sandbox: true, contextIsolation: true } })
+  window = new BrowserWindow({ width: 1280, height: 900, show: false, webPreferences: { preload, sandbox: true, contextIsolation: true, backgroundThrottling: false } })
   const headless = process.env.GODOT_ENGINE_SMOKE_HEADLESS === '1'
+  const isolatedGodotUserDirectories = process.env.GODOT_ENGINE_SMOKE_USER_ENV !== '1'
   const godotEnvironment = { ...process.env }
-  for (const key of ['APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'HOME']) {
+  for (const key of isolatedGodotUserDirectories ? ['APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'HOME'] : []) {
     godotEnvironment[key] = join(root, key.toLowerCase())
     await mkdir(godotEnvironment[key], { recursive: true })
   }
@@ -102,11 +112,20 @@ async function main(): Promise<void> {
   await click('Choose engine', '选择引擎')
   await until(async () => !!(await state(id)).path, 'saved engine path')
   await click('Run game independently', '独立运行游戏')
+  if (process.env.GODOT_ENGINE_SMOKE_EXPECT_CRASH === '1') {
+    await until(async () => (await state(id)).exitCode === 3221225477, 'real engine crash')
+    await until(async () => !!await window?.webContents.executeJavaScript(`(()=>{const aside=document.querySelector('.gcAside');const logs=aside?.querySelector('.gcEngineLogs');return /Godot game process crashed|Godot 游戏进程异常退出/.test(aside?.textContent||'')&&logs?.closest('details')?.open&&logs.textContent.includes('signal 11')})()`), 'crash feedback and expanded logs')
+    await window.webContents.executeJavaScript(`document.querySelector('.gcAside [role="status"]')?.scrollIntoView({block:'start'})`)
+    await captureWorkbench('crash.png')
+    await writeFile(join(output, 'result.json'), JSON.stringify({ status: 'expected-crash', exitCode: 3221225477, isolatedGodotUserDirectories, checks: ['crash-status', 'expanded-crash-logs'], gameRunSucceeded: false }, null, 2))
+    console.log('Expected native crash reproduced; crash feedback and logs verified (not a successful game run)')
+    return
+  }
   await until(async () => (await state(id)).logs.includes('NATIVE_GAME_READY'), 'real game stdout')
   assert.equal((await call('run', id)).ok, false, 'duplicate run must be rejected')
   await window.webContents.executeJavaScript(`(()=>{const log=document.querySelector('.gcEngineLogs');const details=log?.closest('details');if(details&&!details.open)details.querySelector('summary')?.click();log?.scrollIntoView({block:'center'})})()`)
   await until(async () => !!await window?.webContents.executeJavaScript(`(()=>{const log=document.querySelector('.gcEngineLogs');return log?.getClientRects().length&&log.textContent.includes('NATIVE_GAME_READY')})()`), 'visible native logs')
-  await writeFile(join(output, 'workbench.png'), (await window.webContents.capturePage()).toPNG())
+  await captureWorkbench('workbench.png')
   await click('Stop independent game', '停止独立运行')
   await until(async () => !(await state(id)).running, 'stopped game')
   assert.ok((await state(id)).logs.includes('NATIVE_GAME_READY'), 'logs survive stop')
@@ -127,7 +146,7 @@ async function main(): Promise<void> {
   assert.equal((await state(id)).editorRunning, true, 'quit preserves editor')
   await window.loadURL('data:text/html,Untrusted origin')
   assert.deepEqual(await window.webContents.executeJavaScript('window.__GODOT_DESKTOP_ENGINE__.status()'), { ok: false, code: 'ENGINE_UNAVAILABLE' })
-  await writeFile(join(output, 'result.json'), JSON.stringify({ status: 'passed', platform: process.platform, headless, isolatedGodotUserDirectories: true, checks: ['authenticated-workspace', 'native-preload', 'choose-save', 'real-run-stdout', 'visible-logs', 'duplicate-rejection', 'stop-retains-logs', 'unknown-workspace', 'safe-mode-denial', 'other-window-denial', 'real-editor', 'quit-ownership', 'origin-denial'], picker: 'test-selected executable; native dialog interaction not automated' }, null, 2))
+  await writeFile(join(output, 'result.json'), JSON.stringify({ status: 'passed', platform: process.platform, headless, isolatedGodotUserDirectories, checks: ['authenticated-workspace', 'native-preload', 'choose-save', 'real-run-stdout', 'visible-logs', 'duplicate-rejection', 'stop-retains-logs', 'unknown-workspace', 'safe-mode-denial', 'other-window-denial', 'real-editor', 'quit-ownership', 'origin-denial'], picker: 'test-selected executable; native dialog interaction not automated' }, null, 2))
   console.log('Godot engine native acceptance passed')
 }
 main().then(() => cleanup(0)).catch(async error => {
