@@ -18,7 +18,9 @@ Godot Codely 预装插件：把 godot-extensions 全家桶打进出厂配置，�
 
 “开始开发”显式使用 `godot-codely-lite`，并保留原生模型选择、审批和取消。检查连接、编辑器运行/停止和刷新资源需要项目中的 Godot Codely 插件已启用并连接。编辑器超时表示结果未知，请检查实际状态后再重试；未保存场景需在 Godot 中处理。
 
-独立引擎启动、路径设置、进程日志面板和结构化变更审查尚未纳入这批界面。已安装发行版是否包含工作台，以具体构建为准。实施计划见 [Issue #20](https://github.com/hhhh124hhhh/godot-codely-desktop/issues/20)。
+在 Electron 桌面端，项目信息栏还提供选择 Godot 4 可执行文件、打开 Godot、独立运行/停止与运行日志。引擎路径与 MCP 的 `<dshHome>/.godot/godot-path.txt` 共用，优先于自动发现；已存在的工具连接需重连后应用新选择。独立停止仅作用于桌面启动的游戏，不会停止编辑器或 MCP 启动的游戏；退出桌面会停止这些独立游戏，编辑器继续保留。
+
+普通浏览器中显示桌面能力不可用的提示。结构化变更审查仍待后续实现。已安装发行版是否包含这些能力，以具体构建为准。实施计划见 [Issue #20](https://github.com/hhhh124hhhh/godot-codely-desktop/issues/20)。
 
 ## 工作机制
 

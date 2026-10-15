@@ -5,6 +5,8 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'godot-desktop'
     const zh = {
+      engine: 'Godot 引擎', engineChoose: '选择引擎', engineChange: '更换引擎', engineOpen: '打开 Godot', engineRun: '独立运行游戏', engineStop: '停止独立运行', engineLogs: '运行日志', engineRefresh: '刷新状态与日志', engineNoLogs: '尚无独立运行日志。', engineTruncated: '仅保留最近的日志。', engineDesktopOnly: '请在桌面应用中设置引擎和运行游戏。', engineRunHelp: '独立运行使用已保存的项目。请先保存编辑器中的修改。', engineHelp: '选择 Godot 4 可执行文件。更换后下次启动生效，已有工具连接需重连。', engineStopped: '独立游戏未运行', engineRunning: '独立游戏运行中', engineStarted: '编辑器进程已启动', engineExited: '上次退出码', engineUnchecked: '启动时检查版本', engineUnavailable: '桌面引擎控制暂不可用。',
+      ENGINE_UNAVAILABLE: '请回到正常模式的桌面工作台操作。', ENGINE_MISSING: '请先选择 Godot 4 可执行文件。', ENGINE_INVALID: '无法运行此引擎，请重新选择有效的 Godot 可执行文件。', ENGINE_VERSION: '需要 Godot 4.1 或更新的 Godot 4 版本。', ENGINE_BUSY: '引擎正在处理其他操作，请稍后重试。', ENGINE_ALREADY_RUNNING: '此项目已有对应的运行进程。', ENGINE_START_FAILED: '引擎启动失败，请重新检查路径。', ENGINE_STOP_FAILED: '未能停止游戏，请检查实际运行状态。', ENGINE_STOP_TIMEOUT: '停止超时，运行结果未知，请刷新状态。', ENGINE_REQUEST_FAILED: '引擎操作失败，请检查桌面日志后重试。', NO_MAIN_SCENE: '请先在 Godot 中设置并保存启动场景。',
       title: 'Godot 开发', description: '围绕游戏项目进行开发、运行与排错。', projects: '游戏项目', import: '打开项目文件夹', choose: '选择项目', overview: '项目概览', conversation: '开发会话',
       empty: '从一个 Godot 项目开始', emptyHelp: '打开包含 project.godot 的文件夹。项目文件保留在原位置。', loading: '正在读取项目…', retry: '重试',
       ready: 'Godot 项目', notGodot: '此文件夹不是 Godot 项目', notGodotHelp: '请选择包含 project.godot 的项目根目录。已有会话仍可从侧栏继续。',
@@ -19,6 +21,8 @@ window.__ModuleLoader__.load({
       ORIGIN_REJECTED: '请求来源不匹配，请从桌面应用重新打开。', requestFailed: '无法连接 Harness，请确认服务就绪后重试。', editorFailed: '编辑器未完成操作，请查看下方返回信息。', sessionFailed: '创建开发会话失败，请检查 Harness 日志后重试。'
     }
     const en = {
+      engine: 'Godot engine', engineChoose: 'Choose engine', engineChange: 'Change engine', engineOpen: 'Open Godot', engineRun: 'Run game independently', engineStop: 'Stop independent game', engineLogs: 'Run logs', engineRefresh: 'Refresh status and logs', engineNoLogs: 'No independent run logs yet.', engineTruncated: 'Only recent output is retained.', engineDesktopOnly: 'Use the desktop app to configure the engine and run games.', engineRunHelp: 'Independent runs use the saved project. Save editor changes first.', engineHelp: 'Choose the Godot 4 executable. Changes apply to the next launch; reconnect existing tool connections.', engineStopped: 'Independent game is stopped', engineRunning: 'Independent game is running', engineStarted: 'Editor process started', engineExited: 'Last exit code', engineUnchecked: 'Version checked at launch', engineUnavailable: 'Desktop engine controls are unavailable.',
+      ENGINE_UNAVAILABLE: 'Use the normal desktop workbench for this action.', ENGINE_MISSING: 'Choose a Godot 4 executable first.', ENGINE_INVALID: 'Cannot run this engine. Choose a valid Godot executable.', ENGINE_VERSION: 'Godot 4.1 or a newer Godot 4 release is required.', ENGINE_BUSY: 'Another engine action is in progress. Retry shortly.', ENGINE_ALREADY_RUNNING: 'This project already has a corresponding running process.', ENGINE_START_FAILED: 'The engine failed to start. Check its path.', ENGINE_STOP_FAILED: 'Could not stop the game. Check its running state.', ENGINE_STOP_TIMEOUT: 'Stopping timed out. The outcome is unknown; refresh its state.', ENGINE_REQUEST_FAILED: 'Engine action failed. Check the desktop log and retry.', NO_MAIN_SCENE: 'Set and save the main scene in Godot first.',
       title: 'Godot Development', description: 'Develop, run, and troubleshoot your game project.', projects: 'Game projects', import: 'Open project folder', choose: 'Choose project', overview: 'Project overview', conversation: 'Development session',
       empty: 'Start with a Godot project', emptyHelp: 'Open the folder containing project.godot. Your files stay in place.', loading: 'Reading project…', retry: 'Retry',
       ready: 'Godot project', notGodot: 'This folder is not a Godot project', notGodotHelp: 'Choose the root folder containing project.godot. Existing sessions remain available in the sidebar.',
@@ -48,6 +52,7 @@ window.__ModuleLoader__.load({
       .gcMuted{color:var(--dsw-alias-label-secondary);font-size:12px;overflow-wrap:anywhere}.gcEyebrow{font-size:12px;color:var(--dsw-alias-state-business-primary);font-weight:600}
       .gcSection{margin-top:32px}.gcCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.gcCard{padding:16px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}.gcCard p{margin:8px 0 0;font-size:12px;color:var(--dsw-alias-label-secondary)}
       .gcAside{flex:0 0 288px;padding:20px;overflow:auto;border-left:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1)}.gcAside dl{margin:0}.gcAside dt{font-size:12px;color:var(--dsw-alias-label-secondary);margin-top:16px}.gcAside dd{margin:4px 0 0;overflow-wrap:anywhere}.gcActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.gcAside .gcActions{flex-direction:column}
+      .gcEngineLogs{font:12px/1.6 monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;padding:8px;background:var(--dsw-alias-bg-base);border:1px solid var(--dsw-alias-border-l2);border-radius:8px}
       .gcNotice{margin:12px 20px;padding:12px 16px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-2);overflow-wrap:anywhere}.gcNotice pre{font:12px/1.6 monospace;white-space:pre-wrap;max-height:160px;overflow:auto}
       .gcSessionList{display:flex;flex-direction:column;gap:8px}.gcSessionList button{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gcConversation{display:flex;flex:1;flex-direction:column;min-height:0;min-width:0}.gcConversation[hidden]{display:none}
       @media(max-width:1100px){.gcAside{position:absolute;inset:0 0 0 auto;width:min(320px,100%);z-index:2;box-shadow:0 8px 24px var(--dsw-alias-border-l2)}.gcOverview{padding:24px}.gcCards{grid-template-columns:1fr}}
@@ -60,6 +65,62 @@ window.__ModuleLoader__.load({
       const data = await response.json()
       if (!response.ok) throw Object.assign(new Error(data.code), { code: data.code })
       return data
+    }
+    /** Native controls remain separate from editor-bridge Play/Stop. */
+    function EnginePanel({ workspaceId, active, t }) {
+      const native = window.__GODOT_DESKTOP_ENGINE__
+      if (!native) return h('section', { className: 'gcSection' }, h('h2', null, t('engine')), h('p', { className: 'gcMuted' }, t('engineDesktopOnly')))
+      const [snapshot, setSnapshot] = React.useState(null)
+      const [error, setError] = React.useState('')
+      const [busy, setBusy] = React.useState(false)
+      const generation = React.useRef(0)
+      const pending = React.useRef(null)
+      const perform = async (action, quiet = false) => {
+        const current = generation.current
+        if (pending.current?.generation === current) return
+        const ticket = { generation: current }
+        pending.current = ticket
+        if (!quiet) { setBusy(true); setError('') }
+        try {
+          const response = await native[action](...(action === 'choose' ? [] : [workspaceId]))
+          if (current !== generation.current) return
+          if (!response.ok) { setError(response.code); return }
+          setError('')
+          if (action === 'choose' && workspaceId) {
+            const updated = await native.status(workspaceId)
+            if (current !== generation.current) return
+            if (!updated.ok) { setError(updated.code); return }
+            setSnapshot(updated.state)
+          } else setSnapshot(response.state)
+        } catch { if (current === generation.current) setError('engineUnavailable') }
+        finally { if (pending.current === ticket) pending.current = null; if (current === generation.current) setBusy(false) }
+      }
+      React.useEffect(() => {
+        generation.current++
+        setSnapshot(null); setError(''); setBusy(false)
+        if (active) void perform('status')
+        return () => { generation.current++ }
+      }, [workspaceId, active])
+      React.useEffect(() => {
+        if (!active || (!snapshot?.running && !snapshot?.editorRunning)) return
+        const timer = window.setInterval(() => { if (document.visibilityState !== 'hidden') void perform('status', true) }, 1500)
+        return () => window.clearInterval(timer)
+      }, [workspaceId, active, snapshot?.running, snapshot?.editorRunning])
+      const action = (key, method, disabled) => h('button', { type: 'button', disabled: busy || disabled, onClick: () => perform(method) }, t(key))
+      return h('section', { className: 'gcSection', 'aria-label': t('engine') }, h('h2', null, t('engine')),
+        h('p', { className: 'gcMuted' }, snapshot ? snapshot.path || t('ENGINE_MISSING') : t('loading')),
+        snapshot?.path && h('p', { className: 'gcMuted' }, snapshot.version || t('engineUnchecked')),
+        h('p', { role: 'status' }, busy ? t('busy') : t(error || !snapshot ? 'unknown' : snapshot.running ? 'engineRunning' : 'engineStopped')),
+        snapshot?.editorRunning && h('p', { className: 'gcMuted' }, t('engineStarted')),
+        snapshot?.exitCode != null && h('p', { className: 'gcMuted' }, t('engineExited') + ': ' + snapshot.exitCode),
+        error && h('p', { role: 'alert' }, t(error)),
+        h('div', { className: 'gcActions' }, action(snapshot?.path ? 'engineChange' : 'engineChoose', 'choose', false),
+          action('engineOpen', 'open', !workspaceId || !snapshot?.path || snapshot?.editorRunning),
+          action('engineRun', 'run', !workspaceId || !snapshot?.path || snapshot?.running),
+          action('engineStop', 'stop', !workspaceId || !snapshot?.running), action('engineRefresh', 'status', false)),
+        h('p', { className: 'gcMuted' }, t('engineRunHelp')), h('p', { className: 'gcMuted' }, t('engineHelp')),
+        h('details', null, h('summary', null, t('engineLogs')), snapshot?.truncated && h('p', { className: 'gcMuted' }, t('engineTruncated')),
+          h('pre', { className: 'gcEngineLogs', tabIndex: 0, 'aria-label': t('engineLogs') }, snapshot?.logs || t('engineNoLogs'))))
     }
     function Desktop({ service, entry, active, conversation, ctx, t }) {
       React.useSyncExternalStore(React.useCallback(fn => ctx.locale.subscribe(fn), [ctx]), () => ctx.locale.getSnapshot())
@@ -142,7 +203,8 @@ window.__ModuleLoader__.load({
               h('section', { className: 'gcSection' }, h('h2', null, t('recent')), recent.length ? h('div', { className: 'gcSessionList' }, ...recent.map(id => h('button', { key: id, type: 'button', disabled: busy, onClick: () => run(() => ctx.desktopWorkbenches.ensureSession({ sessionId: id })) }, sessions.byId[id].displayTitle || t('untitled')))) : h('p', { className: 'gcMuted' }, t('noSessions'))))))),
           details && h('aside', { className: 'gcAside', 'aria-label': t('context') }, h('h2', null, t('context')), h('dl', null,
             h('dt', null, t('path')), h('dd', null, project?.path || t('unset')),
-            h('dt', null, t('main')), h('dd', null, project?.mainScene || t('unset')),
+            h('dt', null, t('main')), h('dd', null, project?.mainScene || t('unset'))),
+            h(EnginePanel, { workspaceId: project?.godot ? workspaceId : undefined, active, t }), h('dl', null,
             h('dt', null, t('editor')), h('dd', { role: 'status' }, t(editor?.ok ? 'connected' : editor?.offline ? 'offline' : 'unknown'))),
             h('p', { className: 'gcMuted' }, t('editorHelp')),
             h('div', { className: 'gcActions' }, button('refresh', () => editorAction('status'), busy || !project?.godot), button('play', () => editorAction('play'), busy || !editor?.ok), button('stop', () => editorAction('stop'), busy || !editor?.ok), button('scan', () => editorAction('scan'), busy || !editor?.ok)),
@@ -160,6 +222,6 @@ window.__ModuleLoader__.load({
       const Panel = props => h(Desktop, { ...props, ctx, t })
       ctx.effect(() => ctx.desktopWorkbenches.register({ title: t('title'), description: t('description'), panelTitle: t('context'), repository: 'https://github.com/hhhh124hhhh/godot-codely-desktop', customFrame: true }, Panel))
     }
-    return { apply, inject: ['desktopWorkbenches', 'locale', 'workspaces', 'sessions', 'uiWorkspace'], Desktop, callApi }
+    return { apply, inject: ['desktopWorkbenches', 'locale', 'workspaces', 'sessions', 'uiWorkspace'], Desktop, EnginePanel, callApi }
   }
 })

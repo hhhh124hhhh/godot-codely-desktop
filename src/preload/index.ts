@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { createGodotEngineBridge } from './godot-engine'
 import type { AvailableRelease, UpdateStatus } from '../shared/contracts'
 import { setupDesktopStoragePersistence } from './desktop-storage'
 import {
@@ -166,6 +167,7 @@ function runDomSync(): void {
 contextBridge.exposeInMainWorld('__DSH_DIRECTORY_PICKER__', {
   pick: (): Promise<string | null> => ipcRenderer.invoke('directory-picker:open')
 })
+contextBridge.exposeInMainWorld('__GODOT_DESKTOP_ENGINE__', createGodotEngineBridge((channel, request) => ipcRenderer.invoke(channel, request)))
 
 contextBridge.exposeInMainWorld(
   HOST_PATHS_BRIDGE,
