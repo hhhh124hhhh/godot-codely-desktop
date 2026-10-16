@@ -1,6 +1,6 @@
 {
   "name": "godot-codely-desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Godot Codely - Godot game-dev AI agent desktop (DSH for Godot, MIT open source)",
   "private": true,
   "type": "module",
