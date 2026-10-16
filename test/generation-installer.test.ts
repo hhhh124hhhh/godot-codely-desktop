@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { supportsFileSymlinks } from './symlink-capability'
 import {
   generationBuildApprovals,
   installGeneration,
@@ -569,21 +570,40 @@ describe('the generation installer', () => {
     await rm(join(plugin, 'node_modules'), { recursive: true })
 
     // Nor may a provided package's entry escape into an arbitrary sibling.
-    const sibling = join(checkout, 'unrelated.js')
+    const siblingDirectory = join(checkout, 'unrelated')
+    await mkdir(siblingDirectory)
+    const sibling = join(siblingDirectory, 'index.js')
     await writeFile(sibling, 'module.exports = {}')
     await mkdir(join(checkout, 'escaped-util'), { recursive: true })
     await writeFile(join(checkout, 'escaped-util', 'package.json'), JSON.stringify({
-      name: 'escaped-util', main: 'index.js'
+      name: 'escaped-util', main: 'lib/index.js'
     }))
-    await symlink(sibling, join(checkout, 'escaped-util', 'index.js'))
+    await symlink(siblingDirectory, join(checkout, 'escaped-util', 'lib'), process.platform === 'win32' ? 'junction' : 'dir')
     await symlink(join(checkout, 'escaped-util'), join(closure, 'escaped-util'), 'junction')
     await writeFile(join(plugin, 'package.json'), JSON.stringify({
       name: 'root-plugin', dependencies: { 'escaped-util': '*' }
     }))
     const escaped = await verifyGenerationPeers(home, generation)
-    expect(escaped.problems).toContain(
+    expect(escaped.problems, JSON.stringify(escaped.problems)).toContain(
       `escaped-util resolves outside the generation and installation closure: ${await realpath(sibling)}`
     )
+  })
+
+  it.skipIf(!supportsFileSymlinks)('rejects escaped file symlink entries (requires file symlink privilege on Windows)', async () => {
+    const home = await freshHome()
+    const directory = join(home, 'profiles', '.generations', 'live', 'file-escape')
+    const plugin = join(directory, 'node_modules', 'root-plugin')
+    const closure = join(home, 'profiles', 'node_modules')
+    const provided = join(home, 'checkout', 'escaped-util')
+    const sibling = join(home, 'checkout', 'unrelated.js')
+    await Promise.all([mkdir(plugin, { recursive: true }), mkdir(closure, { recursive: true }), mkdir(provided, { recursive: true })])
+    await writeFile(join(plugin, 'package.json'), JSON.stringify({ name: 'root-plugin', dependencies: { 'escaped-util': '*' } }))
+    await writeFile(join(provided, 'package.json'), JSON.stringify({ name: 'escaped-util', main: 'index.js' }))
+    await writeFile(sibling, 'module.exports = {}')
+    await symlink(sibling, join(provided, 'index.js'), 'file')
+    await symlink(provided, join(closure, 'escaped-util'), process.platform === 'win32' ? 'junction' : 'dir')
+    const result = await verifyGenerationPeers(home, { id: 'file-escape', pluginName: 'root-plugin', version: '1.0.0', directory })
+    expect(result.problems).toContain(`escaped-util resolves outside the generation and installation closure: ${await realpath(sibling)}`)
   })
 
   it('validates current host entries when legacy Profile links point at an older installation', async () => {

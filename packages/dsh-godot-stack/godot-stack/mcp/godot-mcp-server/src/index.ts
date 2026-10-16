@@ -87,10 +87,12 @@ function buildSovereignCtx(): SovereignCtx {
 
 async function main(): Promise<void> {
   // 检测 Godot 二进制（better 路线；无则仅文件解析类工具可用，godot 进程类工具需二进制）
-  // 优先级：标准检测 → auto_setup 持久化路径 → config.json / GODOT_PATH env
-  const detection = detectGodot()
-  const persistedPath = detection?.path ? null : loadPersistedGodotPath()
-  const godotPath = detection?.path ?? persistedPath ?? (CONFIG.godotPath || null)
+  // Desktop's explicit choice and auto_setup share the same persisted file.
+  // Do not let PATH discovery silently override that selected engine.
+  const persistedPath = loadPersistedGodotPath()
+  const detection = persistedPath ? null : detectGodot()
+  const godotPath = persistedPath ?? detection?.path ?? (CONFIG.godotPath || null)
+  if (godotPath) CONFIG.godotPath = godotPath
   if (godotPath) {
     console.error(`[godot-mcp-server] Godot detected: ${godotPath}`)
   } else {
@@ -102,7 +104,7 @@ async function main(): Promise<void> {
 
   const config: GodotConfig = {
     godotPath,
-    godotVersion: detection?.version ?? null,
+    godotVersion: detection?.version ?? (persistedPath ? tryGetVersion(persistedPath, true) : null),
     projectPath: CONFIG.godotProjectPath,
     activePids: [],
   }

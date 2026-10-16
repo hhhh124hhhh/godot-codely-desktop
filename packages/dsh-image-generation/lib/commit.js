@@ -12,8 +12,12 @@ export async function writerPlan(ctx, root, exec) {
 export function writerEnvironment(runtime = process) {
   // Tombstones clear ordinary parent entries too: no launch credentials or
   // NODE_OPTIONS enter the asset writer, even if the host inherited them.
-  const env = Object.fromEntries(Object.keys(runtime.env).map(key => [key, undefined]))
-  if (runtime.platform === 'win32') env.SystemRoot = runtime.env.SystemRoot
+  // Windows worker environments are case-sensitive JS objects. Preserve the
+  // original spelling of these OS paths: SystemRoot is needed for crypto,
+  // TEMP/TMP locate ACL locks before the runner switches to its private temp.
+  const env = Object.fromEntries(Object.entries(runtime.env).map(([key, value]) => [key,
+    runtime.platform === 'win32' && /^(SYSTEMROOT|TEMP|TMP)$/i.test(key) ? value : undefined,
+  ]))
   // Desktop's macOS Host is an Electron utility process. Its executable runs
   // this child script only in Node mode; this constant is launch configuration.
   if (runtime.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'

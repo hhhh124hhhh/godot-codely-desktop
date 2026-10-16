@@ -1,4 +1,6 @@
 import { initializeDesktopService, desktopDiagnostics } from './desktop-service'
+import { GodotEngineService, engineError } from './godot-engine'
+import { createGodotEngineHandler } from './godot-engine-ipc'
 import { applyMacosWindowBackdrop } from './macos-window-backdrop'
 import { checkBlockingPluginUpdates, selectPluginRecoveryTarget, PluginRecoveryEvidence, planPluginRecovery, runPluginRecoveryPlan, type PluginRecoveryCheck } from './plugin-recovery-market'
 import { RepairAgentService, type CrashEvidence } from './repair-agent'
@@ -221,6 +223,7 @@ let mainWindow: BrowserWindow | undefined
 let mobileWindow: BrowserWindow | undefined
 let tray: Tray | undefined
 let runtime: HarnessRuntime
+let godotEngine: GodotEngineService | undefined
 let desktopStorageManager: DesktopStorageManager | undefined
 let windowStateManager: WindowStateManager | undefined
 let mobileBridge: LanMobileBridge
@@ -3337,6 +3340,21 @@ async function bootstrap(): Promise<void> {
     appVersion: () => app.getVersion()
   })
 
+  godotEngine = new GodotEngineService(join(app.getPath('userData'), 'harness', '.godot', 'godot-path.txt'))
+  ipcMain.handle('godot-engine:command', createGodotEngineHandler({
+    service: godotEngine,
+    window: () => mainWindow,
+    endpoint: () => runtime.snapshot().phase === 'ready' && !safeModeVisible ? runtime.snapshot().url : undefined,
+    pickExecutable: async () => {
+      if (!mainWindow || mainWindow.isDestroyed()) throw engineError('ENGINE_UNAVAILABLE')
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: harnessLocale() === 'zh' ? '选择 Godot 4 可执行文件' : 'Choose the Godot 4 executable',
+        properties: ['openFile'], ...(process.platform === 'win32' ? { filters: [{ name: 'Godot', extensions: ['exe'] }] } : {})
+      })
+      return result.canceled ? null : result.filePaths[0] ?? null
+    }
+  }))
+
   ipcMain.handle('directory-picker:open', async (event) => {
     if (
       !mainWindow ||
@@ -3653,7 +3671,7 @@ if (isDaemonLaunch(process.env, process.platform)) {
       tray = undefined
       repairAgentService?.dispose()
       repairAgentService = undefined
-      void Promise.all([runtime.stop(), mobileBridge?.stop()]).finally(() => app.quit())
+      void Promise.all([runtime.stop(), mobileBridge?.stop(), godotEngine?.dispose()]).finally(() => app.quit())
     })
   }
 }

@@ -5,6 +5,26 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it, vi } from 'vitest'
 
 const code = await readFile(new URL('../packages/dsh-godot-stack/client.js', import.meta.url), 'utf8')
+it('distinguishes a Windows engine crash from a normal stop and exposes its output', () => {
+  function render(exitCode, running = false) {
+    let Panel
+    const values = [{ path: '/godot', running, exitCode, logs: 'CrashHandlerException: signal 11' }, '', false]
+    let index = 0
+    const react = { ...React, useState: () => [values[index++], () => {}], useEffect: () => {}, useRef: value => ({ current: value }) }
+    vm.runInNewContext(code, { window: { __GODOT_DESKTOP_ENGINE__: {}, __ModuleLoader__: { load({ factory }) { Panel = factory(() => react).EnginePanel } } } })
+    return renderToStaticMarkup(Panel({ workspaceId: 'game', active: true, t: key => key }))
+  }
+  for (const exitCode of [3221225477, -1073741819]) {
+    const markup = render(exitCode)
+    expect(markup).toContain('engineCrashed')
+    expect(markup).toContain('engineCrashHelp')
+    expect(markup).toContain('<details open="">')
+    expect(markup).toContain('CrashHandlerException: signal 11')
+  }
+  expect(render(0)).not.toContain('engineCrashed')
+  expect(render(1)).not.toContain('engineCrashed')
+  expect(render(3221225477, true)).not.toContain('engineCrashed')
+})
 function fixture({ project = { godot: true, path: '/game', name: 'Actual game' }, session = null, request, loadProject = false } = {}) {
   let Desktop
   let stateIndex = 0
