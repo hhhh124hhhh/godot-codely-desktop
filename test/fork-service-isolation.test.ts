@@ -17,6 +17,12 @@ vi.mock('../src/main/update/version-catalog', async importOriginal => ({
   ...(await importOriginal<object>()),
   fetchAvailableReleases: async () => []
 }))
+// 平台无关：无论 CI 跑在 win32/linux/darwin 上都走"通道已启用"路径，
+// 以验证上游服务不激活与 feed 指向（平台策略由 update.test.ts 单独覆盖）。
+vi.mock('../src/main/update/update-policy', async importOriginal => ({
+  ...(await importOriginal<object>()),
+  supportsAutoUpdates: () => true
+}))
 
 it('does not activate the upstream reporting service; feed URLs point only at this repository', async () => {
   const service = await import('../src/main/desktop-service')
