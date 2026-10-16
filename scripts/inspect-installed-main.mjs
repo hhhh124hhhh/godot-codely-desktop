@@ -20,9 +20,9 @@ while (Date.now() < deadline) {
         if (value.error || value.result?.exceptionDetails) reject(Error(JSON.stringify(value.error ?? value.result.exceptionDetails)))
         else done(value.result.result.value)
       })
-      socket.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression: `(()=>{const e=process.getBuiltinModule('module').createRequire(process.execPath)('electron');return {version:e.app.getVersion(),userData:e.app.getPath('userData'),isPackaged:e.app.isPackaged,resourcesPath:process.resourcesPath}})()`, returnByValue: true } }))
+      socket.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression: `(()=>{const e=process.getBuiltinModule('module').createRequire(process.execPath)('electron');return {ready:e.app.isReady(),windows:e.BrowserWindow.getAllWindows().length,version:e.app.getVersion(),userData:e.app.getPath('userData'),isPackaged:e.app.isPackaged,resourcesPath:process.resourcesPath}})()`, returnByValue: true } }))
     })
-    assert.ok(result.isPackaged && result.version && result.userData)
+    assert.ok(result.ready && result.windows > 0 && result.isPackaged && result.version && result.userData, 'Wait for initialized app identity and a real window')
     console.log(JSON.stringify(result))
     process.exitCode = 0
     break
