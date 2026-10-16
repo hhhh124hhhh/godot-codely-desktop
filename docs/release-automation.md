@@ -4,7 +4,7 @@ This fork publishes installers through GitHub Actions. Use **Orchestrate desktop
 
 ## Automatic unsigned releases
 
-Every push to **`main`** that touches code (not docs-only markdown) runs **Orchestrate desktop release** and dispatches **`mode=unsigned`** with **`target=all`**, using the semver in **`package.json`**. The GitHub Release tag is **`v<version>-unsigned`** (assets are replaced on rebuild). Add **`[skip release]`** to a commit message to skip one push. New pushes cancel an in-progress auto release for the same branch (`cancel-in-progress`).
+Every push to **`main`** that touches code (not docs-only markdown) runs **Orchestrate desktop release** and dispatches **`mode=unsigned`** with **`target=all`**, using the semver in **`package.json`**. The GitHub Release tag is **`v<version>-unsigned`**. Bump the version before releasing new code: an existing tag can only be rebuilt from the same source commit. Each release links its source commit and workflow run and includes `SHA256SUMS.txt`. Add **`[skip release]`** to a commit message to skip one push. New pushes cancel an in-progress auto release for the same branch (`cancel-in-progress`).
 
 ## Manual flows
 

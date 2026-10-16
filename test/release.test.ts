@@ -16,6 +16,14 @@ const releaseAssets = [
 const HARNESS_VERSION = '0.2.0-rc.2'
 
 describe('GitHub release contract', () => {
+  it('installs locked dependencies before unsigned metadata tools run on a fresh runner', async () => {
+    const workflow = parse(await readFile(path.join(projectRoot, '.github/workflows/release.yml'), 'utf8'))
+    const steps = workflow.jobs['publish-unsigned-github'].steps as { run?: string }[]
+    const install = steps.findIndex(step => step.run === 'npm ci --ignore-scripts')
+    const merge = steps.findIndex(step => step.run?.includes('node scripts/merge-mac-update-metadata.mjs'))
+    expect(install).toBeGreaterThan(-1)
+    expect(merge).toBeGreaterThan(install)
+  })
   it('runs installer verification on a fresh runner and requires it before Windows publication', async () => {
     const workflow = parse(await readFile(path.join(projectRoot, '.github/workflows/release.yml'), 'utf8'))
     const installed = workflow.jobs['windows-installed']

@@ -19,3 +19,7 @@ Linux 社区包省略 Office Python payload。普通 Profile 的宿主投影与�
 `dsh-skill@0.2.0-rc.2` 的最小补丁增加 `skills/invocation` waterfall：目录和技能正文读取均在发现缓存之后解析当前调用策略，不改 provider、优先级或资源归属。PPT 插件根据已有的会话状态，仅在模板模式中关闭 `office-pptx` 的模型调用；保留用户显式调用。`dsh-api-session-controller@0.2.0-rc.2` 的目录查询传入 Session ID，以覆盖 Agent 尚未激活的冷会话。监听器随 PPT 插件卸载，卸载后恢复上游默认策略；不增加第二份模式状态。
 
 上游当前没有目录/加载共用的动态调用策略接缝，provider 的发现结果又会缓存，因此不能只修改静态技能声明。上游提供等价接缝后移除该补丁并迁移监听器。回归需同时覆盖缓存命中、直接模型加载、模式反复切换、会话隔离、冷会话与宿主 HTTP 目录；实际模型创作和界面预览仍需独立验收。
+
+## 安装文件数量
+
+生成 wheel 载荷时仅省略 NumPy/pandas 的 tests 目录树，保留 numpy.testing、pandas._testing、原生扩展、模板数据及 dist-info/许可证。它们的第三方开发自测不随安装包分发；Office 创作和数值运算功能保留。载荷 digest 包含此部署策略版本，避免复用旧载荷。必须以原生 Python/Office 生成与安装包 smoke 验收。

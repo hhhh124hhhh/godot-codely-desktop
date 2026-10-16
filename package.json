@@ -1,6 +1,6 @@
 {
   "name": "godot-codely-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Godot Codely - Godot game-dev AI agent desktop (DSH for Godot, MIT open source)",
   "private": true,
   "type": "module",
@@ -518,6 +518,9 @@
     },
     "nsis": {
       "artifactName": "godot-codely-windows-${arch}-setup.${ext}",
+      "installerIcon": ".build/brand-assets/icon.ico",
+      "installerHeaderIcon": ".build/brand-assets/icon.ico",
+      "uninstallerIcon": ".build/brand-assets/icon.ico",
       "include": "build/installer.nsh",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

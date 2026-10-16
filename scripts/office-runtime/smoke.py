@@ -19,7 +19,9 @@ assert '.'.join(map(str, sys.version_info[:3])) == manifest['python']
 for name, version in manifest['pythonPackages'].items():
     assert importlib.metadata.version(name) == version, name
 assert numpy.arange(4).sum() == 6
+numpy.testing.assert_array_equal(numpy.arange(3), [0, 1, 2])
 assert pandas.DataFrame({'n': [1, 2]}).n.sum() == 3
+pandas.testing.assert_frame_equal(pandas.DataFrame({'n': [1, 2]}), pandas.DataFrame({'n': [1, 2]}))
 root.mkdir(parents=True, exist_ok=True)
 doc = Document()
 doc.add_heading('Office runtime smoke', 0)

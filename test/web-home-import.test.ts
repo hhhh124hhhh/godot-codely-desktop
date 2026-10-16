@@ -259,9 +259,9 @@ describe('web home import', () => {
         hasCredentials: true
       }
     })
-    expect(model.heading).toBe('发现网页版数据')
+    expect(model.heading).toBe('将已有工作带入 Godot Codely')
     expect(model.stats).toContain('2 个会话')
-    expect(model.primaryLabel).toBe('导入并继续')
-    expect(model.secondaryLabel).toBe('从空白开始')
+    expect(model.primaryLabel).toBe('导入到工作台')
+    expect(model.secondaryLabel).toBe('创建全新工作台')
   })
 })
