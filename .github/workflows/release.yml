@@ -893,6 +893,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install locked publication dependencies
+        run: npm ci --ignore-scripts
       - uses: actions/download-artifact@v4
         if: inputs.target == 'all' || inputs.target == 'macos'
         with:
@@ -924,7 +926,7 @@ jobs:
           fi
       - name: Verify unsigned release assets
         run: node scripts/verify-unsigned-github-release.mjs release-assets
-      - name: Create or update unsigned GitHub Release
+      - name: Publish traceable unsigned GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.unsigned_version }}
@@ -932,8 +934,19 @@ jobs:
           set -euo pipefail
           tag="v${RELEASE_VERSION}-unsigned"
           title="Godot Codely ${RELEASE_VERSION} (unsigned)"
-          notes="Unsigned community build for macOS, Windows, and/or Linux. Not notarized or Authenticode-signed; use for testing only."
+          notes="Unsigned community build for macOS, Windows, and/or Linux. Not notarized or Authenticode-signed; use for testing only.
+
+          Source commit: https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}
+          Build and installation checks: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          Verify downloads against SHA256SUMS.txt."
+          (cd release-assets && sha256sum * > ../SHA256SUMS.txt)
+          mv SHA256SUMS.txt release-assets/
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            git fetch origin "refs/tags/${tag}:refs/tags/${tag}"
+            if [ "$(git rev-parse "${tag}^{commit}")" != "$GITHUB_SHA" ]; then
+              echo "::error::${tag} belongs to another commit. Bump package.json version before publishing new code."
+              exit 1
+            fi
             gh release upload "$tag" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"
             gh release edit "$tag" --title "$title" --notes "$notes" --prerelease --repo "$GITHUB_REPOSITORY"
           else

@@ -56,6 +56,9 @@ export async function unpackWheel(archive, destination) {
     if (directory?.endsWith('.data') && scheme !== '' && scheme !== 'scripts') {
       throw new Error(`Office runtime: unsupported wheel scheme ${name}`)
     }
+    // Wheels include their upstream self-test suites. Keep runtime testing helpers,
+    // native extensions, package data and license metadata; omit only tests/ trees.
+    if ((directory === 'numpy' || directory === 'pandas') && parts.slice(1).includes('tests')) continue
     const file = join(destination, ...parts)
     if (name.endsWith('/')) await mkdir(file, { recursive: true })
     else {
@@ -90,7 +93,7 @@ export async function prepareOfficeRuntime({ target = officeTarget(), output = j
       desktopVersion: version,
       platform: windows ? 'win32' : 'darwin',
       arch: target.endsWith('arm64') ? 'arm64' : 'x64',
-      payloadDigest: createHash('sha256').update(JSON.stringify({ format: 1, target, artifact, python: lock.pythonVersion, release: lock.pythonRelease, wheels: lock.wheels, packages: lock.pythonPackages })).digest('hex'),
+      payloadDigest: createHash('sha256').update(JSON.stringify({ format: 2, wheelLayout: 'runtime-without-numpy-pandas-tests-v1', target, artifact, python: lock.pythonVersion, release: lock.pythonRelease, wheels: lock.wheels, packages: lock.pythonPackages })).digest('hex'),
       python: lock.pythonVersion,
       pythonPackages: lock.pythonPackages
     }

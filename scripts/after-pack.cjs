@@ -1,4 +1,5 @@
 const path = require('node:path')
+const { verifyPackagedBrand } = require('./verify-packaged-brand.cjs')
 const verifyPackagedPptRuntime = require('./verify-packaged-ppt-runtime.cjs')
 const verifyPackagedGodotRuntime = require('./verify-packaged-godot-runtime.cjs')
 const { afterPack: verifyOfficeRuntime } = require('./verify-office-runtime.cjs')
@@ -11,6 +12,7 @@ module.exports = async function afterPack(context) {
     ? path.join(context.appOutDir, `${product}.app`, 'Contents', 'Resources')
     : path.join(context.appOutDir, 'resources')
   verifyAsarUnpack(resourcesDir)
+  await verifyPackagedBrand(resourcesDir, context.packager.projectDir)
   await verifyPackagedGodotRuntime(context)
   await verifyPackagedPptRuntime(context)
   if (context.electronPlatformName !== 'linux') {

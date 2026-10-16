@@ -59,6 +59,17 @@ describe('Office runtime assembly', () => {
     }
   })
 
+  it('omits numpy/pandas self-test trees while preserving runtime helpers, data, binaries and licenses', async () => {
+    const output = await temporary()
+    const wheel = join(output, 'runtime.whl')
+    const kept = ['numpy/__init__.py', 'numpy/testing/__init__.py', 'numpy/_core/_multiarray_tests.pyd', 'pandas/_testing/__init__.py', 'pandas/io/formats/templates/html.tpl', 'numpy-1.dist-info/licenses/LICENSE.txt', 'other/tests/runtime.py']
+    const omitted = ['numpy/tests/test_api.py', 'numpy/linalg/tests/test_linalg.py', 'pandas/tests/frame/test_api.py']
+    await writeFile(wheel, zipSync(Object.fromEntries([...kept, ...omitted].map(name => [name, strToU8(name)]))))
+    const destination = join(output, 'site-packages')
+    await unpackWheel(wheel, destination)
+    for (const name of kept) expect(await readFile(join(destination, name), 'utf8')).toBe(name)
+    for (const name of omitted) await expect(readFile(join(destination, name))).rejects.toMatchObject({ code: 'ENOENT' })
+  })
   it.runIf(supportsOffice)('creates valid Office packages with the prepared Python and checks them with skill resources', async () => {
     const output = await temporary()
     const runtime = join(root, '.build/office-runtime/primary-runtime')

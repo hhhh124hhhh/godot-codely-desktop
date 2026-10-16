@@ -45,6 +45,7 @@ function Assert-Signature([string]$path, [bool]$requirePublisher = $false) {
 
 function Invoke-Installer([string]$directory, [string]$stage) {
   Write-Host "$stage at $directory"
+  $elapsed = [System.Diagnostics.Stopwatch]::StartNew()
   $process = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$directory") -WindowStyle Hidden -PassThru
   $deadline = (Get-Date).AddMinutes(5)
   while (-not $process.HasExited) {
@@ -59,7 +60,8 @@ function Invoke-Installer([string]$directory, [string]$stage) {
     Write-Host "$stage running; directory exists=$(Test-Path $directory); siblings=$($siblings -join ', ')"
     Start-Sleep -Seconds 15
   }
-  Write-Host "$stage exited with $($process.ExitCode)"
+  $elapsed.Stop()
+  Write-Host "$stage exited with $($process.ExitCode) after $([math]::Round($elapsed.Elapsed.TotalSeconds, 1)) seconds (poll interval: 15 seconds)"
   return $process.ExitCode
 }
 
