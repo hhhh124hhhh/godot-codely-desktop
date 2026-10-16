@@ -25,11 +25,13 @@ describe('desktop update policy', () => {
     expect(AUTO_INSTALL_ON_APP_QUIT).toBe(false)
   })
 
-  it('keeps upstream managed updates disabled for this independent fork', () => {
+  it('enables only the packaged Windows GitHub channel, never the upstream service', () => {
+    // 自家 GitHub Releases 通道：仅 Windows（macOS/Linux 未签名包无法自动更新）。
+    expect(supportsAutoUpdates(true, 'win32')).toBe(true)
     expect(supportsAutoUpdates(true, 'darwin')).toBe(false)
-    expect(supportsAutoUpdates(true, 'win32')).toBe(false)
     expect(supportsAutoUpdates(true, 'linux')).toBe(false)
-    expect(supportsAutoUpdates(false, 'darwin')).toBe(false)
+    // 开发运行不触发自动更新。
+    expect(supportsAutoUpdates(false, 'win32')).toBe(false)
   })
 
   it('checks after resume only when the interval has elapsed', () => {

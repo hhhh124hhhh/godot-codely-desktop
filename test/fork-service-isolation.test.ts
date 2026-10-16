@@ -12,8 +12,13 @@ vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => [] }, powerMonitor: { on: vi.fn(), removeListener: vi.fn() }
 }))
 vi.mock('electron-updater', () => ({ default: { autoUpdater: mocks.updater } }))
+// 本仓库自己的更新目录：测试环境没有发布，列表为空 -> 无可用更新。
+vi.mock('../src/main/update/version-catalog', async importOriginal => ({
+  ...(await importOriginal<object>()),
+  fetchAvailableReleases: async () => []
+}))
 
-it('does not activate upstream reporting, version discovery or binary downloads in installed fork builds', async () => {
+it('does not activate the upstream reporting service; feed URLs point only at this repository', async () => {
   const service = await import('../src/main/desktop-service')
   const manager = await import('../src/main/update/update-manager')
   service.initializeDesktopService()
@@ -22,13 +27,20 @@ it('does not activate upstream reporting, version discovery or binary downloads 
   manager.startUpdateManager({ prepareToInstall: async () => {} })
   try {
     await manager.checkForUpdates(true)
-    await manager.installSpecificVersion('0.9.9')
+    expect(manager.getUpdateStatus().phase).toBe('up-to-date')
     expect(await mocks.handlers.get('updates:list-versions')?.()).toEqual([])
+    // 上游服务的网络请求从未发生（服务未实例化）。
     expect(mocks.request).not.toHaveBeenCalled()
-    expect(mocks.updater.setFeedURL).not.toHaveBeenCalled()
-    expect(mocks.updater.checkForUpdates).not.toHaveBeenCalled()
+    // 自家通道启用；指定历史版本时 feed 只指向本仓库 GitHub，绝不回退到上游 URL。
+    await manager.installSpecificVersion('0.9.9')
+    const calls = mocks.updater.setFeedURL.mock.calls as Array<Array<{ url?: string }>>
+    expect(calls.length).toBeGreaterThan(0)
+    for (const [config] of calls) {
+      expect(config?.url ?? '').not.toContain('dshdesktop.com')
+      expect(config?.url ?? '').toContain('github.com/hhhh124hhhh/godot-codely-desktop')
+    }
+    // 无可用版本时不下载任何二进制。
     expect(mocks.updater.downloadUpdate).not.toHaveBeenCalled()
-    expect(manager.getUpdateStatus().phase).toBe('unsupported')
   } finally {
     manager.stopUpdateManager()
   }

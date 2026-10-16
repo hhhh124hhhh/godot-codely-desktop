@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({
   policy: vi.fn(), handlers: new Map<string, (...args: any[]) => void>(),
   updater: { setFeedURL: vi.fn(), checkForUpdates: vi.fn(), downloadUpdate: vi.fn(), quitAndInstall: vi.fn(), on: vi.fn(), autoDownload: false, allowDowngrade: false, allowPrerelease: false }
 }))
-vi.mock('../src/main/desktop-service', () => ({ checkDesktopUpdate: mocks.policy }))
+vi.mock('../src/main/update/github-update', () => ({ checkGithubUpdate: mocks.policy }))
 vi.mock('electron-updater', () => ({ default: { autoUpdater: mocks.updater } }))
 vi.mock('electron', () => ({ app: { isPackaged: true, getVersion: () => '0.8.0', getPath: () => '/nonexistent-desktop-test', isReady: () => true }, BrowserWindow: { getAllWindows: () => [] }, powerMonitor: { on: vi.fn(), removeListener: vi.fn() }, ipcMain: { handle: vi.fn() } }))
 vi.mock('../src/main/update/update-policy', async importOriginal => ({ ...await importOriginal<object>(), supportsAutoUpdates: () => true }))
@@ -37,15 +37,15 @@ it('pins the archive, holds the existing lock, and waits for user acceptance to 
   const checking = manager.checkForUpdates()
   await manager.checkForUpdates(true)
   expect(mocks.policy).toHaveBeenCalledTimes(1)
-  resolve({ updateAvailable: true, version: '0.9.0', feedUrl: 'https://dshdesktop.com/updates/archive/0.9.0/' })
+  resolve({ updateAvailable: true, version: '0.9.0', feedUrl: 'https://github.com/hhhh124hhhh/godot-codely-desktop/releases/download/v0.9.0-unsigned/' })
   await checking
-  expect(mocks.updater.setFeedURL).toHaveBeenCalledWith({ provider: 'generic', url: 'https://dshdesktop.com/updates/archive/0.9.0/' })
+  expect(mocks.updater.setFeedURL).toHaveBeenCalledWith({ provider: 'generic', url: 'https://github.com/hhhh124hhhh/godot-codely-desktop/releases/download/v0.9.0-unsigned/' })
   expect(manager.getUpdateStatus().phase).toBe('available')
   expect(mocks.updater.downloadUpdate).not.toHaveBeenCalled()
   await manager.downloadAvailableUpdate(); expect(mocks.updater.downloadUpdate).toHaveBeenCalledTimes(1)
 })
 it('blocks mismatched metadata before it can enter the download UI', async () => {
-  mocks.policy.mockResolvedValue({ updateAvailable: true, version: '0.9.0', feedUrl: 'https://dshdesktop.com/updates/archive/0.9.0/' })
+  mocks.policy.mockResolvedValue({ updateAvailable: true, version: '0.9.0', feedUrl: 'https://github.com/hhhh124hhhh/godot-codely-desktop/releases/download/v0.9.0-unsigned/' })
   mocks.updater.checkForUpdates.mockImplementation(async () => { mocks.handlers.get('update-available')!({ version: '0.10.0' }); expect(manager.getUpdateStatus().phase).toBe('error'); return { updateInfo: { version: '0.10.0' } } })
   await manager.checkForUpdates()
   await manager.downloadAvailableUpdate()
@@ -58,6 +58,6 @@ it('preserves explicitly selected history installs and validates version input',
   await manager.installSpecificVersion('0.7.0')
   expect(mocks.policy).not.toHaveBeenCalled()
   expect(mocks.updater.downloadUpdate).toHaveBeenCalledTimes(1)
-  expect(mocks.updater.setFeedURL).toHaveBeenCalledWith({ provider: 'generic', url: 'https://dshdesktop.com/updates/archive/0.7.0/' })
+  expect(mocks.updater.setFeedURL).toHaveBeenCalledWith({ provider: 'generic', url: 'https://github.com/hhhh124hhhh/godot-codely-desktop/releases/download/v0.7.0-unsigned/' })
   expect(mocks.updater.allowDowngrade).toBe(false)
 })
