@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { expect, it } from 'vitest'
@@ -8,7 +8,7 @@ import { TypertClient } from '../packages/dsh-godot-stack/bridge/session-client.
 import { migrateLegacyAgentPresets } from '../src/main/state/legacy-preset-migration'
 
 it('persists the actual endpoint for bridge authentication across runtime restarts', async () => {
-  const home = await mkdtemp(join(tmpdir(), 'godot-launch-token-'))
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'godot-launch-token-')))
   const runtime = new HarnessRuntime({
     dshEntryPath: resolve('node_modules/@deepseek-ai/dsh/lib/bin.js'),
     nodeEntryPath: resolve('build/harness-node-entry.mjs'),
@@ -34,6 +34,26 @@ it('persists the actual endpoint for bridge authentication across runtime restar
       const client = new TypertClient('http://127.0.0.1:1', { tokenFile })
       expect(await client.auth()).toBe(true)
       expect(client.baseUrl).toBe(snapshot.url)
+      await writeFile(join(home, 'project.godot'), 'config_version=5\n[application]\nconfig/name="Desktop acceptance"\n')
+      const { workspace } = await client.call('workspace/create', { request: { path: home } })
+      const headers = { cookie: client.cookie, origin: snapshot.url.replace(/\/$/, ''), 'content-type': 'application/json' }
+      const metadata = await fetch(`${snapshot.url}/api/godot-desktop/project?workspaceId=${workspace.workspaceId}`, { headers })
+      expect(metadata.status).toBe(200)
+      expect(await metadata.json()).toMatchObject({ godot: true, name: 'Desktop acceptance' })
+      const created = await fetch(`${snapshot.url}/api/godot-desktop/session?workspaceId=${workspace.workspaceId}`, { method: 'POST', headers, body: '{}' })
+      expect(created.status).toBe(200)
+      const { sessionId } = await created.json()
+      expect(typeof sessionId).toBe('string')
+      const list = await client.call('session/list', { _request: {} })
+      expect(list.items.find(item => item.sessionId === sessionId)?.cwd).toBe(home)
+      const currentWorkspace = await client.call('workspace/create', { request: { path: home } })
+      expect(currentWorkspace.workspace.sessionIds).toContain(sessionId)
+      const html = await (await fetch(snapshot.url, { headers })).text()
+      expect(html).toContain('dsh-godot-stack')
+      // Backend presentation tools remain installed, but game development does
+      // not advertise their automatic browser modules or Composer controls.
+      expect(html).not.toContain('"dsh-ppt-composer"')
+      expect(html).not.toContain('"dsh-ppt"')
       const roster = await client.call('agentPresets/list', {})
       const godotPresets = roster.presets.filter(preset => preset.id.startsWith('godot-'))
       expect(godotPresets.map(preset => preset.id)).toEqual(expect.arrayContaining([

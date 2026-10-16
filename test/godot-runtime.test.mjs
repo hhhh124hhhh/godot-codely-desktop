@@ -22,6 +22,25 @@ async function fixture() {
 }
 
 describe('shipped Godot MCP dependency closure', () => {
+  it.skipIf(!process.env.GODOT_TEST_BIN)('uses the Desktop-selected persisted engine before discovery in a fresh tool connection', async () => {
+    const { home, target } = await fixture()
+    await provisionMcpRuntime(generated, home, target)
+    await writeFile(join(home, '.godot/godot-path.txt'), process.env.GODOT_TEST_BIN + '\n')
+    const transport = new StdioClientTransport({
+      command: process.execPath, args: [join(target, 'build/index.js')], cwd: home,
+      env: { PATH: process.env.PATH ?? '', DSH_HOME: home, GODOT_PATH: join(home, 'not-selected-godot'), GODOT_CODELY_MEMORY_DIR: join(home, 'memories') }, stderr: 'pipe'
+    })
+    const client = new Client({ name: 'desktop-engine-selection', version: '1' })
+    try {
+      await client.connect(transport)
+      const result = await client.callTool({ name: 'config', arguments: { action: 'status' } })
+      expect(result.isError).not.toBe(true)
+      const text = result.content.find(item => item.type === 'text')?.text
+      expect(JSON.parse(text).godot_path).toBe(process.env.GODOT_TEST_BIN)
+      expect(JSON.parse(text).godot_version).toMatch(/^4\./)
+    } finally { await client.close() }
+  }, 30000)
+
   it('starts in an empty home outside repository resolution and executes an actual tool', async () => {
     const { home, target } = await fixture()
     expect(await provisionMcpRuntime(generated, home, target)).toEqual({ status: 'configured' })

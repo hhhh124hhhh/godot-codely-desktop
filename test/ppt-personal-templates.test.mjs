@@ -310,7 +310,7 @@ describe('personal PPT templates in the shipped runtime', () => {
     await f.request('template/cancel', { draftId: draft.draftId });
     await expect(f.request('template/save', { draftId: draft.draftId, name: 'Cancelled' })).rejects.toThrow();
     await mkdir(path.join(f.storage, 'personal-templates/saved'), { recursive: true });
-    await symlink(f.workspace, path.join(f.storage, 'personal-templates/saved', `personal-${'a'.repeat(64)}`));
+    await symlink(f.workspace, path.join(f.storage, 'personal-templates/saved', `personal-${'a'.repeat(64)}`), process.platform === 'win32' ? 'junction' : 'dir');
     await expect(f.request('state')).rejects.toThrow();
   }, 30000);
 });

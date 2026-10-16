@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Godot Codely · 桌面工作台设计原型</title>
+  <link rel="icon" href="./brand-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./desktop.css">
+  <script src="./desktop.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand" href="./desktop.html"><img src="./brand-mark.svg" width="32" height="32" alt=""><span>Godot Codely<small>游戏创作工作台</small></span></a>
+      <button class="new-session" data-action="new">＋ <span>新建开发会话</span><kbd>⌘ N</kbd></button>
+      <nav aria-label="工作台导航"><button class="nav-item selected" data-view="overview"><span>▦</span> 项目总览</button><button class="nav-item" data-action="assets"><span>✧</span> 资源与技能 <em>规划中</em></button></nav>
+      <div class="sidebar-label">游戏项目 <button data-action="project" aria-label="添加游戏项目">＋</button></div>
+      <button class="project-choice" data-view="overview"><span class="project-icon">◈</span><span>星岛漫游<small>Godot · 2D 冒险</small></span><span>⌄</span></button>
+      <div class="project-sessions"><button class="session selected" data-view="session"><span class="status-dot"></span><span>角色二段跳与落地反馈<small>等待运行验证</small></span></button><button class="session" data-action="history"><span class="session-check">✓</span><span>整理场景与输入映射<small>历史会话示例</small></span></button><button class="session" data-action="history"><span>◌</span><span>第一关的关卡节奏<small>规划会话示例</small></span></button></div>
+      <div class="sidebar-label second-label">更多项目</div><button class="other-project" data-action="project">◈ <span>导入另一个 Godot 项目</span></button>
+      <div class="sidebar-bottom"><div class="engine-status"><span class="status-dot muted"></span><span>Godot 连接未接入<small>原型不检测本机环境</small></span></div><button class="profile" data-action="settings"><span class="avatar">G</span><span>本地工作区<small>模型与凭据由你配置</small></span><span>⚙</span></button></div>
+    </aside>
+    <div class="work-area">
+      <header class="titlebar"><div class="breadcrumbs"><span>◈</span> 星岛漫游 <span>/</span><b id="breadcrumb">项目总览</b></div><div class="titlebar-actions"><span class="prototype-label">设计原型 · 示例数据</span><button id="theme" aria-label="切换深浅主题">◐</button><button id="inspector-toggle" aria-label="切换项目面板" aria-expanded="true">▥</button></div></header>
+      <div class="project-bar"><div><span class="project-badge">2D</span><span><b>星岛漫游</b><small>project.godot <span>·</span> Godot 项目</small></span></div><div class="project-actions"><span class="branch">⑂ main <span class="change-count">2 个示例改动</span></span><button data-action="editor" class="outline">↗ 打开 Godot</button><button data-action="run" class="primary">▷ 运行项目</button></div></div>
+      <div class="content-layout">
+        <main>
+          <section id="overview" class="overview">
+            <div class="page-intro"><p class="eyebrow">YOUR NEXT PLAYABLE IDEA</p><h1>让下一个想法，跑起来。</h1><p>围绕项目推进创作。把意图交给 Agent，把判断留给自己。</p></div>
+            <div class="overview-composer"><label for="idea">今天想为这个游戏做些什么？</label><textarea id="idea" placeholder="例如：给角色加一个二段跳，并在落地时播放粒子效果…"></textarea><div><span>◈ 星岛漫游 <span class="separator">/</span> Godot 开发</span><button class="primary" id="start-task">开始新会话 <span>↗</span></button></div></div>
+            <div class="quick-heading"><h2>从一个具体的目标开始</h2><span>点击填入任务，不会自动执行</span></div><div class="starter-grid"><button data-prompt="先阅读这个 Godot 项目，说明场景、脚本与输入配置的关系。"><span class="starter-icon">◈</span><b>理解项目</b><p>梳理场景、脚本和资源关系</p><span class="starter-arrow">↗</span></button><button data-prompt="为玩家实现二段跳，先说明方案和需要改动的文件。"><span class="starter-icon">⌘</span><b>实现玩法</b><p>把操作与反馈变成具体逻辑</p><span class="starter-arrow">↗</span></button><button data-prompt="检查当前角色脚本，定位跳跃异常并列出验证步骤。"><span class="starter-icon">⌁</span><b>排查问题</b><p>从错误和现象定位原因</p><span class="starter-arrow">↗</span></button></div>
+            <div class="section-row"><h2>继续上次的创作</h2><span>示例会话</span></div><button class="continue-card" data-view="session"><div class="continue-icon">⌘</div><div><h3>角色二段跳与落地反馈</h3><p>2 个文件改动 · 已整理验证步骤</p></div><span class="pending-badge">待运行验证</span><span>→</span></button>
+            <div class="context-note"><span>ⓘ</span><p>项目总览帮助你开始任务。文件修改、审批和运行结果回到同一条会话中，方便随时检查。</p></div>
+          </section>
+          <section id="session" class="conversation" hidden>
+            <div class="conversation-toolbar"><div><span class="status-dot"></span><h1>角色二段跳与落地反馈</h1></div><span>示例会话</span></div>
+            <div class="messages" id="messages"><div class="user-message">给玩家加一个二段跳。第二次跳跃弱一些，落地时有一点粒子反馈。</div><article class="agent-message"><div class="agent-heading"><img src="./brand-mark.svg" width="24" height="24" alt=""><b>Godot Codely</b><span>示例回复</span></div><p>我会先检查角色的移动脚本和输入映射，再调整跳跃次数与落地反馈。保留现有移动逻辑，让改动集中在两处。</p><div class="task-progress"><div><span class="check">✓</span><span>检查角色脚本与场景节点</span><small>已完成 · 示例</small></div><div><span class="check">✓</span><span>添加二段跳与落地粒子触发</span><small>已完成 · 示例</small></div><div><span class="pending">◌</span><span>在 Godot 中运行并检查手感</span><small>待验证</small></div></div><p>这次示例改动增加了跳跃计数，并在落地时重置。第二次跳跃使用独立速度参数，方便继续调整。</p><button class="change-summary" data-inspector="changes"><span class="file-icon">◇</span><span><b>检查这次改动</b><small>player.gd · player.tscn</small></span><span class="diff-stats">+18 <i>−3</i></span><span>↗</span></button><div class="verification-callout"><span>◌</span><div><b>代码改动已整理，运行结果尚未验证</b><p>请在 Godot 中确认连续跳跃、落地重置和粒子触发。静态检查通过也不能替代实际运行。</p></div></div><p class="agent-footnote">示例仅展示结果如何呈现，没有修改你的文件或执行工具。</p></article></div>
+            <form class="composer" id="composer"><label class="sr-only" for="reply">继续当前任务</label><textarea id="reply" placeholder="继续描述你的想法，或补充运行后的反馈…"></textarea><div class="composer-options"><button type="button" data-action="attach" aria-label="添加上下文">＋</button><span>◈ 星岛漫游</span><button type="button" data-action="mode">需要时审批 ⌄</button><span class="composer-spacer"></span><button type="button" data-action="model">选择模型 ⌄</button><button type="submit" class="send" aria-label="发送示例消息">↑</button></div></form><p class="composer-caption">本地交互原型 · 发送内容仅保留在当前页面，刷新即清除</p>
+          </section>
+        </main>
+        <aside class="inspector" id="inspector"><div class="inspector-tabs" role="tablist" aria-label="项目详情"><button id="tab-context" role="tab" aria-controls="panel-context" aria-selected="true" data-inspector="context">项目</button><button id="tab-changes" role="tab" aria-controls="panel-changes" aria-selected="false" data-inspector="changes">改动 <span>2</span></button><button id="tab-checks" role="tab" aria-controls="panel-checks" aria-selected="false" data-inspector="checks">验证</button></div>
+          <section class="inspector-panel" id="panel-context" role="tabpanel" aria-labelledby="tab-context"><div class="panel-heading"><h2>项目上下文</h2><span>示例</span></div><div class="context-project"><span>◈</span><div><b>星岛漫游</b><p>2D 冒险 · Godot</p></div></div><dl><div><dt>引擎连接</dt><dd><span class="status-dot muted"></span> 未接入</dd></div><div><dt>运行状态</dt><dd>未运行</dd></div><div><dt>当前分支</dt><dd class="mono">main</dd></div></dl><div class="panel-section-label">任务关联文件</div><div class="file-list"><button data-file="player.gd"><span>◇</span><span>player.gd<small>scripts/player.gd</small></span></button><button data-file="player.tscn"><span>◈</span><span>player.tscn<small>scenes/player.tscn</small></span></button><button data-file="project.godot"><span>▤</span><span>project.godot<small>项目与输入配置</small></span></button></div><div class="panel-section-label">本轮目标</div><ul class="goals"><li>最多连续跳跃两次</li><li>第二次跳跃高度更低</li><li>落地时触发一次粒子效果</li></ul><div class="inspector-note">只展示当前任务需要的上下文。完整的场景编辑仍在 Godot 中完成。</div></section>
+          <section class="inspector-panel" id="panel-changes" role="tabpanel" aria-labelledby="tab-changes" hidden><div class="panel-heading"><h2>本轮文件改动</h2><span>示例差异</span></div><p class="panel-description">逐文件查看变更，再决定如何继续。原型不具备应用或撤销文件的能力。</p><div class="diff-file"><header><b>◇ player.gd</b><span>+14 −3</span></header><pre><code> extends CharacterBody2D
+<ins>+ var jump_count := 0</ins>
+<ins>+ const MAX_JUMPS := 2</ins>
+<ins>+ const SECOND_JUMP := -280.0</ins>
+
+ func _physics_process(delta):
+<ins>+   if is_on_floor():</ins>
+<ins>+     jump_count = 0</ins>
+<del>-   if is_on_floor() and jump:</del>
+<ins>+   if jump and jump_count &lt; 2:</ins>
+<ins>+     jump_count += 1</ins></code></pre></div><div class="diff-file"><header><b>◈ player.tscn</b><span>+4</span></header><div class="diff-note">新增落地粒子节点与触发引用<br><small>省略的其余差异仅为版式示意</small></div></div><div class="inspector-note">该差异为排版样例，不是可以直接应用的完整补丁。</div></section>
+          <section class="inspector-panel" id="panel-checks" role="tabpanel" aria-labelledby="tab-checks" hidden><div class="panel-heading"><h2>验证清单</h2><span>等待实际运行</span></div><p class="panel-description">完成改动后，用可观察的结果判断任务是否完成。</p><div class="checklist"><label><input type="checkbox"> 地面起跳后可在空中再跳一次</label><label><input type="checkbox"> 第二次跳跃的高度低于第一次</label><label><input type="checkbox"> 落地后恢复两次跳跃机会</label><label><input type="checkbox"> 每次落地只触发一次粒子</label></div><p class="checklist-progress" id="checklist-progress">0 / 4 项手动勾选 · 仅用于原型演示</p><button class="outline wide" data-action="run">▷ 在 Godot 中运行验证</button><div class="inspector-note">手动勾选不会变成“自动验证通过”。引擎运行结果应由真实工具返回。</div></section>
+          <div class="inspector-bottom"><span class="status-dot muted"></span> 未连接真实项目 · 所有状态均为示例</div>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <dialog id="file-dialog"><div><h2 id="file-title">文件</h2><button id="close-file" aria-label="关闭文件示意">×</button></div><p>这是设计原型中的文件入口示意，未读取本机项目。</p><pre id="file-content"></pre><small>正式版复用现有文件预览能力，不实现第二套代码编辑器。</small></dialog>
+</body>
+</html>

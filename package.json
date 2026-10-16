@@ -24,6 +24,8 @@
     "game-dev"
   ],
   "scripts": {
+    "website:build": "node scripts/website.mjs",
+    "website:preview": "node scripts/website.mjs --serve",
     "postinstall": "patch-package && npm run brand:prepare && install-electron --no",
     "dev": "npm run brand:prepare && npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite dev",
     "build": "npm run brand:prepare && npm run godot:build && npm run office:prepare && npm run ppt:build && electron-vite build",
@@ -34,6 +36,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:godot-engine:native": "node scripts/run-godot-engine-smoke.mjs",
     "package:dir": "npm run build && electron-builder --dir",
     "package:dev:dir": "npm run build && electron-builder --dir --config electron-builder.dev.cjs",
     "package:dev:mac:arm64": "node scripts/verify-target.mjs darwin arm64 && npm run build && electron-builder --mac --arm64 --publish never --config electron-builder.dev.cjs",

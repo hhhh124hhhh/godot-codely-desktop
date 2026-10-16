@@ -14,6 +14,7 @@ window.__ModuleLoader__.load({
         'aria-hidden': 'true',
         style: {
           display: 'inline-block', width: size, height: size, flexShrink: 0,
+          color: 'var(--dsw-alias-state-business-primary)',
           backgroundColor: 'currentColor',
           mask: 'url(/godot-codely-mark.svg) center / contain no-repeat',
           WebkitMask: 'url(/godot-codely-mark.svg) center / contain no-repeat'
@@ -114,8 +115,26 @@ window.__ModuleLoader__.load({
       }, unread ? (chinese ? '标为已读' : 'Mark as read') : (chinese ? '标为未读' : 'Mark as unread'))
     }
 
-    const inject = ['slots', 'remote.session', 'sessions', 'uiWorkspace']
+    const inject = ['slots', 'locale', 'remote.session', 'sessions', 'uiWorkspace']
     function apply(ctx) {
+      ctx.effect(() => ctx.locale.register('conversation.presentation', {
+        zh: {
+          'hero.headline': '从一个玩法，开始创作',
+          'hero.preview': 'Godot 游戏开发',
+          'placeholder.hero': '想做什么玩法？描述目标，或贴上报错、脚本与场景路径',
+          'placeholder.default': '继续描述修改目标，或贴上运行结果…',
+          'placeholder.workspace': '先选择游戏项目',
+          'placeholder.plan': '先梳理玩法目标、实现步骤和验证方式…'
+        },
+        en: {
+          'hero.headline': 'Start with a gameplay idea',
+          'hero.preview': 'Godot game development',
+          'placeholder.hero': 'Describe a gameplay goal, or share an error, script, or scene path',
+          'placeholder.default': 'Describe the next change, or share your test results…',
+          'placeholder.workspace': 'Choose a game project first',
+          'placeholder.plan': 'Plan the gameplay, implementation steps, and checks…'
+        }
+      }), 'desktop: game development copy')
       ctx.effect(() => {
         const id = 'dsh-desktop-preset-toolbar-style'
         if (document.getElementById(id)) return

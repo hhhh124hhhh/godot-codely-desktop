@@ -84,9 +84,14 @@ describe('DSH Desktop client slot occupants', () => {
         return () => undefined
       }
     }
-    plugin.apply({ slots, effect: (setup: () => (() => void) | undefined) => { disposeStyle = setup() } })
+    const registerLocale = vi.fn(() => () => undefined)
+    plugin.apply({ slots, locale: { register: registerLocale }, effect: (setup: () => (() => void) | undefined) => { disposeStyle = setup() } })
 
-    expect(plugin.inject).toEqual(['slots', 'remote.session', 'sessions', 'uiWorkspace'])
+    expect(plugin.inject).toEqual(['slots', 'locale', 'remote.session', 'sessions', 'uiWorkspace'])
+    expect(registerLocale).toHaveBeenCalledWith('conversation.presentation', expect.objectContaining({
+      zh: expect.objectContaining({ 'hero.headline': '从一个玩法，开始创作' }),
+      en: expect.objectContaining({ 'hero.headline': 'Start with a gameplay idea' })
+    }))
     expect(registrations.map(({ config }) => config.name)).toEqual([
       'sidebar.brand.mark',
       'sidebar.brand.name',

@@ -71,3 +71,7 @@ Authoring diagnostics group misplaced text-style fields by page while retaining 
 ### Text escape semantics
 
 Multiline text uses actual line breaks, with YAML `|-` as the shared authoring form. The CLI and host use `lib/text-escapes.js` to report `text-escaped-newline` for literal `\n` or `\r` in text elements and table cells before export. An explicit boolean `literalEscapes: true` preserves intentionally displayed code, escape notation or paths; imported PPTX text carries this declaration when the original already displays those characters. The declaration leaves layout checks active. V4 automatic Skill snapshots explain the correction loop and replace older V2/V3 snapshots in active PPT sessions.
+
+## Godot Codely presentation policy
+
+The bundled core and adapter retain their backend, CLI and client exports, but do not advertise `dsh.client` for automatic browser activation. Godot Codely therefore does not mount PPT mode buttons, template choosers or PPT composer panels. Existing presentation files are retained; this does not remove the backend or migrate user data. Rebuild bundled packages and restart the runtime to apply this policy.

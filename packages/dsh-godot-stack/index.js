@@ -30,6 +30,7 @@ import { provisionMcpRuntime } from './mcp-runtime.mjs'
 import { adoptLegacyMemories, memoryRoot, sanitizeTopic } from './memory-root.mjs'
 import { cliHome } from './data-home.mjs'
 import { copyBundledDirectory } from './copy-bundled-directory.mjs'
+import { registerDesktopApi } from './desktop-api.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -119,6 +120,7 @@ export async function apply(ctx, config = {}) {
     })
     try {
       await bridge.start()
+      ctx.inject(['connection', 'workspaceRegistry'], child => registerDesktopApi(child, bridge))
       ctx.on('approval/request', (request, next) => bridge.approval(request, next), { global: true })
       ctx.on('agent/assistant-stream', payload => bridge.assistantStream(payload), { global: true })
       ctx.logger?.info?.('godot-stack: bridge started on :%d -> dsh :%d', bridge.port, dshPort)

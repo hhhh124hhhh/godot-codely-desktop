@@ -1,6 +1,7 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { brandFrontend } from './brand-web-frontend.mjs'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const source = path.join(projectRoot, '.build/brand-assets', 'icon.png')
@@ -78,6 +79,7 @@ await copyFile(darkSource, darkDestination)
 
 const index = await readFile(indexPath, 'utf8')
 await writeFile(indexPath, replaceIconLink(index, path.relative(projectRoot, indexPath)))
+await brandFrontend(destinationDirectory)
 
 const manifest = await readFile(manifestPath, 'utf8')
 await writeFile(

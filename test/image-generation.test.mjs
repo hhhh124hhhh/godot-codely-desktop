@@ -20,6 +20,7 @@ import { normalizeImage } from '../packages/dsh-image-generation/lib/assets.js'
 import { materialize } from '../packages/dsh-image-generation/lib/storage.js'
 import { previewImage, imageResult } from '../packages/dsh-image-generation/lib/preview.js'
 import { writerEnvironment } from '../packages/dsh-image-generation/lib/commit.js'
+import { supportsFileSymlinks } from './symlink-capability'
 
 const cleanups = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); vi.restoreAllMocks() })
@@ -268,6 +269,15 @@ describe('image tool and durable Office assets', () => {
     })
     expect(writerEnvironment({ env, platform: 'darwin', versions: { node: '24.9.0' } }).ELECTRON_RUN_AS_NODE).toBeUndefined()
   })
+  it('keeps the Windows ACL runner temp location while removing credentials and Node options', () => {
+    const env = { TEMP: 'C:\\temp', TMP: 'C:\\tmp', SystemRoot: 'C:\\Windows', API_KEY: 'private-key', NODE_OPTIONS: '--require secret.js' }
+    expect(writerEnvironment({ env, platform: 'win32', versions: { node: '24.9.0' } })).toEqual({
+      TEMP: env.TEMP, TMP: env.TMP, SystemRoot: env.SystemRoot, API_KEY: undefined, NODE_OPTIONS: undefined,
+    })
+    expect(writerEnvironment({ env: { SYSTEMROOT: env.SystemRoot, Temp: env.TEMP, tmp: env.TMP, API_KEY: 'private-key' }, platform: 'win32', versions: {} })).toEqual({
+      SYSTEMROOT: env.SystemRoot, Temp: env.TEMP, tmp: env.TMP, API_KEY: undefined,
+    })
+  })
   it.each(['openai', 'bytedance'])('executes %s through ToolRuntime and writes a verifiable PNG', async provider => {
     const f = await fixture(); const s = await server()
     await f.settings.save(saveInput(provider, s.baseUrl))
@@ -288,19 +298,23 @@ describe('image tool and durable Office assets', () => {
     f.setMode('read-only')
     await expect(tool.execute({ prompt: 'Forest' }, { agent: f.agent })).rejects.toMatchObject({ code: 'POLICY' })
     f.setMode('workspace-write')
-    const outside = await temp(); await symlink(outside, path.join(f.workspace, '.workbuddy'))
+    const outside = await temp(); await symlink(outside, path.join(f.workspace, '.workbuddy'), process.platform === 'win32' ? 'junction' : 'dir')
     await expect(tool.execute({ prompt: 'Forest' }, { agent: f.agent })).rejects.toMatchObject({ code: 'ASSET_PATH' })
     expect(s.calls).toHaveLength(1); expect(await readdir(outside)).toEqual([])
   })
-  it('commits identical assets concurrently, rejects target symlinks, and rejects damaged images', async () => {
+  it('commits identical assets concurrently and rejects damaged images', async () => {
     const workspace = await temp(); const s = await server(); const image = await normalizeImage(s.png)
     const values = await Promise.all([materialize(workspace, image.data), materialize(workspace, image.data)])
     expect(values[0]).toEqual(values[1])
     expect(await readdir(path.dirname(path.join(workspace, values[0].workspace_path)))).toHaveLength(1)
-    const target = path.join(workspace, values[0].workspace_path)
-    await rm(target); await symlink(path.join(workspace, 'absent'), target)
-    await expect(materialize(workspace, image.data)).rejects.toThrow()
     await expect(normalizeImage(Buffer.from('not a PNG'))).rejects.toMatchObject({ code: 'IMAGE' })
+  })
+  it.skipIf(!supportsFileSymlinks)('rejects target file symlinks (requires file symlink privilege on Windows)', async () => {
+    const workspace = await temp(); const s = await server(); const image = await normalizeImage(s.png)
+    const value = await materialize(workspace, image.data)
+    const target = path.join(workspace, value.workspace_path)
+    await rm(target); await symlink(path.join(workspace, 'absent'), target, 'file')
+    await expect(materialize(workspace, image.data)).rejects.toThrow()
   })
   async function mountPlugin(fixture, routes = []) {
     const plugin = fixture.ctx.plugin({ inject: ['skills', 'systemPrompt', 'tools'], apply: ctx => apply({
@@ -422,16 +436,19 @@ describe('session-authorized generated image previews', () => {
       expect(imageResult([{ type: 'text', text: JSON.stringify({ ...f.image, ...change }) }])).toBeUndefined()
     }
   })
-  it('refuses changed files, target symlinks and linked parent directories', async () => {
+  it('refuses changed files and linked parent directories', async () => {
     const f = await previewFixture()
     await writeFile(f.target, Buffer.alloc(f.png.length))
     expect((await previewImage(f.ctx, f.request())).status).toBe(404)
-    await rm(f.target)
     const outside = path.join(await temp(), 'image.png'); await writeFile(outside, f.png)
-    await symlink(outside, f.target)
-    expect((await previewImage(f.ctx, f.request())).status).toBe(404)
     await rm(path.dirname(f.target), { recursive: true })
-    await symlink(path.dirname(outside), path.dirname(f.target))
+    await symlink(path.dirname(outside), path.dirname(f.target), process.platform === 'win32' ? 'junction' : 'dir')
+    expect((await previewImage(f.ctx, f.request())).status).toBe(404)
+  })
+  it.skipIf(!supportsFileSymlinks)('refuses preview file symlinks (requires file symlink privilege on Windows)', async () => {
+    const f = await previewFixture()
+    const outside = path.join(await temp(), 'image.png'); await writeFile(outside, f.png)
+    await rm(f.target); await symlink(outside, f.target, 'file')
     expect((await previewImage(f.ctx, f.request())).status).toBe(404)
   })
 })

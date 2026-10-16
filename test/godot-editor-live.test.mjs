@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { expect, it } from 'vitest'
 import { BridgeServer } from '../packages/dsh-godot-stack/bridge/bridge.mjs'
+import { registerDesktopApi } from '../packages/dsh-godot-stack/desktop-api.mjs'
 
 async function until(check, timeout = 20000) {
   const deadline = Date.now() + timeout
@@ -30,10 +31,17 @@ it.skipIf(!process.env.GODOT_TEST_BIN)('dispatches Play and Stop through the rea
   child.stdout.on('data', chunk => { output += chunk })
   child.stderr.on('data', chunk => { output += chunk })
   const done = new Promise((resolve, reject) => { child.on('error', reject); child.on('exit', resolve) })
-  const action = action => bridge.editorControl.execute({ projectPath: project, action })
+  const routes = []
+  registerDesktopApi({ connection: { fetch: { register: route => routes.push(route) } }, workspaceRegistry: { get: id => id === 'project' ? { id, path: project } : undefined } }, bridge)
+  const action = async action => {
+    const response = await routes.find(route => route.path.endsWith('/editor')).fetch(new Request('http://dsh.internal/api/godot-desktop/editor?workspaceId=project', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action }) }))
+    if (!response.ok) throw Error(JSON.stringify(await response.json()))
+    return response.json()
+  }
   try {
     await until(() => bridge.editorControl.editors.size === 1)
     await until(() => output.includes('loading_editor_layout'))
+    await until(() => [...bridge.editorControl.editors.values()].some(editor => Date.now() - editor.seen < 1000))
     expect(await action('status')).toMatchObject({ ok: true, playing: false })
     expect(await action('scan')).toMatchObject({ ok: true })
     expect(await action('play')).toMatchObject({ ok: true })
