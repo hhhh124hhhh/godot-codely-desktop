@@ -25,13 +25,13 @@ if (-not $setup.WaitForExit(300000) -or $setup.ExitCode -ne 0) { throw 'Fixture 
 $executable = Join-Path $install 'Godot Codely.exe'
 $archive = Join-Path $install 'resources\app.asar'
 if (-not (Test-Path -LiteralPath $executable)) { throw 'Installed production executable is missing.' }
-& node (Join-Path $PSScriptRoot 'seed-update-version.mjs') $archive $Version $SeedVersion |
-  Set-Content -LiteralPath (Join-Path $evidence 'seed.json')
-if ($LASTEXITCODE -ne 0) { throw 'Failed to prepare declared version fixture.' }
-$seed = Get-Content -LiteralPath (Join-Path $evidence 'seed.json') -Raw | ConvertFrom-Json
 $debugEndpoint = 'http://127.0.0.1:49339'
+$script:launchCount = 0
 function Start-Desktop {
+  $script:launchCount++
   return Start-Process -FilePath $executable -WorkingDirectory $install -WindowStyle Hidden -PassThru `
+    -RedirectStandardOutput (Join-Path $root "stdout-$script:launchCount.log") `
+    -RedirectStandardError (Join-Path $root "stderr-$script:launchCount.log") `
     -ArgumentList @('--remote-debugging-address=127.0.0.1', '--remote-debugging-port=49339')
 }
 function Stop-OwnedDesktop([int]$processId) {
@@ -44,6 +44,7 @@ try {
   $deadline = (Get-Date).AddMinutes(3)
   $harnessHome = $null
   while ((Get-Date) -lt $deadline -and -not $harnessHome) {
+    if ($desktop.HasExited) { throw "Unmodified official app exited early: $($desktop.ExitCode)" }
     foreach ($base in @($env:APPDATA, $nativeAppData) | Select-Object -Unique) {
       $candidate = Join-Path $base 'godot-codely\harness'
       if (Test-Path -LiteralPath (Join-Path $candidate 'godot-codely-launch-token')) { $harnessHome = $candidate; break }
@@ -51,6 +52,17 @@ try {
     if (-not $harnessHome) { Start-Sleep -Milliseconds 500 }
   }
   if (-not $harnessHome) { throw 'Installed fixture did not start Harness.' }
+  & node (Join-Path $PSScriptRoot 'verify-installed-ui.mjs') $debugEndpoint (Join-Path $evidence 'official-baseline.png')
+  if ($LASTEXITCODE -ne 0) { throw 'Unmodified official application did not mount UI.' }
+  Stop-OwnedDesktop $desktop.Id
+  Start-Sleep -Seconds 2
+  & node (Join-Path $PSScriptRoot 'seed-update-version.mjs') $archive $Version $SeedVersion |
+    Set-Content -LiteralPath (Join-Path $evidence 'seed.json')
+  if ($LASTEXITCODE -ne 0) { throw 'Failed to prepare declared version fixture.' }
+  $seed = Get-Content -LiteralPath (Join-Path $evidence 'seed.json') -Raw | ConvertFrom-Json
+  $desktop = Start-Desktop
+  Start-Sleep -Seconds 3
+  if ($desktop.HasExited) { throw "Version-only fixture exited early: $($desktop.ExitCode)" }
   & node (Join-Path $PSScriptRoot 'verify-auto-upgrade-ui.mjs') download $debugEndpoint $evidence $harnessHome $Version
   if ($LASTEXITCODE -ne 0) { throw 'Actual updater offer/download UI failed.' }
 
@@ -117,5 +129,18 @@ try {
   } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'result.json')
   Write-Host 'Actual packaged update offer, download, NSIS install, automatic restart and data recovery: PASS'
 } finally {
+  & node (Join-Path $PSScriptRoot 'capture-installed-startup.mjs') $debugEndpoint $evidence final 2>$null
   if ($desktop) { Stop-OwnedDesktop $desktop.Id }
+  foreach ($file in Get-ChildItem -LiteralPath $root -Filter '*.log') {
+    (Get-Content -LiteralPath $file.FullName -ErrorAction SilentlyContinue) |
+      ForEach-Object { $_ -replace '([?&]token=)[^\s&]+', '$1[redacted]' } |
+      Set-Content -LiteralPath (Join-Path $evidence $file.Name)
+  }
+  foreach ($base in @($env:APPDATA, $nativeAppData) | Select-Object -Unique) {
+    $log = Join-Path $base 'godot-codely\logs\harness.log'
+    if (Test-Path -LiteralPath $log) {
+      Get-Content -LiteralPath $log -Tail 80 | ForEach-Object { $_ -replace '([?&]token=)[^\s&]+', '$1[redacted]' } |
+        Set-Content -LiteralPath (Join-Path $evidence 'harness-tail.log')
+    }
+  }
 }
