@@ -189,6 +189,7 @@ jobs:
       - name: Set app version from unsigned release version
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'unsigned' && inputs.unsigned_version != ''
         run: npm version --no-git-tag-version --allow-same-version "${{ inputs.unsigned_version }}"
+      - uses: ./.github/actions/cache-build-deps
       - run: npm ci
       - run: npm run build
       - run: npx --no-install vitest run
@@ -359,6 +360,7 @@ jobs:
       - name: Set app version from unsigned release version
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'unsigned' && inputs.unsigned_version != ''
         run: npm version --no-git-tag-version --allow-same-version "${{ inputs.unsigned_version }}"
+      - uses: ./.github/actions/cache-build-deps
       - run: npm ci
       - run: npm run build
       - name: Run Windows tests with progress
@@ -631,6 +633,7 @@ jobs:
       - name: Set app version from unsigned release version
         if: inputs.unsigned_version != ''
         run: npm version --no-git-tag-version --allow-same-version "${{ inputs.unsigned_version }}"
+      - uses: ./.github/actions/cache-build-deps
       - run: npm ci
       - run: npm run build:linux-pack
       - run: npx --no-install vitest run

@@ -40,6 +40,7 @@ jobs:
           $destination = Join-Path $env:RUNNER_TEMP 'godot-4.7.1'
           Expand-Archive -LiteralPath $archive -DestinationPath $destination
           "GODOT_TEST_BIN=$(Join-Path $destination 'Godot_v4.7.1-stable_win64.exe')" >> $env:GITHUB_ENV
+      - uses: ./.github/actions/cache-build-deps
       - run: npm ci
       # The production-profile regression loads all required Desktop host plugins.
       - run: npm run build

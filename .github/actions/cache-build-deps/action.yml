@@ -1,0 +1,47 @@
+name: Cache build downloads
+description: >-
+  Cache Electron/electron-builder binaries and Office runtime wheel downloads
+  across CI runs on clean GitHub-hosted runners. Cache keys bind to dependency
+  lock and Office runtime lock inputs, so dependency changes invalidate
+  automatically. Self-hosted runners can set identical cache paths manually.
+runs:
+  using: composite
+  steps:
+    - name: Cache Electron and electron-builder downloads (Linux)
+      if: runner.os == 'Linux'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/electron
+          ~/.cache/electron-builder
+        key: dsh-build-deps-linux-${{ hashFiles('package-lock.json') }}
+        restore-keys: dsh-build-deps-linux-
+
+    - name: Cache Electron and electron-builder downloads (macOS)
+      if: runner.os == 'macOS'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/electron
+          ~/Library/Caches/electron-builder
+        key: dsh-build-deps-macos-${{ hashFiles('package-lock.json') }}
+        restore-keys: dsh-build-deps-macos-
+
+    - name: Cache Electron and electron-builder downloads (Windows)
+      # GitHub-hosted Windows runners use the runneradmin profile; self-hosted
+      # runners must point these paths at their own %LOCALAPPDATA% equivalents.
+      if: runner.os == 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: |
+          C:\Users\runneradmin\AppData\Local\electron\Cache
+          C:\Users\runneradmin\AppData\Local\electron-builder\Cache
+        key: dsh-build-deps-windows-${{ hashFiles('package-lock.json') }}
+        restore-keys: dsh-build-deps-windows-
+
+    - name: Cache Office runtime wheel downloads
+      uses: actions/cache@v4
+      with:
+        path: .build/office-downloads
+        key: dsh-office-deps-${{ runner.os }}-${{ hashFiles('scripts/office-runtime/lock.json') }}
+        restore-keys: dsh-office-deps-${{ runner.os }}-
