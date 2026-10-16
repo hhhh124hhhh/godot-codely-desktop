@@ -1,9 +1,11 @@
 import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
 import { provisionGodotPresets } from '../packages/dsh-godot-stack/index.js'
-import { adoptLegacyMemories, memoryRoot, sanitizeTopic } from '../packages/dsh-godot-stack/memory-root.mjs'
+import { sanitizeTopic } from '../packages/dsh-godot-stack/memory-root.mjs'
 import { cliHome, tokenCandidatePaths } from '../packages/dsh-godot-stack/data-home.mjs'
 
 const roots = []
@@ -40,33 +42,24 @@ describe('shared memory root', () => {
     await writeFile(join(desktop, 'memories/only_legacy.md'), 'legacy-fact', 'utf8')
     await writeFile(join(desktop, 'memories/from_desktop.md'), 'desktop-fact', 'utf8')
     await writeFile(join(user, '.godot-codely/memories/from_desktop.md'), 'keep-shared', 'utf8')
-    const previous = {
-      HOME: process.env.HOME,
-      USERPROFILE: process.env.USERPROFILE,
-      DSH_HOME: process.env.DSH_HOME,
-      GODOT_CODELY_MEMORY_DIR: process.env.GODOT_CODELY_MEMORY_DIR,
-    }
-    process.env.HOME = user
-    process.env.USERPROFILE = user
-    process.env.DSH_HOME = desktop
-    delete process.env.GODOT_CODELY_MEMORY_DIR
-    try {
-      expect(memoryRoot()).toBe(join(user, '.godot-codely', 'memories'))
-      expect(adoptLegacyMemories()).toBe(join(user, '.godot-codely', 'memories'))
-      expect(await readFile(join(user, '.godot-codely/memories/only_legacy.md'), 'utf8')).toBe('legacy-fact')
-      expect(await readFile(join(user, '.godot-codely/memories/from_desktop.md'), 'utf8')).toBe('keep-shared')
-      expect(sanitizeTopic('../outside')).toBeNull()
-      expect(sanitizeTopic('topic_a')).toBe('topic_a')
-      expect(cliHome({ DSH_HOME: '' }, user)).toBe(join(user, '.godot-codely'))
-      const tokens = tokenCandidatePaths({ APPDATA: join(user, 'AppData', 'Roaming') }, user)
-      expect(tokens.some((candidate) => candidate.includes(`${join('godot-codely', 'harness')}`))).toBe(true)
-      expect(tokens.some((candidate) => candidate.includes('dsh-desktop'))).toBe(false)
-      expect(tokens.some((candidate) => candidate.endsWith(join('.dsh', 'godot-codely-launch-token')))).toBe(false)
-    } finally {
-      for (const [key, value] of Object.entries(previous)) {
-        if (value === undefined) delete process.env[key]
-        else process.env[key] = value
-      }
-    }
+    // Worker-local process.env changes do not update os.homedir()'s native
+    // environment in a threads pool. Test startup in a real isolated process.
+    const moduleUrl = new URL('../packages/dsh-godot-stack/memory-root.mjs', import.meta.url).href
+    const { stdout } = await promisify(execFile)(process.execPath, ['--input-type=module', '--eval', `
+      import { memoryRoot, adoptLegacyMemories } from ${JSON.stringify(moduleUrl)}
+      process.stdout.write(JSON.stringify({ root: memoryRoot(), adopted: adoptLegacyMemories() }))
+    `], { env: { ...process.env, HOME: user, USERPROFILE: user, DSH_HOME: desktop, GODOT_CODELY_MEMORY_DIR: '' } })
+    const result = JSON.parse(stdout)
+    expect(result.root).toBe(join(user, '.godot-codely', 'memories'))
+    expect(result.adopted).toBe(join(user, '.godot-codely', 'memories'))
+    expect(await readFile(join(user, '.godot-codely/memories/only_legacy.md'), 'utf8')).toBe('legacy-fact')
+    expect(await readFile(join(user, '.godot-codely/memories/from_desktop.md'), 'utf8')).toBe('keep-shared')
+    expect(sanitizeTopic('../outside')).toBeNull()
+    expect(sanitizeTopic('topic_a')).toBe('topic_a')
+    expect(cliHome({ DSH_HOME: '' }, user)).toBe(join(user, '.godot-codely'))
+    const tokens = tokenCandidatePaths({ APPDATA: join(user, 'AppData', 'Roaming') }, user)
+    expect(tokens.some((candidate) => candidate.includes(`${join('godot-codely', 'harness')}`))).toBe(true)
+    expect(tokens.some((candidate) => candidate.includes('dsh-desktop'))).toBe(false)
+    expect(tokens.some((candidate) => candidate.endsWith(join('.dsh', 'godot-codely-launch-token')))).toBe(false)
   })
 })

@@ -1,5 +1,12 @@
 # Implementation and verification status
 
+## Windows sandbox writer — 2026-10-16
+
+- **Fixed:** preserve SYSTEMROOT, TEMP and TMP with their original key casing. Clearing temp paths made the ACL runner try to create locks under Windows; missing SYSTEMROOT in worker environments caused Node crypto initialization to abort. Credentials and NODE_OPTIONS remain removed, and the runner still confines the writer to the workspace and its private temp.
+- **Verified:** real Windows ACL writes through Node tests and an Electron Node host, using a local PNG and temporary workspace. The seven affected regression suites pass 145 tests; three file-symlink cases are explicitly skipped on this machine because it lacks the required privilege. Directory escapes remain exercised with actual junctions. No paid provider request or installed-package acceptance was performed.
+- **Full regression:** typecheck and production build pass; `npm test -- --maxWorkers=2` reports 1689 passed, 14 skipped, zero failures. Skips include the three file-symlink capability cases and existing environment-gated checks; skipped checks are not counted as verified.
+- Further evidence: [Windows regression repairs](../../docs/windows-regression-repairs.md).
+
 2026-09-14 migration baseline: `main@4115a96`. The image-generation feature commits were replayed without the retired `v0.9.0` merge, Harness-upgrade commits already present in `main`, and CI-only commits. The branch includes the current Harness session-header contract and the declaration required to type-check the current rollout configuration.
 
 - **PASS:** the `main@4115a96` rebase passes all 42 image-generation tests and TypeScript checking. Credential-mode assertions run on POSIX hosts; Windows relies on the credential provider's platform ACL because `stat.mode` reports the synthetic `0666` compatibility value there.

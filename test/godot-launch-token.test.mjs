@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { expect, it } from 'vitest'
@@ -8,7 +8,7 @@ import { TypertClient } from '../packages/dsh-godot-stack/bridge/session-client.
 import { migrateLegacyAgentPresets } from '../src/main/state/legacy-preset-migration'
 
 it('persists the actual endpoint for bridge authentication across runtime restarts', async () => {
-  const home = await mkdtemp(join(tmpdir(), 'godot-launch-token-'))
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'godot-launch-token-')))
   const runtime = new HarnessRuntime({
     dshEntryPath: resolve('node_modules/@deepseek-ai/dsh/lib/bin.js'),
     nodeEntryPath: resolve('build/harness-node-entry.mjs'),

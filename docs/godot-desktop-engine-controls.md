@@ -64,3 +64,5 @@ npm run test:godot-engine:native
 - 唯一随机项目名（此前没有 user_data）分别通过默认 APPDATA、物理路径、临时标准 junction 启动，三组均退出 `0`，排除了已有用户目录掩盖故障。
 - `GODOT_ENGINE_SMOKE_USER_ENV=1 npm run test:godot-engine:native` 完整 13 项再次通过：`headless: false`、`isolatedGodotUserDirectories: false`，使用原有真实环境完成游戏启动、stdout、停止、编辑器启动及退出清理。原生文件对话框仍由测试代选。
 - 本次修复位于环境映射层，仓库仅补充诊断记录；原有全量回归失败和正式安装包/其他平台的验收状态沿用上节，不能据本次成功声称全部回归通过。
+
+此前剩余回归失败的后续修复及当前全量结果见 [Windows 回归修复](windows-regression-repairs.md)；保留上文作为当时的原始验收记录。
