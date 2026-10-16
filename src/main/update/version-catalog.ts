@@ -2,13 +2,37 @@ import type { AvailableRelease } from '../../shared/contracts'
 
 export type { AvailableRelease }
 
-export const STABLE_FEED_URL = 'https://dshdesktop.com/updates/latest/'
-export const VERSION_INDEX_URL = 'https://dshdesktop.com/updates/versions.json'
+/**
+ * Godot Codely 自己的更新目录：直接读 GitHub Releases API。
+ * 本 fork 不接入上游 DSH 的 dshdesktop.com 更新/上报服务（update-policy 中
+ * DESKTOP_SERVICE_ENABLED=false），因此版本目录、feed 与指定版本安装全部
+ * 由本仓库的 GitHub Releases 提供。
+ */
+export const GITHUB_OWNER = 'hhhh124hhhh'
+export const GITHUB_REPO = 'godot-codely-desktop'
+export const GITHUB_RELEASES_API_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`
 
-const INDEX_TIMEOUT_MS = 8_000
+/**
+ * 恢复用 feed。checkForUpdates 每次都会用策略返回的真实 feed 覆盖，
+ * 这里只作为 installSpecificVersion 结束后的中性占位，不实际请求。
+ */
+export const STABLE_FEED_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/`
 
-export function archiveFeedUrl(version: string): string {
-  return `https://dshdesktop.com/updates/archive/${version}/`
+/** 当前发布通道为 unsigned：tag 形如 v0.1.3-unsigned。 */
+const UNSIGNED_TAG_PATTERN = /^v\d+\.\d+\.\d+-unsigned$/
+
+const API_TIMEOUT_MS = 8_000
+const API_PER_PAGE = '20'
+
+/** "v0.1.3-unsigned" -> "0.1.3"。非本通道 tag 返回 null。 */
+export function releaseVersionFromTag(tag: string): string | null {
+  if (!UNSIGNED_TAG_PATTERN.test(tag)) return null
+  return tag.slice(1).replace(/-unsigned$/, '')
+}
+
+/** 该 tag 对应发布资产的下载目录，electron-updater generic feed 用它拼 latest.yml 与安装包。 */
+export function releaseFeedUrl(tag: string): string {
+  return `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${tag}/`
 }
 
 /** Split "1.2.3-rc.1" into ([1,2,3], "rc.1"). Non-numeric segments read as 0. */
@@ -73,24 +97,24 @@ function comparePrerelease(left: string, right: string): -1 | 0 | 1 {
   return 0
 }
 
-function isRelease(value: unknown): value is AvailableRelease {
+function isGithubRelease(value: unknown): value is { tag_name: string; draft?: unknown } {
   if (typeof value !== 'object' || value === null) return false
   const record = value as Record<string, unknown>
-  return (
-    typeof record.version === 'string' &&
-    record.version.length > 0 &&
-    typeof record.tag === 'string' &&
-    record.tag.length > 0 &&
-    typeof record.archiveUrl === 'string' &&
-    record.archiveUrl.length > 0
-  )
+  return typeof record.tag_name === 'string' && record.tag_name.length > 0
 }
 
-export function parseVersionIndex(raw: unknown): AvailableRelease[] {
-  if (typeof raw !== 'object' || raw === null) return []
-  const versions = (raw as { versions?: unknown }).versions
-  if (!Array.isArray(versions)) return []
-  return versions.filter(isRelease)
+export function parseGithubReleases(raw: unknown): AvailableRelease[] {
+  if (!Array.isArray(raw)) return []
+  const releases: AvailableRelease[] = []
+  for (const value of raw) {
+    if (!isGithubRelease(value)) continue
+    if (value.draft === true) continue
+    const tag = value.tag_name
+    const version = releaseVersionFromTag(tag)
+    if (version === null) continue
+    releases.push({ version, tag, archiveUrl: releaseFeedUrl(tag) })
+  }
+  return releases
 }
 
 export async function fetchAvailableReleases(
@@ -98,14 +122,16 @@ export async function fetchAvailableReleases(
   fetchImpl: typeof fetch = globalThis.fetch
 ): Promise<AvailableRelease[]> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), INDEX_TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
   try {
-    const response = await fetchImpl(VERSION_INDEX_URL, { signal: controller.signal })
+    const response = await fetchImpl(`${GITHUB_RELEASES_API_URL}?per_page=${API_PER_PAGE}`, {
+      signal: controller.signal,
+      headers: { Accept: 'application/vnd.github+json' }
+    })
     if (!response.ok) {
-      throw new Error(`Version index request failed: ${response.status}`)
+      throw new Error(`GitHub releases request failed: ${response.status}`)
     }
-    const releases = parseVersionIndex(await response.json())
-    return releases
+    return parseGithubReleases(await response.json())
       .filter((release) => compareVersions(release.version, currentVersion) !== 0)
       .sort((a, b) => compareVersions(b.version, a.version))
   } finally {

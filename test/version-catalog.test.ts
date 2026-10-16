@@ -1,21 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
-  archiveFeedUrl,
   compareVersions,
   fetchAvailableReleases,
-  parseVersionIndex,
-  STABLE_FEED_URL,
-  VERSION_INDEX_URL
+  GITHUB_RELEASES_API_URL,
+  parseGithubReleases,
+  releaseFeedUrl,
+  STABLE_FEED_URL
 } from '../src/main/update/version-catalog'
 
 describe('version-catalog constants', () => {
-  it('points the stable feed and index at the dshdesktop domain', () => {
-    expect(STABLE_FEED_URL).toBe('https://dshdesktop.com/updates/latest/')
-    expect(VERSION_INDEX_URL).toBe('https://dshdesktop.com/updates/versions.json')
+  it('points the catalog and stable feed at this repository, not the upstream service', () => {
+    expect(GITHUB_RELEASES_API_URL).toBe('https://api.github.com/repos/hhhh124hhhh/godot-codely-desktop/releases')
+    expect(STABLE_FEED_URL).toBe('https://github.com/hhhh124hhhh/godot-codely-desktop/releases/download/')
   })
 
-  it('builds a per-version archive feed url with a trailing slash', () => {
-    expect(archiveFeedUrl('1.2.3')).toBe('https://dshdesktop.com/updates/archive/1.2.3/')
+  it('builds a per-tag download feed url with a trailing slash', () => {
+    expect(releaseFeedUrl('v1.2.3-unsigned')).toBe(
+      'https://github.com/hhhh124hhhh/godot-codely-desktop/releases/download/v1.2.3-unsigned/'
+    )
   })
 })
 
@@ -50,49 +52,45 @@ describe('compareVersions', () => {
   })
 })
 
-describe('parseVersionIndex', () => {
-  it('keeps well-formed entries and drops the rest', () => {
-    const raw = {
-      versions: [
-        { version: '1.2.3', tag: 'v1.2.3', archiveUrl: 'https://dshdesktop.com/updates/archive/1.2.3/' },
-        { version: '', tag: 'v0', archiveUrl: 'x' },
-        { nope: true },
-        42
-      ]
-    }
-    expect(parseVersionIndex(raw)).toEqual([
-      { version: '1.2.3', tag: 'v1.2.3', archiveUrl: 'https://dshdesktop.com/updates/archive/1.2.3/' }
+function release(tag: string, draft = false): Record<string, unknown> {
+  return { tag_name: tag, draft, prerelease: true }
+}
+
+describe('parseGithubReleases', () => {
+  it('keeps unsigned releases and drops drafts, off-channel tags and malformed entries', () => {
+    const parsed = parseGithubReleases([
+      release('v1.2.3-unsigned'),
+      release('v1.2.4-unsigned', true),
+      release('v1.0.0'),
+      { tag_name: 42 },
+      'nope'
     ])
+    expect(parsed.map((r) => r.version)).toEqual(['1.2.3'])
+    expect(parsed[0]?.archiveUrl).toBe(releaseFeedUrl('v1.2.3-unsigned'))
   })
 
-  it('returns an empty array for non-objects or a missing versions array', () => {
-    expect(parseVersionIndex(null)).toEqual([])
-    expect(parseVersionIndex({})).toEqual([])
-    expect(parseVersionIndex('nope')).toEqual([])
+  it('returns an empty array for non-arrays', () => {
+    expect(parseGithubReleases(null)).toEqual([])
+    expect(parseGithubReleases({})).toEqual([])
+    expect(parseGithubReleases('nope')).toEqual([])
   })
 })
 
 describe('fetchAvailableReleases', () => {
-  const index = {
-    versions: [
-      { version: '1.0.0', tag: 'v1.0.0', archiveUrl: 'a' },
-      { version: '1.2.0', tag: 'v1.2.0', archiveUrl: 'b' },
-      { version: '1.1.0', tag: 'v1.1.0', archiveUrl: 'c' }
-    ]
-  }
+  const releases = [release('v1.0.0-unsigned'), release('v1.2.0-unsigned'), release('v1.1.0-unsigned')]
   const ok = () =>
-    Promise.resolve({ ok: true, json: () => Promise.resolve(index) } as Response)
+    Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(releases) } as Response)
 
   it('drops the current version and sorts descending', async () => {
-    const releases = await fetchAvailableReleases('1.1.0', ok as unknown as typeof fetch)
-    expect(releases.map((r) => r.version)).toEqual(['1.2.0', '1.0.0'])
+    const result = await fetchAvailableReleases('1.1.0', ok as unknown as typeof fetch)
+    expect(result.map((r) => r.version)).toEqual(['1.2.0', '1.0.0'])
   })
 
   it('throws when the request fails', async () => {
     const bad = () => Promise.resolve({ ok: false, status: 503 } as Response)
     await expect(
       fetchAvailableReleases('1.1.0', bad as unknown as typeof fetch)
-    ).rejects.toThrow()
+    ).rejects.toThrow('GitHub releases request failed: 503')
   })
 
   it('throws when the network rejects', async () => {

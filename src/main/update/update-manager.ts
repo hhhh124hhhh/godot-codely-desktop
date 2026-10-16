@@ -1,4 +1,4 @@
-import { checkDesktopUpdate } from '../desktop-service'
+import { checkGithubUpdate } from './github-update'
 import { isPrereleaseVersion, isVersion } from '../desktop-service/service'
 import { app, BrowserWindow, ipcMain, powerMonitor } from 'electron'
 import electronUpdater from 'electron-updater'
@@ -23,9 +23,9 @@ import {
   writeSkippedVersion
 } from './skipped-version'
 import {
-  archiveFeedUrl,
   compareVersions,
   fetchAvailableReleases,
+  releaseFeedUrl,
   STABLE_FEED_URL
 } from './version-catalog'
 
@@ -138,7 +138,7 @@ export async function checkForUpdates(manual = false): Promise<UpdateStatus> {
   lastCheckedAt = Date.now()
   selectedUpdateVersion = undefined
   checkPromise = (async () => {
-    const policy = await checkDesktopUpdate()
+    const policy = await checkGithubUpdate(app.getVersion())
     if (!policy.updateAvailable) {
       transition({ type: 'not-available' })
       scheduleReset()
@@ -199,7 +199,9 @@ export async function installSpecificVersion(version: unknown): Promise<UpdateSt
 
   selectedUpdateVersion = version
   pendingDowngrade = compareVersions(version, app.getVersion()) < 0
-  autoUpdater.setFeedURL({ provider: 'generic', url: archiveFeedUrl(version) })
+  // 当前发布通道为 vX.Y.Z-unsigned；历史正式 tag 不在此通道，找不到时
+  // 由下方 "在更新源未找到该版本" 分支兜底。
+  autoUpdater.setFeedURL({ provider: 'generic', url: releaseFeedUrl(`v${version}-unsigned`) })
   autoUpdater.allowDowngrade = true
   autoUpdater.allowPrerelease = isPrereleaseVersion(version)
   manualCheck = true
