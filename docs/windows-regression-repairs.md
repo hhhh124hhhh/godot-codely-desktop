@@ -36,3 +36,5 @@ GitHub Windows runner 的 TEMP 含 `RUNNER~1` 短路径。编辑器心跳和工�
 重启认证测试使用规范化的临时根目录，与 Harness 返回的规范目录契约一致。真实编辑器测试在布局加载后等待新鲜心跳，避免把启动期间的过期租约当作就绪。Godot CI 增加工作区 API 套件，直接覆盖之前 Windows 构建中的命令分派失败。
 
 Windows 专项 4 套件 10 项通过，包含真实 Godot Play/Stop 与两次 Harness 启动；新鲜心跳等待再次真实复验通过。最终类型检查、完整构建及 `npm test -- --maxWorkers=2` 通过：1690 项通过、14 跳过、0 失败，无 worker 异常。远端 CI 的当前 head 结果及安装包验收以对应 PR 检查为准，不能用本地结果替代。
+
+引擎服务 fixture 同样规范临时根目录，使已验证后保存的物理引擎路径与断言一致。本机使用真实 Windows 8.3 临时目录别名复验，引擎和编辑器两套件共 10 项通过。Godot CI 纳入引擎服务/IPC 套件，并对相关 main、preload、shared TS 文件及 TS 测试变更触发，覆盖这条桌面原生控制路径。

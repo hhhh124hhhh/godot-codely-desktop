@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
-import { mkdtemp, readFile, writeFile, mkdir, rm, rename } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, writeFile, mkdir, rm, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -31,7 +31,7 @@ afterEach(async () => {
   processFixture.children = []; processFixture.launches = []; processFixture.version = '4.7.1.stable.official'; processFixture.fail = false
 })
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'godot-engine-'))
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'godot-engine-')))
   cleanups.push(() => rm(root, { recursive: true, force: true }))
   const project = { path: join(root, 'game'), mainScene: 'res://main.tscn' }
   await mkdir(project.path)

@@ -5,6 +5,10 @@ on:
     paths:
       - 'packages/dsh-godot-stack/**'
       - 'test/godot-*.mjs'
+      - 'test/godot-*.ts'
+      - 'src/main/godot-*.ts'
+      - 'src/preload/godot-*.ts'
+      - 'src/shared/godot-*.ts'
       - 'test/ocu-gateway.test.mjs'
       - 'scripts/build-godot-runtime.mjs'
       - 'package*.json'
@@ -39,4 +43,4 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - name: Harness, MCP, panel and native editor regressions
-        run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-asar-provisioning.test.mjs test/godot-launch-token.test.mjs test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-desktop-api.test.mjs test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs
+        run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-asar-provisioning.test.mjs test/godot-launch-token.test.mjs test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-desktop-api.test.mjs test/godot-engine.test.ts test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs
