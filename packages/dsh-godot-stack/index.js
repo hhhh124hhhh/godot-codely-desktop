@@ -31,6 +31,7 @@ import { adoptLegacyMemories, memoryRoot, sanitizeTopic } from './memory-root.mj
 import { cliHome } from './data-home.mjs'
 import { copyBundledDirectory } from './copy-bundled-directory.mjs'
 import { registerDesktopApi } from './desktop-api.mjs'
+import { createProjectStore, registerProjectHandoff } from './governance/index.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -68,16 +69,42 @@ export async function provisionGodotPresets(home) {
 }
 
 export async function apply(ctx, config = {}) {
+  // Opt-in startup diagnostics use fixed phase names, never configuration or
+  // project contents. A pending phase distinguishes provisioning from loader waits.
+  const traceEnabled = process.env.GODOT_CODELY_STARTUP_TRACE === '1'
+  const bootMark = performance.now()
+  let phase = 'apply-start'
+  let lastTick = bootMark
+  const heartbeat = traceEnabled ? setInterval(() => {
+    const now = performance.now()
+    console.error('[godot-stack-startup] waiting phase=' + phase + ' elapsedMs=' + Math.round(now - bootMark) + ' eventLoopDelayMs=' + Math.max(0, Math.round(now - lastTick - 5000)))
+    lastTick = now
+  }, 5000) : undefined
+  heartbeat?.unref()
+  const stopTrace = () => clearInterval(heartbeat)
+  ctx.on('dispose', stopTrace)
+  const trace = stage => {
+    phase = stage
+    if (traceEnabled) console.error('[godot-stack-startup] ' + stage + ' elapsedMs=' + Math.round(performance.now() - bootMark))
+    if (stage === 'apply-done') stopTrace()
+  }
+  trace('apply-start')
   const home = dshHome()
+  const projectStore = createProjectStore(home)
+  ctx.inject(['systemPrompt'], child => registerProjectHandoff(child, projectStore))
   // Refresh only our tiny proxy; native OCU installation is an explicit setup step.
   try {
+    trace('ocu-start')
     await provisionOcuGateway(home)
+    trace('ocu-done')
   } catch (error) {
     ctx.logger?.warn?.('godot-stack: OCU gateway provisioning failed: %s', error?.message ?? String(error))
   }
   // 分段 best-effort：preset 与 MCP 互不拖累（asar 内目录 cp 可能因 Electron 文件系统兼容失败）
   try {
+    trace('presets-start')
     await provisionGodotPresets(home)
+    trace('presets-done')
     // Harness 0.2 discovers declarative registrations, not the copied preset directory.
     ctx.inject(['agentPresets'], (child) => {
       for (const id of PRESET_NAMES) {
@@ -101,7 +128,9 @@ export async function apply(ctx, config = {}) {
     // MCP 复制在 provisionMcpRuntime 内部完成（增量 + 排除 node_modules，避免每次启动全量拷贝几十 MB 依赖）。
     // 这里不再做全量 cp——否则 npm install 后的源目录会把 node_modules 一起拷过去，拖垮 boot。
     const mcpTarget = join(home, '.godot', 'mcp-server')
+    trace('mcp-start')
     const mcp = await provisionMcpRuntime(join(here, 'godot-stack/mcp/godot-mcp-server/runtime'), home, mcpTarget)
+    trace('mcp-done')
     ctx.logger?.info?.('godot-stack: mcp provisioned; status=%s', mcp.status)
   } catch (error) {
     ctx.logger?.warn?.('godot-stack: mcp provisioning skipped: %s', error?.message ?? String(error))
@@ -119,8 +148,10 @@ export async function apply(ctx, config = {}) {
       logger: ctx.logger,
     })
     try {
+      trace('bridge-start')
       await bridge.start()
-      ctx.inject(['connection', 'workspaceRegistry'], child => registerDesktopApi(child, bridge))
+      trace('bridge-done')
+      ctx.inject(['connection', 'workspaceRegistry'], child => registerDesktopApi(child, bridge, projectStore))
       ctx.on('approval/request', (request, next) => bridge.approval(request, next), { global: true })
       ctx.on('agent/assistant-stream', payload => bridge.assistantStream(payload), { global: true })
       ctx.logger?.info?.('godot-stack: bridge started on :%d -> dsh :%d', bridge.port, dshPort)
@@ -132,6 +163,7 @@ export async function apply(ctx, config = {}) {
     ctx.logger?.info?.('godot-stack: bridge skipped (headless home=%s)', home)
   }
 
+  trace('resources-and-bridge-done')
   // 斜杠命令（桌面端/Web 会话 UI，对标 cowork /command 面）：确定性动作，不产生模型消息。
   // ctx.inject 动态注入：headless 无 commands 服务时静默跳过，不影响 CLI 启动。
   ctx.inject(['commands'], (commandCtx) => {
@@ -193,4 +225,5 @@ export async function apply(ctx, config = {}) {
     })
     ctx.logger?.info?.('godot-stack: slash commands registered (memory/status)')
   })
+  trace('apply-done')
 }

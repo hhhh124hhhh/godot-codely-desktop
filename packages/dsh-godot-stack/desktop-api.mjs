@@ -1,3 +1,4 @@
+import { projectHandoff } from './governance/handoff.mjs'
 import { open, realpath } from 'node:fs/promises'
 import { join, basename } from 'node:path'
 
@@ -29,7 +30,7 @@ export async function inspectProject(workspace) {
 }
 
 /** Same-origin, authenticated Harness routes; the editor bridge is never exposed through CORS. */
-export function registerDesktopApi(ctx, bridge) {
+export function registerDesktopApi(ctx, bridge, projectStore) {
   const register = (path, methods, handler) => ctx.connection.fetch.register({
     path: '/api/godot-desktop/' + path, methods, requestBody: 'buffered',
     async fetch(request) {
@@ -51,6 +52,7 @@ export function registerDesktopApi(ctx, bridge) {
       }
     }
   })
+  if (projectStore) register('handoff', ['GET'], async (_request, project) => projectHandoff(await projectStore.read(project.path)))
   register('project', ['GET'], async (_request, project) => project)
   register('session', ['POST'], async (_request, project) => {
     const created = await bridge.client.createSession({ workspaceId: project.workspaceId, preset: 'godot-codely-lite' })

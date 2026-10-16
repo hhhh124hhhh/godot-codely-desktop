@@ -35,6 +35,8 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
+    "test:governance": "node node_modules/vitest/vitest.mjs run test/godot-governance.test.mjs test/godot-desktop-api.test.mjs --maxWorkers=2",
+    "test:governance:runtime": "node scripts/build-godot-runtime.mjs --no-project --output .build/governance-probe-runtime && node scripts/probes/governance-reopen.mjs",
     "test:watch": "vitest",
     "test:godot-engine:native": "node scripts/run-godot-engine-smoke.mjs",
     "package:dir": "npm run build && electron-builder --dir",
