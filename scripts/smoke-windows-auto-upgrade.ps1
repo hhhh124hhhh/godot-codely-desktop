@@ -64,6 +64,9 @@ try {
   $fixtureIdentity = Get-Content -LiteralPath (Join-Path $evidence 'fixture-identity.json') -Raw | ConvertFrom-Json
   if ($fixtureIdentity.version -ne $SeedVersion -or $fixtureIdentity.userData -ne $officialIdentity.userData) { throw 'Fixture version or data directory mismatch.' }
   Write-Host "Actual installed fixture: $($fixtureIdentity.version); userData=$($fixtureIdentity.userData)"
+  & node (Join-Path $PSScriptRoot 'inspect-installed-main.mjs') 'http://127.0.0.1:49338' check-updates |
+    Set-Content -LiteralPath (Join-Path $evidence 'manual-check-identity.json')
+  if ($LASTEXITCODE -ne 0) { throw 'Shipped check-for-updates menu command failed.' }
   & node (Join-Path $PSScriptRoot 'verify-auto-upgrade-ui.mjs') download $debugEndpoint $evidence $harnessHome $Version
   if ($LASTEXITCODE -ne 0) { throw 'Actual updater offer/download UI failed.' }
 

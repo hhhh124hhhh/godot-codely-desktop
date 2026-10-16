@@ -1,6 +1,6 @@
 /** Read exact application identity from an explicitly enabled loopback CI inspector. */
 import assert from 'node:assert/strict'
-const [endpoint] = process.argv.slice(2)
+const [endpoint, action] = process.argv.slice(2)
 assert.equal(new URL(endpoint).hostname, '127.0.0.1')
 const deadline = Date.now() + 90000
 let lastError
@@ -20,7 +20,8 @@ while (Date.now() < deadline) {
         if (value.error || value.result?.exceptionDetails) reject(Error(JSON.stringify(value.error ?? value.result.exceptionDetails)))
         else done(value.result.result.value)
       })
-      socket.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression: `(()=>{const e=process.getBuiltinModule('module').createRequire(process.execPath)('electron');return {ready:e.app.isReady(),windows:e.BrowserWindow.getAllWindows().length,version:e.app.getVersion(),userData:e.app.getPath('userData'),isPackaged:e.app.isPackaged,resourcesPath:process.resourcesPath}})()`, returnByValue: true } }))
+      const trigger = action === 'check-updates' ? `const flatten=items=>items.flatMap(item=>[item,...flatten(item.submenu?.items??[])]);const command=flatten(e.Menu.getApplicationMenu()?.items??[]).find(item=>/^(Check for Updates|检查更新)/i.test(item.label));if(!command)throw Error('Shipped update menu command unavailable');command.click(command,e.BrowserWindow.getAllWindows()[0],{});` : ''
+      socket.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression: `(()=>{const e=process.getBuiltinModule('module').createRequire(process.execPath)('electron');if(!e.app.isReady()||!e.BrowserWindow.getAllWindows().length)return {};${trigger}return {ready:e.app.isReady(),windows:e.BrowserWindow.getAllWindows().length,version:e.app.getVersion(),userData:e.app.getPath('userData'),isPackaged:e.app.isPackaged,resourcesPath:process.resourcesPath}})()`, returnByValue: true } }))
     })
     assert.ok(result.ready && result.windows > 0 && result.isPackaged && result.version && result.userData, 'Wait for initialized app identity and a real window')
     console.log(JSON.stringify(result))

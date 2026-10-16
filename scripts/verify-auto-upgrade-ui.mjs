@@ -2,6 +2,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
+import { parse as parseYaml } from 'yaml'
 import { TypertClient } from '../packages/dsh-godot-stack/bridge/session-client.mjs'
 
 const [phase, endpoint, output, home, expectedVersion] = process.argv.slice(2)
@@ -65,6 +66,21 @@ async function click(node) {
   const result = await send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: 'function(){this.click()}', returnByValue: true })
   assert.ok(!result.exceptionDetails)
 }
+async function updaterError() {
+  const { root } = await send('DOM.getDocument', { depth: -1, pierce: true })
+  const children = node => [...node.children ?? [], ...node.shadowRoots ?? []]
+  function hasWarning(node) {
+    const attrs = node.attributes ?? []
+    return attrs.some((value, index) => index % 2 === 0 && value === 'class' && attrs[index + 1].split(/\s+/).includes('warning')) || children(node).some(hasWarning)
+  }
+  function text(node) { return node.nodeName === 'STYLE' ? '' : (node.nodeValue ?? '') + children(node).map(text).join(' ') }
+  function find(node) {
+    const attrs = node.attributes ?? []
+    if (attrs.some((value, index) => index % 2 === 0 && value === 'id' && attrs[index + 1] === 'dsh-desktop-update-root')) return hasWarning(node) ? text(node) : undefined
+    return children(node).map(find).find(Boolean)
+  }
+  return find(root)
+}
 const client = new TypertClient('http://127.0.0.1:1', { tokenFile: join(home, 'godot-codely-launch-token') })
 try {
   if (phase === 'download') {
@@ -75,11 +91,14 @@ try {
     const session = await client.createSession({ workspaceId: created.workspace.workspaceId, preset: 'godot-codely-lite' })
     await client.call('session/rename', { request: { sessionId: session.sessionId, title: 'Upgrade retained session' } })
     await client.call('credentials/set', { ref: 'UPGRADE_FIXTURE_KEY', value: 'non-secret-upgrade-fixture' })
+    assert.equal(parseYaml(await readFile(join(home, '.credentials.yaml'), 'utf8')).refs.UPGRADE_FIXTURE_KEY, 'non-secret-upgrade-fixture')
     await client.call('settings/update', { ns: 'locale', patch: { preference: 'en' } })
     await evaluate('localStorage.setItem("upgrade-fixture", "retained-draft-marker")')
     await writeFile(join(output, 'fixture.json'), JSON.stringify({ sessionId: session.sessionId, workspaceId: created.workspace.workspaceId, project, credential: await client.call('credentials/describe', { refs: ['UPGRADE_FIXTURE_KEY'] }) }, null, 2))
     let accepted = false
     while (Date.now() < deadline) {
+      const failure = await updaterError()
+      if (failure) throw Error('Actual updater rejected the check/download: ' + failure)
       const install = await updaterButton(/^(Restart and install|重新启动并安装)$/i)
       if (install) { await capture('downloaded'); console.log('Real updater download completed'); break }
       if (!accepted) {
@@ -100,11 +119,12 @@ try {
     assert.ok(list.items.some(item => item.id === fixture.sessionId || item.sessionId === fixture.sessionId), 'Session must survive real installer replacement')
     const credentials = await client.call('credentials/describe', { refs: ['UPGRADE_FIXTURE_KEY'] })
     assert.deepEqual(credentials, fixture.credential, 'Fixture credential metadata must survive')
+    assert.equal(parseYaml(await readFile(join(home, '.credentials.yaml'), 'utf8')).refs.UPGRADE_FIXTURE_KEY, 'non-secret-upgrade-fixture', 'Fixture credential value must survive, not only its configured flag')
     assert.equal(await evaluate('localStorage.getItem("upgrade-fixture")'), 'retained-draft-marker')
     const settings = JSON.parse(await readFile(join(home, 'settings.json'), 'utf8'))
     assert.equal(settings.locale.preference, 'en')
     await capture('upgraded-ui')
-    await writeFile(join(output, 'ui-result.json'), JSON.stringify({ passed: true, expectedVersion, sessionRestored: true, credentialMetadataRestored: true, settingsRestored: true, desktopStorageRestored: true, limitation: 'fixture version lowered in installed manifest; not official old-release compatibility or human UX acceptance' }, null, 2))
+    await writeFile(join(output, 'ui-result.json'), JSON.stringify({ passed: true, expectedVersion, sessionRestored: true, credentialMetadataRestored: true, fixtureCredentialValueRestored: true, settingsRestored: true, desktopStorageRestored: true, limitation: 'fixture version lowered in installed manifest; not official old-release compatibility or human UX acceptance' }, null, 2))
     console.log('Upgraded production UI, session, settings, credential metadata and storage restored')
   }
 } catch (error) {
