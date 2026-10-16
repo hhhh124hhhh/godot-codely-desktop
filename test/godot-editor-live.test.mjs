@@ -41,6 +41,7 @@ it.skipIf(!process.env.GODOT_TEST_BIN)('dispatches Play and Stop through the rea
   try {
     await until(() => bridge.editorControl.editors.size === 1)
     await until(() => output.includes('loading_editor_layout'))
+    await until(() => [...bridge.editorControl.editors.values()].some(editor => Date.now() - editor.seen < 1000))
     expect(await action('status')).toMatchObject({ ok: true, playing: false })
     expect(await action('scan')).toMatchObject({ ok: true })
     expect(await action('play')).toMatchObject({ ok: true })

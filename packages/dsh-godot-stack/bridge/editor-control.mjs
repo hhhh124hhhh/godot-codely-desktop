@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto'
+import { realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const key = path => process.platform === 'win32' ? resolve(path).toLowerCase() : resolve(path)
+const key = path => {
+  let canonical = resolve(path)
+  try { canonical = realpathSync.native(canonical) }
+  catch (error) {
+    // A project can disappear while its editor is closing; let its lease expire.
+    if (error.code !== 'ENOENT' && error.code !== 'ENOTDIR') throw error
+  }
+  return process.platform === 'win32' ? canonical.toLowerCase() : canonical
+}
 const invalid = (message, status = 409) => Object.assign(Error(message), { status })
 
 /** The editor owns native actions. Commands expire rather than replaying after reconnect. */

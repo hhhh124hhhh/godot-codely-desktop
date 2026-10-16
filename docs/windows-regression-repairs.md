@@ -28,3 +28,11 @@
 - JS 语法与 `git diff --check` 通过。没有修改依赖或锁文件，没有声称 lint/format 检查通过。
 
 Godot/MSIX 目录崩溃的已完成环境修复见 [引擎控制验收记录](godot-desktop-engine-controls.md)。正式安装包及其他平台未在本批重新验收。
+
+## 远端 CI 的路径失配
+
+GitHub Windows runner 的 TEMP 含 `RUNNER~1` 短路径。编辑器心跳和工作区元数据可能使用同一目录的不同拼写；原 EditorControl 只做 resolve/小写转换，无法匹配短路径、长路径和 junction，因而把已连接编辑器判为离线。桥接层现在先取得现有目录的物理路径，再应用平台大小写规则；命令仍由注册工作区选定，不接受请求体里的项目路径。目录别名回归同时验证另一个 editorId 不能借别名绕过项目租约。
+
+重启认证测试使用规范化的临时根目录，与 Harness 返回的规范目录契约一致。真实编辑器测试在布局加载后等待新鲜心跳，避免把启动期间的过期租约当作就绪。Godot CI 增加工作区 API 套件，直接覆盖之前 Windows 构建中的命令分派失败。
+
+Windows 专项 4 套件 10 项通过，包含真实 Godot Play/Stop 与两次 Harness 启动；新鲜心跳等待再次真实复验通过。最终类型检查、完整构建及 `npm test -- --maxWorkers=2` 通过：1690 项通过、14 跳过、0 失败，无 worker 异常。远端 CI 的当前 head 结果及安装包验收以对应 PR 检查为准，不能用本地结果替代。
