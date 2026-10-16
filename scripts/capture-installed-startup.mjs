@@ -28,4 +28,12 @@ try {
   await writeFile(join(output, stage + '-body.txt'), String(text.result.value).replace(/([?&]token=)[^\s&]+/g, '$1[redacted]'))
   const image = await send('Page.captureScreenshot', { format: 'png' })
   await writeFile(join(output, stage + '.png'), Buffer.from(image.data, 'base64'))
+  const { root } = await send('DOM.getDocument', { depth: -1, pierce: true })
+  function textOf(node) { return (node.nodeValue ?? '') + [...node.children ?? [], ...node.shadowRoots ?? []].map(textOf).join(' ') }
+  function find(node) {
+    const attributes = node.attributes ?? []
+    if (attributes.some((value, index) => index % 2 === 0 && value === 'id' && attributes[index + 1] === 'dsh-desktop-update-root')) return textOf(node)
+    return [...node.children ?? [], ...node.shadowRoots ?? []].map(find).filter(Boolean).join('\n')
+  }
+  await writeFile(join(output, stage + '-updater.txt'), find(root))
 } finally { socket.close() }

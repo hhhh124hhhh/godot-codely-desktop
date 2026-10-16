@@ -32,7 +32,7 @@ function Start-Desktop {
   return Start-Process -FilePath $executable -WorkingDirectory $install -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput (Join-Path $root "stdout-$script:launchCount.log") `
     -RedirectStandardError (Join-Path $root "stderr-$script:launchCount.log") `
-    -ArgumentList @('--remote-debugging-address=127.0.0.1', '--remote-debugging-port=49339')
+    -ArgumentList @('--remote-debugging-address=127.0.0.1', '--remote-debugging-port=49339', '--inspect=127.0.0.1:49338')
 }
 function Stop-OwnedDesktop([int]$processId) {
   $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $processId" | Select-Object -ExpandProperty ProcessId)
@@ -41,17 +41,12 @@ function Stop-OwnedDesktop([int]$processId) {
 }
 $desktop = Start-Desktop
 try {
-  $deadline = (Get-Date).AddMinutes(3)
-  $harnessHome = $null
-  while ((Get-Date) -lt $deadline -and -not $harnessHome) {
-    if ($desktop.HasExited) { throw "Unmodified official app exited early: $($desktop.ExitCode)" }
-    foreach ($base in @($env:APPDATA, $nativeAppData) | Select-Object -Unique) {
-      $candidate = Join-Path $base 'godot-codely\harness'
-      if (Test-Path -LiteralPath (Join-Path $candidate 'godot-codely-launch-token')) { $harnessHome = $candidate; break }
-    }
-    if (-not $harnessHome) { Start-Sleep -Milliseconds 500 }
-  }
-  if (-not $harnessHome) { throw 'Installed fixture did not start Harness.' }
+  & node (Join-Path $PSScriptRoot 'inspect-installed-main.mjs') 'http://127.0.0.1:49338' |
+    Set-Content -LiteralPath (Join-Path $evidence 'official-identity.json')
+  if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect official application identity.' }
+  $officialIdentity = Get-Content -LiteralPath (Join-Path $evidence 'official-identity.json') -Raw | ConvertFrom-Json
+  if ($officialIdentity.version -ne $Version) { throw 'Installed official application version mismatch.' }
+  $harnessHome = Join-Path $officialIdentity.userData 'harness'
   & node (Join-Path $PSScriptRoot 'verify-installed-ui.mjs') $debugEndpoint (Join-Path $evidence 'official-baseline.png')
   if ($LASTEXITCODE -ne 0) { throw 'Unmodified official application did not mount UI.' }
   Stop-OwnedDesktop $desktop.Id
@@ -63,6 +58,12 @@ try {
   $desktop = Start-Desktop
   Start-Sleep -Seconds 3
   if ($desktop.HasExited) { throw "Version-only fixture exited early: $($desktop.ExitCode)" }
+  & node (Join-Path $PSScriptRoot 'inspect-installed-main.mjs') 'http://127.0.0.1:49338' |
+    Set-Content -LiteralPath (Join-Path $evidence 'fixture-identity.json')
+  if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect fixture application identity.' }
+  $fixtureIdentity = Get-Content -LiteralPath (Join-Path $evidence 'fixture-identity.json') -Raw | ConvertFrom-Json
+  if ($fixtureIdentity.version -ne $SeedVersion -or $fixtureIdentity.userData -ne $officialIdentity.userData) { throw 'Fixture version or data directory mismatch.' }
+  Write-Host "Actual installed fixture: $($fixtureIdentity.version); userData=$($fixtureIdentity.userData)"
   & node (Join-Path $PSScriptRoot 'verify-auto-upgrade-ui.mjs') download $debugEndpoint $evidence $harnessHome $Version
   if ($LASTEXITCODE -ne 0) { throw 'Actual updater offer/download UI failed.' }
 
@@ -119,6 +120,11 @@ try {
   Stop-OwnedDesktop $restart.ProcessId
   Start-Sleep -Seconds 2
   $desktop = Start-Desktop
+  & node (Join-Path $PSScriptRoot 'inspect-installed-main.mjs') 'http://127.0.0.1:49338' |
+    Set-Content -LiteralPath (Join-Path $evidence 'upgraded-identity.json')
+  if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect updated application identity.' }
+  $upgradedIdentity = Get-Content -LiteralPath (Join-Path $evidence 'upgraded-identity.json') -Raw | ConvertFrom-Json
+  if ($upgradedIdentity.version -ne $Version -or $upgradedIdentity.userData -ne $officialIdentity.userData) { throw 'Updated application version or userData mismatch.' }
   & node (Join-Path $PSScriptRoot 'verify-auto-upgrade-ui.mjs') verify $debugEndpoint $evidence $harnessHome $Version
   if ($LASTEXITCODE -ne 0) { throw 'Updated application UI/data recovery failed.' }
   [ordered]@{ passed = $true; targetVersion = $Version; fixtureVersion = $SeedVersion;
