@@ -11,6 +11,8 @@ on:
       - 'src/shared/godot-*.ts'
       - 'test/ocu-gateway.test.mjs'
       - 'scripts/build-godot-runtime.mjs'
+      - 'scripts/probes/governance-*.mjs'
+      - 'test/fixtures/governance-worker.mjs'
       - 'package*.json'
       - '.github/workflows/godot-agent.yml'
   workflow_dispatch:
@@ -43,4 +45,15 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - name: Harness, MCP, panel and native editor regressions
-        run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-asar-provisioning.test.mjs test/godot-launch-token.test.mjs test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-desktop-api.test.mjs test/godot-engine.test.ts test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs
+        run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-asar-provisioning.test.mjs test/godot-launch-token.test.mjs test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-desktop-api.test.mjs test/godot-governance.test.mjs test/godot-engine.test.ts test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs
+
+      - name: Observed governance real Harness restart and Agent handoff
+        run: npm run test:governance:runtime
+      - name: Preserve governance restart evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-reopen-windows
+          path: .build/governance-reopen-probe/results.json
+          if-no-files-found: ignore
+          retention-days: 7

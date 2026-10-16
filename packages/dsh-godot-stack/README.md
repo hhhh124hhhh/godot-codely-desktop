@@ -22,6 +22,15 @@ Godot Codely 预装插件：把 godot-extensions 全家桶打进出厂配置，�
 
 普通浏览器中显示桌面能力不可用的提示。结构化变更审查仍待后续实现。已安装发行版是否包含这些能力，以具体构建为准。实施计划见 [Issue #20](https://github.com/hhhh124hhhh/godot-codely-desktop/issues/20)。
 
+## 项目事实恢复（G1b / OBSERVED）
+
+源码新增可信 Node 接口 `dsh-godot-stack/governance`：`ProjectStore.create/read/commit` 与只读 `projectHandoff`。状态位于 `<dshHome>/governance/projects/<canonical-root-hash>`，与聊天、Agent、Git 分离。任务进度、Intent/Boundary/STOP、原始授权合同、设计基线、实现指纹与验证记录以同一 revision 事务保存；并发提交必须携带 `projectId + expectedStateRevision`，异步验证还绑定运行及输入指纹。
+
+只有已通过该接口建档的 Godot 工程会在 Agent 提示上下文中恢复事实。桌面桥开启时，已认证的 `/api/godot-desktop/handoff?workspaceId=...` 返回同一份只读交接；尚无普通用户建档/写入 UI，也没有模型写状态工具。可信调用者须自行取得相应记录权限；把 `actor.kind` 填成人类不构成工具执行授权。
+
+此阶段保持 `OBSERVED` 与原有 Harness 权限/完整工具能力。重开不续期授权、不运行任务、不将历史 PASS 视为当前工程验证通过；交接明确标记当前工程和证据有效性尚未重新评估。主副本受损会报告恢复来源，双副本或历史链损坏会拒绝续写并保留最后可核验现场。项目目录移动需要后续显式迁移，不按目录名猜测身份。
+
+设计、复现与验收边界见 [G1b 记录](../../docs/probes/issue-24-g1b.md)。后台执行、强制防护、Gate 判定和新的工作台 UI 留在后续阶段；当前已安装版本不会自动获得源码改动。
 ## 工作机制
 
 - 插件随 `build/dsh-desktop.patch.yml` 的 `- insert: dsh-godot-stack` 挂载，每次 Harness 启动时 `apply()` 执行。
@@ -224,3 +233,10 @@ npm run build          # 编译主进程后打包时插件随 asar 进入
 - `agent-presets/godot-codely-lite` → `godot-stack/agent-presets/`
 - `godot-codely/godot-mcp-server` → `godot-stack/mcp/`
 - `skills/godot` → `skills/godot`
+
+### 启动阶段诊断
+
+排查首次启动慢或 loader 超时时，可在启动进程环境设置
+`GODOT_CODELY_STARTUP_TRACE=1`。插件会向 stderr 记录固定阶段名（OCU、presets、MCP、bridge）、
+单调累计耗时，以及等待时的事件循环延迟；不输出配置或项目内容。默认关闭，初始化完成或插件卸载后停止心跳。
+这只增加诊断，不改变 loader 时限、权限或 provisioning 顺序。

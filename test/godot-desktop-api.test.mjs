@@ -59,3 +59,20 @@ it('dispatches editor actions to the selected project and preserves offline and 
   expect((await f.request('editor', { action: 'shell' })).status).toBe(400)
   f.bridge.editorControl.stop()
 })
+
+it('serves persisted handoffs only for registered Godot workspaces, without adding a write route', async () => {
+  const { ProjectStore } = await import('../packages/dsh-godot-stack/governance/index.mjs')
+  const f = await fixture()
+  await writeFile(join(f.path, 'project.godot'), config)
+  const store = new ProjectStore(join(f.path, 'isolated-home'))
+  const state = await store.create(f.path, { actor: { kind: 'HUMAN', id: 'test-owner' }, reason: 'Read-only handoff endpoint test' })
+  const routes = new Map()
+  const ctx = { connection: { fetch: { register: route => routes.set(route.path, route) } }, workspaceRegistry: { get: id => id === 'game' ? f.workspace : undefined }, logger: { warn() {} } }
+  registerDesktopApi(ctx, f.bridge, store)
+  const route = routes.get('/api/godot-desktop/handoff')
+  expect(route.methods).toEqual(['GET'])
+  const response = await route.fetch(new Request('http://localhost/api/godot-desktop/handoff?workspaceId=game'))
+  expect(await response.json()).toMatchObject({ projectId: state.projectId, basisRevision: 0, governanceMode: 'OBSERVED', executionAuthorized: false })
+  expect((await route.fetch(new Request('http://localhost/api/godot-desktop/handoff?workspaceId=unknown'))).status).toBe(404)
+  expect((await store.read(f.path)).state.stateRevision).toBe(0)
+})

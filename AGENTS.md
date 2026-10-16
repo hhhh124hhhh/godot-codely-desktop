@@ -93,13 +93,16 @@ DSH Desktop 是 Electron 宿主，复用 Harness runtime 和 Web UI。保持这�
 
 ```bash
 npm ci                     # 需要安装依赖时；必须检查 postinstall 是否完整成功
-npm test -- test/<name>.test.ts   # 按实际文件选择相关回归
+node node_modules/vitest/vitest.mjs run test/<name>.test.ts  # 无资产准备依赖时的定向回归
 npm run typecheck
 npm run build
-npm test                   # 代码变更提交前的完整回归
+npm test                   # 合并/发版前，或跨模块交付时集中做完整回归
 git diff --check
 ```
 
+- 日常迭代按变更边界做受控测试，不为每次局部编辑反复运行全量或无关资产准备。`npm test -- <files>` 仍会运行根 `pretest` 的品牌、Office、PPT 准备；无此依赖的测试使用明确的专项入口或直接 Vitest，不能把它当成廉价定向命令。
+- G1b 日常使用 `npm run test:governance`（状态/并发/恢复/交接和直接 API）；改动插件挂载、构建白名单或恢复接缝时追加 `npm run test:governance:runtime`（独立生成包 + 真实临时 Harness 重开）。两者不覆盖其他模块，也不准备 Office/PPT。
+- 消费生成资产的套件先准备其实际依赖；TS/类型合同、构建/分发、IPC/UI 分别追加对应检查与真实流程。范围不明先列出未覆盖项并扩大验证，不将专项通过写成全量通过。已通过后，只有新改动、新失败或未解决疑点才重跑相关检查。
 - 纯文档修改只需检查差异、链接和命令真实性；不要求启动应用或重装依赖。
 - 行为修复应有能捕获该缺陷的回归，优先验证输入、输出、状态转换和失败路径。字符串/源码契约测试只作为补充，不能替代行为验证。
 - 当前 `typecheck` 只覆盖配置及 `src/main`、`src/preload`、`src/shared`、TS 测试；插件 JS、脚本和 HTML 不在其覆盖范围。当前没有 `npm run lint` 或 `npm run format:check`，不得报告它们通过。

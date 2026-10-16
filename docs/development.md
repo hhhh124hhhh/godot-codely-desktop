@@ -27,13 +27,22 @@ Development builds use the separate application name `Godot Codely Dev` and the 
 
 Godot Codely does not discover or offer to import the upstream `~/.dsh` home on normal startup. Migration is an explicit, one-time action into an unused desktop Profile: launch the installed executable with `--import-web-home` (`open -a "Godot Codely" --args --import-web-home` on macOS). Safe Mode ignores this flag. Imported data is copied, and existing upstream data and existing desktop Profiles are not overwritten. Choosing Start empty is remembered for that Profile. An isolated test Profile without that decision is a different installation context; automation must not import real user data.
 
-Run the core checks before submitting a change:
+Use a controlled loop during local iteration. For G1b project-state changes:
 
 ```bash
-npm test
-npm run typecheck
-npm run build
+npm run test:governance          # state/CAS/recovery/handoff + direct desktop API
+npm run test:governance:runtime  # optional: rebuilt Godot package + real Harness restart
 ```
+
+The first command needs no generated Office/PPT assets. The second builds only an isolated Godot package and uses a disposable Profile; run it when plugin mounting, packaged files, or the recovery seam changes. Neither runs the root `pretest`, changes production permissions, nor covers unrelated modules. Run the runtime lane serially within one worktree because it owns a generated output directory.
+
+For other modules, explicitly select tests and prepare only their required artifacts. `npm test -- <files>` still runs the root `pretest` (brand, Office and PPT), so it is not a cheap targeted command. Direct Vitest is appropriate only when those preparations are not required:
+
+```bash
+node node_modules/vitest/vitest.mjs run test/<name>.test.ts
+```
+
+Run `npm run typecheck` for TypeScript/type-contract changes and `npm run build` for build/distribution changes. Concentrate the full `npm test` at merge/release or cross-module qualification rather than after each local edit. The complete command and CI remain available; controlled lanes do not replace final qualification. Unknown boundaries require an explicit coverage gap and broader checks, not a silent pass.
 
 Static checks are not a substitute for runtime verification. Changes that affect startup, profiles, plugins, native dialogs, updates, mobile access, or packaging should also be exercised through the corresponding real application flow.
 
@@ -95,7 +104,7 @@ npm run package:win
 
 Do not invoke `electron-builder --win` from macOS or Linux for a distributable Windows package. The target verification scripts intentionally reject host/target mismatches.
 
-For local unsigned development packages, use the corresponding `package:dev:*` command. Packages run Harness and package commands through the packaged Electron runtime (a utility process and the Helper in Node mode on macOS, the executable in Node mode on Windows); no standalone `node_modules/node` may be present under `app.asar.unpacked`. Verify the packaged native-module, pnpm and Harness smokes, then the final signed installer's separate installed-app smoke before handoff. Office preparation is included in dev, build and test: it fetches hash-locked native Python and wheels into `.build/office-runtime`, outside ASAR, and ships no second Node runtime. See [Office runtime](office-runtime.md). The locked Electron 43.0.0 must remain compatible with the native loader: `scripts/verify-target.mjs` fails packaging when Electron in Node mode cannot load it, and changing Electron still requires a new Windows package qualification. Before packaging, `node scripts/probe-electron-node-runtime.mjs` boots Harness from the repository through Electron Node mode with a disposable `DSH_HOME` and checks an authenticated HTTP response; the Windows CI job runs it on every build.
+For local unsigned development packages, use the corresponding `package:dev:*` command. Packages run Harness and package commands through the packaged Electron runtime (a utility process and the Helper in Node mode on macOS, the executable in Node mode on Windows); no standalone `node_modules/node` may be present under `app.asar.unpacked`. Verify the packaged native-module, pnpm and Harness smokes, then the final signed installer's separate installed-app smoke before handoff. Office preparation is included in dev, build and the full `npm test` lifecycle (not the controlled governance lanes): it fetches hash-locked native Python and wheels into `.build/office-runtime`, outside ASAR, and ships no second Node runtime. See [Office runtime](office-runtime.md). The locked Electron 43.0.0 must remain compatible with the native loader: `scripts/verify-target.mjs` fails packaging when Electron in Node mode cannot load it, and changing Electron still requires a new Windows package qualification. Before packaging, `node scripts/probe-electron-node-runtime.mjs` boots Harness from the repository through Electron Node mode with a disposable `DSH_HOME` and checks an authenticated HTTP response; the Windows CI job runs it on every build.
 
 Formal release artifacts are built, signed, and published by the tag workflow. A local build or pull-request check is not formal release evidence.
 

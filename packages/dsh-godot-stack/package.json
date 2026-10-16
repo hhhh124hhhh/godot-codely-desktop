@@ -11,6 +11,7 @@
     ".": "./index.js",
     "./client": "./client.js",
     "./mcp-agent": "./mcp-agent.mjs",
+    "./governance": "./governance/index.mjs",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
@@ -23,6 +24,7 @@
     "memory-root.mjs",
     "mcp-agent.mjs",
     "mcp-runtime.mjs",
+    "governance",
     "bridge",
     "cli",
     "skills",
