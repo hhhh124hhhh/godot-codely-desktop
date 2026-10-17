@@ -111,9 +111,9 @@ describe('skill-filesystem watcher readiness bounds (P0-2 patch)', () => {
     const result = await provider.list({ cwd: undefined } as never)
     const elapsed = Date.now() - startedAt
 
-    expect(Array.isArray(result)).toBe(false)
-    expect((result as { complete: boolean }).complete).toBe(false)
-    expect((result as { candidates: Array<{ name: string }> }).candidates.map((s) => s.name)).toEqual(['alpha'])
+    const observation = result as { complete: boolean; candidates: ReadonlyArray<{ name: string }> }
+    expect(observation.complete).toBe(false)
+    expect(observation.candidates.map((s) => s.name)).toEqual(['alpha'])
     // Bounded: did not wait forever; default bound is seconds, here 150ms.
     expect(elapsed).toBeLessThan(5_000)
     expect(warns.some((message) => message.includes('did not become ready'))).toBe(true)
