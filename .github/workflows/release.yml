@@ -626,6 +626,9 @@ jobs:
       - name: Exercise shipped updater, restart and retained user data
         shell: pwsh
         env:
+          # electron-updater 用未认证 api.github.com 请求在托管 runner 共享 IP 上
+          # 会被限流（GitHub releases request failed: 403）；注入只读 token 供其鉴权。
+          GH_TOKEN: ${{ github.token }}
           TARGET_VERSION: ${{ inputs.update_target_version }}
           SEED_VERSION: ${{ inputs.update_seed_version }}
         run: |
