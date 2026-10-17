@@ -10,6 +10,7 @@ import { SAFE_MODE_PROFILE } from '../state/safe-mode-profile'
 import { prepareHostDisabledPluginsPatch } from '../state/host-disabled-plugins'
 import { prepareHostPluginSourcesPatch } from '../state/host-plugin-sources'
 import { parsePluginStartupFailures, type PluginStartupFailure } from '../../shared/plugin-startup-failure'
+import { mainLog } from '../main-log'
 import { removeStaleWriterLocks } from './stale-writer-locks'
 
 export interface HarnessRuntimeOptions {
@@ -737,7 +738,7 @@ ${cause}`
     if (this.logLines.length > 200) this.logLines.splice(0, this.logLines.length - 200)
     const stamped = this.stampLog(line)
     this.logStream?.write(`${stamped}\n`)
-    if (this.options.echoLogs) console.log(stamped)
+    if (this.options.echoLogs) mainLog('log', stamped)
   }
 
   /**

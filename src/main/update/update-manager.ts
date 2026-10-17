@@ -28,7 +28,7 @@ import {
   releaseFeedUrl,
   STABLE_FEED_URL
 } from './version-catalog'
-import { logUpdate } from './update-log'
+import { mainLog } from '../main-log'
 
 const { autoUpdater } = electronUpdater
 const TRANSIENT_STATUS_MS = 8_000
@@ -266,10 +266,10 @@ function configureUpdater(): void {
   autoUpdater.autoInstallOnAppQuit = AUTO_INSTALL_ON_APP_QUIT
   autoUpdater.allowPrerelease = false
   autoUpdater.logger = {
-    info: (...args: unknown[]) => logUpdate('info', args),
-    warn: (...args: unknown[]) => logUpdate('warn', args),
-    error: (...args: unknown[]) => logUpdate('error', args),
-    debug: (...args: unknown[]) => logUpdate('debug', args)
+    info: (...args: unknown[]) => mainLog('info', '[updater]', ...args),
+    warn: (...args: unknown[]) => mainLog('warn', '[updater]', ...args),
+    error: (...args: unknown[]) => mainLog('error', '[updater]', ...args),
+    debug: (...args: unknown[]) => mainLog('debug', '[updater]', ...args)
   }
 
   autoUpdater.on('checking-for-update', () =>
@@ -281,7 +281,7 @@ function configureUpdater(): void {
       return
     }
     if (!shouldOfferUpdate(info.version, currentSkippedVersion(), manualCheck)) {
-      logUpdate('info', ['skipping', info.version, 'at the user’s request'])
+      mainLog('info', '[updater] skipping', info.version, 'at the user’s request')
       transition({ type: 'reset' })
       return
     }
@@ -315,7 +315,7 @@ function transition(event: UpdateStateEvent, manualOverride?: boolean): void {
   if (manualOverride !== undefined) status.manual = manualOverride
   if (pendingDowngrade && event.type !== 'reset') status.downgrade = true
 
-  logUpdate('info', ['status', status.phase, status.percent ?? ''])
+  mainLog('info', '[updater] status', status.phase, status.percent ?? '')
   for (const window of BrowserWindow.getAllWindows()) {
     if (!window.isDestroyed()) window.webContents.send('updates:status-changed', getUpdateStatus())
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isBrokenPipeError, logToStream } from '../src/main/update/update-log'
+import { isBrokenPipeError, logToStream } from '../src/main/main-log'
 
 function fakeStream(writable = true): NodeJS.WriteStream {
   return { writable } as unknown as NodeJS.WriteStream
@@ -11,7 +11,7 @@ function epipe(): Error {
   return error
 }
 
-describe('update-log broken-pipe boundary', () => {
+describe('main-log broken-pipe boundary', () => {
   it('recognizes EPIPE/EOF and nothing else', () => {
     expect(isBrokenPipeError(epipe())).toBe(true)
     const eof = new Error('write EOF')

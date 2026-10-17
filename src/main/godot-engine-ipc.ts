@@ -1,6 +1,7 @@
 import type { GodotEngineResult, GodotEngineAction } from '../shared/godot-engine'
 import type { BrowserWindow, IpcMainInvokeEvent } from 'electron'
 import { GodotEngineService, engineError, type GodotEngineProject } from './godot-engine'
+import { mainLog } from './main-log'
 
 interface EngineRequest { action: GodotEngineAction; workspaceId?: string }
 const ACTIONS = new Set(['status', 'choose', 'open', 'run', 'stop'])
@@ -66,7 +67,7 @@ export async function handleGodotEngineRequest(
   } catch (error) {
     const code = error instanceof Error && 'code' in error && typeof error.code === 'string' ? error.code : 'ENGINE_REQUEST_FAILED'
     const publicCodes = new Set(['INVALID_ACTION', 'WORKSPACE_REQUIRED', 'WORKSPACE_MISSING', 'NOT_GODOT_PROJECT', 'ENGINE_BUSY', 'ENGINE_INVALID', 'ENGINE_VERSION', 'ENGINE_MISSING', 'NO_MAIN_SCENE', 'ENGINE_ALREADY_RUNNING', 'ENGINE_START_FAILED', 'ENGINE_STOP_FAILED', 'ENGINE_STOP_TIMEOUT'])
-    console.warn('[godot-engine] action failed', error)
+    mainLog('warn', '[godot-engine] action failed', error)
     return { ok: false, code: publicCodes.has(code) ? code : 'ENGINE_REQUEST_FAILED' }
   }
 }
