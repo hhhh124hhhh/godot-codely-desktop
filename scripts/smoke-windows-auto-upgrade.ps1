@@ -10,7 +10,10 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hoste
 $installerPath = (Resolve-Path -LiteralPath $Installer).Path
 $root = Join-Path $env:RUNNER_TEMP ('auto-upgrade-' + [guid]::NewGuid().ToString('N'))
 $evidence = Join-Path $root 'evidence'
-$install = Join-Path $root 'installed\Godot Codely'
+# Seed into a custom directory WITHOUT the product name: this is the exact
+# scenario the 0.1.5 template fix (directoryAssistedInstaller) targets. The
+# buggy template appended "Godot Codely" on update and replaced nothing.
+$install = Join-Path $root 'installed'
 $nativeAppData = [Environment]::GetFolderPath('ApplicationData')
 $nativeLocalAppData = [Environment]::GetFolderPath('LocalApplicationData')
 # Shell-based installer relaunch uses the logged-on account's environment.
