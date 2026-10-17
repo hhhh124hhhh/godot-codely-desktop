@@ -1,5 +1,5 @@
 diff --git a/node_modules/@deepseek-ai/dsh-client-ui-chat/lib/client.js b/node_modules/@deepseek-ai/dsh-client-ui-chat/lib/client.js
-index f997683..e5482e0 100644
+index f997683..70a2ac8 100644
 --- a/node_modules/@deepseek-ai/dsh-client-ui-chat/lib/client.js
 +++ b/node_modules/@deepseek-ai/dsh-client-ui-chat/lib/client.js
 @@ -115,6 +115,22 @@ window.__ModuleLoader__.load({
@@ -310,6 +310,17 @@ index f997683..e5482e0 100644
  						},
  						t
  					})
+@@ -5444,8 +5527,8 @@ window.__ModuleLoader__.load({
+ 			"chat.loadError": "历史加载失败：{message}（{code}）",
+ 			"chat.loadOlder": "加载更早",
+ 			"chat.toBottom": "回到底部",
+-			"chat.deepDiving": "深度求索中",
+-			"chat.deepDivingFor": "深度求索中，用时 {duration} ···",
++			"chat.deepDiving": "正在深度分析中",
++			"chat.deepDivingFor": "正在深度分析中，用时 {duration} ···",
+ 			"chat.turnNavigation.label": "轮次导航",
+ 			"chat.turnNavigation.jump": "跳转到第 {turn} 轮",
+ 			"chat.turnNavigation.jumpLoad": "加载并跳转到第 {turn} 轮",
 @@ -5522,7 +5605,8 @@ window.__ModuleLoader__.load({
  			"message.accountStopped": "任务已停止",
  			"message.failure.accountSignedOut": "任务已因退出 DeepSeek 登录而停止。",
@@ -320,6 +331,17 @@ index f997683..e5482e0 100644
  			"message.turnError": "本轮运行失败",
  			"message.maxTokens": "已达到输出 token 上限",
  			"message.maxTokens.hint": "回答被截断，已有输出保留在对话中。发送“继续”可让模型接着输出。",
+@@ -5633,8 +5717,8 @@ window.__ModuleLoader__.load({
+ 			"chat.loadError": "Failed to load history: {message} ({code})",
+ 			"chat.loadOlder": "Load earlier",
+ 			"chat.toBottom": "Back to bottom",
+-			"chat.deepDiving": "Deep diving",
+-			"chat.deepDivingFor": "Deep diving for {duration} ···",
++			"chat.deepDiving": "Analyzing in depth",
++			"chat.deepDivingFor": "Analyzing in depth for {duration} ···",
+ 			"chat.turnNavigation.label": "Turn navigation",
+ 			"chat.turnNavigation.jump": "Jump to turn {turn}",
+ 			"chat.turnNavigation.jumpLoad": "Load and jump to turn {turn}",
 @@ -5711,7 +5795,8 @@ window.__ModuleLoader__.load({
  			"message.accountStopped": "Task stopped",
  			"message.failure.accountSignedOut": "Stopped because you signed out of DeepSeek.",
