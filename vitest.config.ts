@@ -9,6 +9,13 @@ export default defineConfig({
       process.env.CI &&
       ((process.platform === 'darwin' && process.arch === 'x64') || process.platform === 'win32')
     ),
-    testTimeout: 60_000
+    testTimeout: 60_000,
+    server: {
+      deps: {
+        // Patched upstream providers must run inside the module runner so
+        // tests can mock their node_modules imports (e.g. chokidar).
+        inline: [/@deepseek-ai\/dsh-skill-filesystem/]
+      }
+    }
   }
 })
