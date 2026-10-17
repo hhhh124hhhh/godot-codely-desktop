@@ -1,4 +1,5 @@
 import { initializeDesktopService, desktopDiagnostics } from './desktop-service'
+import { mainLog } from './main-log'
 import { GodotEngineService, engineError } from './godot-engine'
 import { createGodotEngineHandler } from './godot-engine-ipc'
 import { applyMacosWindowBackdrop } from './macos-window-backdrop'
@@ -345,7 +346,7 @@ function appendRendererPluginRecoveryLog(logs: readonly string[]): void {
       'utf8'
     )
   } catch (error) {
-    console.warn('[desktop] failed to persist frontend plugin recovery evidence', error)
+    mainLog('warn', '[desktop] failed to persist frontend plugin recovery evidence', error)
   }
 }
 
@@ -358,7 +359,7 @@ function appendPluginRecoveryDetectionLog(plugins: readonly string[]): void {
       'utf8'
     )
   } catch (error) {
-    console.warn('[desktop] failed to persist plugin recovery detection', error)
+    mainLog('warn', '[desktop] failed to persist plugin recovery detection', error)
   }
 }
 
@@ -1985,7 +1986,7 @@ async function waitForPluginRecoveryAction(options: {
 function showUnexpectedError(error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error)
   runtime?.note(`[desktop] unexpected error: ${message}`)
-  console.error('[desktop] unexpected error:', message)
+  mainLog('error', '[desktop] unexpected error:', message)
   dialog.showErrorBox(`${app.getName()} encountered an error`, message)
 }
 
@@ -3263,7 +3264,7 @@ async function bootstrap(): Promise<void> {
   const dshHome = join(app.getPath('userData'), 'harness')
   desktopStorageManager = new DesktopStorageManager(join(dshHome, 'profiles', 'web'), {
     onError: (error, context) => {
-      console.warn(`[desktop-storage] error during ${context}:`, error)
+      mainLog('warn', `[desktop-storage] error during ${context}:`, error)
     }
   })
   createWindow()
@@ -3317,7 +3318,7 @@ async function bootstrap(): Promise<void> {
     appIconPath: desktopIconPath(),
     cloudflaredCacheDir: join(app.getPath('userData'), 'bin'),
     forceCloudflareFailure: process.env.DSH_TUNNEL_FORCE_PINGGY === '1',
-    tunnelLog: (message) => console.warn(message),
+    tunnelLog: (message) => mainLog('warn', message),
     port: developmentBuild ? 43128 : 43127,
     onReconnectRequested: () => {
       void showMobilePairing().catch(showUnexpectedError)
@@ -3611,7 +3612,7 @@ if (isDaemonLaunch(process.env, process.platform)) {
   installGpuFallbackWatch()
   const singleInstance = app.requestSingleInstanceLock()
   if (!singleInstance) {
-    console.warn('[desktop] Another instance is already running; focusing existing window and exiting.')
+    mainLog('warn', '[desktop] Another instance is already running; focusing existing window and exiting.')
     app.quit()
   } else {
     // Start the login-shell capture now so it overlaps Electron's own startup

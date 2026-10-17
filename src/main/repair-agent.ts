@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { cookiePair } from './mobile/lan-mobile-bridge'
+import { mainLog } from './main-log'
 import {
   extractDshEntryFailureCause,
   extractOffendingPlugins,
@@ -583,7 +584,7 @@ export class RepairAgentService {
       this.harnessCookie = { base, cookie }
       return cookie
     } catch (err) {
-      console.warn('[repair-agent] harnessSession auth handshake failed', err)
+      mainLog('warn', '[repair-agent] harnessSession auth handshake failed', err)
       return undefined
     }
   }
@@ -835,7 +836,7 @@ export class RepairAgentService {
     try {
       modelCatalog = await this.invokeHarness('session/modelCatalog', {})
     } catch (err) {
-      console.warn('[repair-agent] could not load model catalog', err)
+      mainLog('warn', '[repair-agent] could not load model catalog', err)
       return
     }
     const defaultEntry =
@@ -855,7 +856,7 @@ export class RepairAgentService {
         }
       })
     } catch (e) {
-      console.warn('[repair-agent] auto selectModel failed', e)
+      mainLog('warn', '[repair-agent] auto selectModel failed', e)
     }
   }
 

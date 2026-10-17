@@ -1,6 +1,7 @@
 import { app, dialog, net } from 'electron'
 import { join } from 'node:path'
 import { DesktopService } from './service'
+import { mainLog } from '../main-log'
 import { attachDiagnostics } from './diagnostics'
 import { DESKTOP_SERVICE_ENABLED } from '../update/update-policy'
 
@@ -33,11 +34,11 @@ export function initializeDesktopService(): void {
       }
     })
     desktopDiagnostics = attachDiagnostics(app, service, {
-      onError: error => console.warn('[desktop-service]', error instanceof Error ? error.name : 'Diagnostic failure')
+      onError: error => mainLog('warn', '[desktop-service]', error instanceof Error ? error.name : 'Diagnostic failure')
     })
   } catch (error) {
     service = undefined
-    console.warn('[desktop-service] initialization failed', error instanceof Error ? error.name : 'Unknown error')
+    mainLog('warn', '[desktop-service] initialization failed', error instanceof Error ? error.name : 'Unknown error')
   }
 }
 export async function checkDesktopUpdate() {

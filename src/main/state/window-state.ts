@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type BrowserWindow, screen } from 'electron'
+import { mainLog } from '../main-log'
 
 export interface WindowState {
   width: number
@@ -149,7 +150,7 @@ export class WindowStateManager {
     try {
       writeFileSync(this.filePath, JSON.stringify(this.state, null, 2), 'utf8')
     } catch (err) {
-      console.warn('[window-state] failed to save window state', err)
+      mainLog('warn', '[window-state] failed to save window state', err)
     }
   }
 }

@@ -3,6 +3,7 @@ import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/
 import { dirname, isAbsolute, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { promisify } from 'node:util'
+import { mainLog } from './main-log'
 import { StringDecoder } from 'node:string_decoder'
 import type { GodotEngineState } from '../shared/godot-engine'
 
@@ -191,6 +192,6 @@ export class GodotEngineService {
     while (this.pending.size && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20))
     // Editors stay open so quitting Desktop cannot discard an editing session.
     const results = await Promise.allSettled([...this.projects.keys()].map(path => this.stop({ path, mainScene: '' })))
-    for (const result of results) if (result.status === 'rejected') console.warn('[godot-engine] stop during quit failed', result.reason)
+    for (const result of results) if (result.status === 'rejected') mainLog('warn', '[godot-engine] stop during quit failed', result.reason)
   }
 }
