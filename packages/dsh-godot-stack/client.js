@@ -64,6 +64,9 @@ window.__ModuleLoader__.load({
       @media(max-width:1100px){.gcAside{position:absolute;inset:0 0 0 auto;width:min(320px,100%);z-index:2;box-shadow:0 8px 24px var(--dsw-alias-border-l2)}.gcOverview{padding:24px}.gcCards{grid-template-columns:1fr}}
       @media(prefers-reduced-motion:reduce){.gcDesktop *{scroll-behavior:auto}}
     `
+    // ctx.remote is only readable inside an inject scope. The model-catalog
+    // reader is captured by apply() and shared with Desktop through closure.
+    let readModelCatalog = null
     async function callApi(endpoint, workspaceId, body, signal) {
       const response = await fetch('/api/godot-desktop/' + endpoint + '?workspaceId=' + encodeURIComponent(workspaceId), {
         method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal
@@ -177,9 +180,9 @@ window.__ModuleLoader__.load({
       // No configured model disables "start" with guidance instead of a silent failure.
       const [models, setModels] = React.useState(null)
       React.useEffect(() => {
-        if (!active || !ctx.remote?.session?.modelCatalog) return
+        if (!active || !readModelCatalog) return
         let stale = false
-        ctx.remote.session.modelCatalog().then(catalog => {
+        readModelCatalog().then(catalog => {
           if (stale) return
           setModels(catalog.ok && catalog.value.groups.some(group => group.models.length > 0))
         }).catch(() => { if (!stale) setModels(null) })
@@ -256,6 +259,9 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }))
       const t = ctx.locale.bind(NS)
+      ctx.effect(() => ctx.inject([], scope => {
+        readModelCatalog = () => scope.remote.session.modelCatalog()
+      }))
       ctx.effect(() => {
         if (document.querySelector('[data-plugin-css="godot-desktop"]')) return
         const style = document.createElement('style'); style.dataset.pluginCss = 'godot-desktop'; style.textContent = css
