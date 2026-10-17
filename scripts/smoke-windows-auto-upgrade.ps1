@@ -90,6 +90,8 @@ try {
   # Assisted NSIS may expose Next/Finish. Invoke only buttons owned by its exact downloaded executable.
   Add-Type -AssemblyName UIAutomationClient
   Add-Type -AssemblyName UIAutomationTypes
+  Add-Type -AssemblyName System.Windows.Forms
+  Add-Type -AssemblyName System.Drawing
   $deadline = (Get-Date).AddMinutes(5)
   $restart = $null
   $installerSeen = $false
@@ -111,8 +113,13 @@ try {
     foreach ($process in $processes | Where-Object { $installerPids.Contains([int]$_.ProcessId) }) {
       $installerSeen = $true
       $nativeProcess = Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue
-      if ($nativeProcess.MainWindowHandle -ne [IntPtr]::Zero) {
-        $element = [System.Windows.Automation.AutomationElement]::FromHandle($nativeProcess.MainWindowHandle)
+      $ownedWindows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+        [System.Windows.Automation.TreeScope]::Children,
+        (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, [int]$process.ProcessId)))
+      foreach ($element in $ownedWindows) {
+        Write-Host "Owned installer window: $($element.Current.Name)"
+        $texts = $element.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
+        @($texts | ForEach-Object { $_.Current.Name }) | Set-Content -LiteralPath (Join-Path $evidence 'installer-window.txt')
         $buttons = $element.FindAll([System.Windows.Automation.TreeScope]::Descendants,
           (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)))
         foreach ($button in $buttons) {
@@ -135,7 +142,18 @@ try {
     }
     Start-Sleep -Seconds 1
   }
-  if (-not $restart) { throw 'Official ASAR replacement and automatic application restart were not observed.' }
+  if (-not $restart) {
+    $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+    $bitmap = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)
+    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    try {
+      $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+      $bitmap.Save((Join-Path $evidence 'installer-timeout.png'))
+    } finally { $graphics.Dispose(); $bitmap.Dispose() }
+    Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath |
+      ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $evidence 'timeout-processes.json')
+    throw 'Official ASAR replacement and automatic application restart were not observed.'
+  }
   $afterHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash
   if ($afterHash -ne $seed.shippedAsarSha256) { throw 'Updater did not restore the original official package.' }
   # The installer relaunch omits CDP switches. Observe it, then reopen solely for UI/data inspection.
