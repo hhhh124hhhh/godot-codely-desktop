@@ -162,6 +162,11 @@ public static class InstallerButton {
       if ($restart) { break }
     }
     Start-Sleep -Seconds 1
+    if (++$script:installTicks % 30 -eq 0) {
+      $currentHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256 -ErrorAction SilentlyContinue).Hash
+      $setupAlive = @($processes | Where-Object { $installerPids.Contains([int]$_.ProcessId) }).Count
+      Write-Host ("Install wait: asarMatch={0} setupProcesses={1}" -f ($currentHash -eq $seed.shippedAsarSha256), $setupAlive)
+    }
   }
   if (-not $restart) {
     $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
@@ -173,6 +178,23 @@ public static class InstallerButton {
     } finally { $graphics.Dispose(); $bitmap.Dispose() }
     Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath |
       ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $evidence 'timeout-processes.json')
+    # The 0.1.5 template fix stops appending the product name during updates, so
+    # the installer may write somewhere other than the observed $install tree.
+    # Record every installed copy and the registered uninstall location.
+    $locations = @{}
+    foreach ($exe in Get-ChildItem -LiteralPath (Split-Path $root -Parent) -Recurse -Filter 'Godot Codely.exe' -ErrorAction SilentlyContinue) {
+      $asar = Join-Path $exe.DirectoryName 'resources\app.asar'
+      $locations[$exe.FullName] = @{
+        AsarSha256 = if (Test-Path -LiteralPath $asar) { (Get-FileHash -LiteralPath $asar -Algorithm SHA256).Hash } else { $null }
+        Expected = $seed.shippedAsarSha256
+      }
+    }
+    foreach ($hive in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')) {
+      foreach ($entry in Get-ItemProperty -Path $hive -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'Godot Codely' }) {
+        $locations['registry:' + $entry.PSChildName] = @{ InstallLocation = $entry.InstallLocation; UninstallString = $entry.UninstallString }
+      }
+    }
+    $locations | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $evidence 'timeout-install-locations.json')
     throw 'Official ASAR replacement and automatic application restart were not observed.'
   }
   $afterHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash
