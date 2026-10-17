@@ -49,6 +49,7 @@ import {
 } from './state/profile-install-marker'
 import { healProfileBundles, HOST_COMPOSED_BUNDLES, inspectProfileConsistency } from './state/profile-consistency'
 import { inspectProfileBootInputs } from './state/profile-boot-preflight'
+import { hostInsertedPluginNames } from './state/host-plugin-sources'
 import {
   BUILTIN_IMAGE_GENERATION,
   prepareProfileBundleForHostEnable,
@@ -1449,7 +1450,14 @@ function launchHarness(): Promise<void> {
       marketUsableWithoutBaseline: () => marketUsableWithoutBaseline(dshHome),
       reportProfileConsistency: () => reportProfileConsistency(dshHome),
       inspectProfileBootInputs: () => inspectProfileBootInputs(dshHome, dshEntryPath(), desktopResourcePath('dsh-desktop.patch.yml')),
-      pruneUnresolvableBundles: () => pruneUnresolvableProfileBundles(dshHome)
+      pruneUnresolvableBundles: async () => {
+        const patchPath = desktopResourcePath('dsh-desktop.patch.yml')
+        const hostInserted = new Set(await hostInsertedPluginNames(
+          readFileSync(patchPath, 'utf8'),
+          await readDisabledHostPlugins(dshHome)
+        ))
+        return pruneUnresolvableProfileBundles(dshHome, hostInserted)
+      }
     })
     migrationPendingPlugins = new Set(
       maintenance.outcome === 'normal-profile' && maintenance.migration.outcome === 'deferred-failure'
