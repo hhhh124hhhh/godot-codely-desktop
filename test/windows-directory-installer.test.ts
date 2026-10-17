@@ -2,13 +2,20 @@ import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { assertWindowsExecutable, directoryInstallSection, directoryInstallerExits, directoryInstallUtil } from '../scripts/windows-directory-installer.mjs'
+import { assertWindowsExecutable, directoryInstallSection, directoryInstallerExits, directoryInstallUtil, directoryAssistedInstaller } from '../scripts/windows-directory-installer.mjs'
 
 const require = createRequire(import.meta.url)
 const template = join(dirname(require.resolve('app-builder-lib/package.json')), 'templates', 'nsis', 'installSection.nsh')
 const installUtil = join(dirname(require.resolve('app-builder-lib/package.json')), 'templates', 'nsis', 'include', 'installUtil.nsh')
 
 describe('pinned NSIS directory transaction', () => {
+  it('preserves the registered custom directory during an assisted update', async () => {
+    const source = await readFile(join(dirname(template), 'assistedInstaller.nsh'), 'utf8')
+    const adapted = directoryAssistedInstaller(source)
+    expect(adapted).toContain('Function instFilesPre\n      ${IfNot} ${isUpdated}\n')
+    expect(adapted).toContain('StrCpy $INSTDIR "$INSTDIR\\${APP_FILENAME}"')
+    expect(() => directoryAssistedInstaller('changed template')).toThrow('NSIS template changed')
+  })
   it('accepts Windows PE headers and rejects host binaries', () => {
     // Header validation is independent of the machine running the build.
     const pe = Buffer.alloc(0x48)

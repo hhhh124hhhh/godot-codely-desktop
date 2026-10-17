@@ -74,6 +74,16 @@ export function directoryInstallerExits(source) {
   return source.replaceAll(/^(\s*)Quit\s*$/gm, '$1!ifndef BUILD_UNINSTALLER\n$1Call dshCleanupDirectories\n$1!endif\n$1Quit')
 }
 
+export function directoryAssistedInstaller(source) {
+  const normalized = source.replaceAll('\r\n', '\n')
+  // An update must replace the registered installation, including a custom
+  // directory supplied to a previous silent install. Appending the product
+  // name here leaves that old executable and its update state behind.
+  return replaceOnce(normalized,
+    '      ${StrContains} $0 "${APP_FILENAME}" $INSTDIR\n      ${If} $0 == ""\n        StrCpy $INSTDIR "$INSTDIR\\${APP_FILENAME}"\n      ${endIf}',
+    '      ${IfNot} ${isUpdated}\n        ${StrContains} $0 "${APP_FILENAME}" $INSTDIR\n        ${If} $0 == ""\n          StrCpy $INSTDIR "$INSTDIR\\${APP_FILENAME}"\n        ${endIf}\n      ${endIf}')
+}
+
 export function directoryInstallUtil(source) {
   let adapted = source.replaceAll('\r\n', '\n')
   for (const name of ['GetInQuotes', 'GetFileParent', 'uninstallOldVersion']) {
@@ -116,6 +126,9 @@ export function installWindowsDirectoryInstaller() {
     await copyFile(executable, tool)
     await signWindowsPeWithJsign(tool)
     let adapted = replaceOnce(source, '!include "installSection.nsh"', `!include "${section}"`)
+    const assisted = join(directory, 'assistedInstaller.nsh')
+    await writeFile(assisted, directoryAssistedInstaller(await readFile(join(templates, 'assistedInstaller.nsh'), 'utf8')))
+    adapted = replaceOnce(adapted, '!include "assistedInstaller.nsh"', `!include "${assisted}"`)
     for (const helper of ['allowOnlyOneInstallerInstance.nsh', 'installUtil.nsh']) {
       const path = join(directory, helper)
       const source = await readFile(join(templates, 'include', helper), 'utf8')
