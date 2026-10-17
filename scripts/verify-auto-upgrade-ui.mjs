@@ -9,6 +9,16 @@ const [phase, endpoint, output, home, expectedVersion] = process.argv.slice(2)
 assert.ok(['download', 'install', 'verify'].includes(phase))
 assert.equal(new URL(endpoint).hostname, '127.0.0.1')
 const pause = ms => new Promise(done => setTimeout(done, ms))
+// The settings service persists the authoritative document at
+// <dshHome>/settings.yaml (and per-profile copies); settings.json is only the
+// godot-stack MCP registration file, never the locale document.
+async function snapshotSettings(name) {
+  const described = await client.call('settings/describe', {}).catch(() => null)
+  if (described) await writeFile(join(output, `${name}-describe.json`), JSON.stringify(described, null, 2))
+  for (const candidate of [join(home, 'settings.yaml'), join(home, 'settings.json')]) {
+    try { await writeFile(join(output, `${name}-${candidate.endsWith('.yaml') ? 'yaml' : 'json'}.txt`), await readFile(candidate, 'utf8')) } catch { /* absent file is itself evidence */ }
+  }
+}
 const deadline = Date.now() + (phase === 'download' ? 600000 : 180000)
 let socket
 let send
@@ -93,7 +103,7 @@ try {
     await client.call('credentials/set', { ref: 'UPGRADE_FIXTURE_KEY', value: 'non-secret-upgrade-fixture' })
     assert.equal(parseYaml(await readFile(join(home, '.credentials.yaml'), 'utf8')).refs.UPGRADE_FIXTURE_KEY, 'non-secret-upgrade-fixture')
     await client.call('settings/update', { ns: 'locale', patch: { preference: 'en' } })
-    await writeFile(join(output, 'seed-settings.json'), await readFile(join(home, 'settings.json'), 'utf8'))
+    await snapshotSettings('seed-settings')
     await evaluate('localStorage.setItem("upgrade-fixture", "retained-draft-marker")')
     await writeFile(join(output, 'fixture.json'), JSON.stringify({ sessionId: session.sessionId, workspaceId: created.workspace.workspaceId, project, credential: await client.call('credentials/describe', { refs: ['UPGRADE_FIXTURE_KEY'] }) }, null, 2))
     let accepted = false
@@ -122,9 +132,11 @@ try {
     assert.deepEqual(credentials, fixture.credential, 'Fixture credential metadata must survive')
     assert.equal(parseYaml(await readFile(join(home, '.credentials.yaml'), 'utf8')).refs.UPGRADE_FIXTURE_KEY, 'non-secret-upgrade-fixture', 'Fixture credential value must survive, not only its configured flag')
     assert.equal(await evaluate('localStorage.getItem("upgrade-fixture")'), 'retained-draft-marker')
-    const settings = JSON.parse(await readFile(join(home, 'settings.json'), 'utf8'))
-    await writeFile(join(output, 'final-settings.json'), JSON.stringify(settings, null, 2))
-    assert.equal(settings.locale?.preference, 'en', `locale.preference must survive upgrade; final settings: ${JSON.stringify(settings)}`)
+    const described = await client.call('settings/describe', {})
+    const locale = (described.namespaces ?? []).find(entry => entry.ns === 'locale')
+    await snapshotSettings('final-settings')
+    assert.ok(locale, `locale namespace missing after describe: ${JSON.stringify(described)}`)
+    assert.equal(locale.user?.preference ?? locale.value?.preference, 'en', `locale.preference must survive upgrade; described locale: ${JSON.stringify(locale)}`)
     await capture('upgraded-ui')
     await writeFile(join(output, 'ui-result.json'), JSON.stringify({ passed: true, expectedVersion, sessionRestored: true, credentialMetadataRestored: true, fixtureCredentialValueRestored: true, settingsRestored: true, desktopStorageRestored: true, limitation: 'fixture version lowered in installed manifest; not official old-release compatibility or human UX acceptance' }, null, 2))
     console.log('Upgraded production UI, session, settings, credential metadata and storage restored')
