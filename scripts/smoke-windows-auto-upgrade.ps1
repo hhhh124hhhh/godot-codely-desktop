@@ -10,7 +10,7 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hoste
 $installerPath = (Resolve-Path -LiteralPath $Installer).Path
 $root = Join-Path $env:RUNNER_TEMP ('auto-upgrade-' + [guid]::NewGuid().ToString('N'))
 $evidence = Join-Path $root 'evidence'
-$install = Join-Path $root 'installed'
+$install = Join-Path $root 'installed\Godot Codely'
 $nativeAppData = [Environment]::GetFolderPath('ApplicationData')
 $nativeLocalAppData = [Environment]::GetFolderPath('LocalApplicationData')
 $env:APPDATA = Join-Path $root 'appdata'
@@ -129,7 +129,7 @@ public static class InstallerButton {
         $texts = $element.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
         @($texts | ForEach-Object { $_.Current.Name }) | Set-Content -LiteralPath (Join-Path $evidence 'installer-window.txt')
         foreach ($button in $texts) {
-          if ($button.Current.IsEnabled -and $button.Current.Name -match '^(Next|Install|Finish|下一步|安装|完成|确定)') {
+          if ($button.Current.IsEnabled -and $button.Current.Name -match '^(Next(?:\s*>\s*)?|Install|Finish|下一步(?:\s*>\s*)?|安装|完成|确定)$') {
             # NSIS exposes these native buttons through legacy accessibility;
             # their UIA ControlType is not consistently Button on hosted Windows.
             $handle = [IntPtr]$button.Current.NativeWindowHandle
