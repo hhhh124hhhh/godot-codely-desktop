@@ -92,6 +92,14 @@ try {
   Add-Type -AssemblyName UIAutomationTypes
   Add-Type -AssemblyName System.Windows.Forms
   Add-Type -AssemblyName System.Drawing
+  Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class InstallerButton {
+  [DllImport("user32.dll", CharSet = CharSet.Auto)]
+  public static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+}
+'@
   $deadline = (Get-Date).AddMinutes(5)
   $restart = $null
   $installerSeen = $false
@@ -120,13 +128,16 @@ try {
         Write-Host "Owned installer window: $($element.Current.Name)"
         $texts = $element.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
         @($texts | ForEach-Object { $_.Current.Name }) | Set-Content -LiteralPath (Join-Path $evidence 'installer-window.txt')
-        $buttons = $element.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-          (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)))
-        foreach ($button in $buttons) {
-          Write-Host "Owned installer button: $($button.Current.Name); enabled=$($button.Current.IsEnabled)"
+        foreach ($button in $texts) {
           if ($button.Current.IsEnabled -and $button.Current.Name -match '^(Next|Install|Finish|下一步|安装|完成|确定)') {
-            $pattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-            $pattern.Invoke()
+            # NSIS exposes these native buttons through legacy accessibility;
+            # their UIA ControlType is not consistently Button on hosted Windows.
+            $handle = [IntPtr]$button.Current.NativeWindowHandle
+            if ($handle -ne [IntPtr]::Zero) {
+              Write-Host "Click owned installer control: $($button.Current.Name)"
+              [void][InstallerButton]::SendMessage($handle, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+              break
+            }
           }
         }
       }
