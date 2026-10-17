@@ -835,6 +835,47 @@ describe('plugin-recovery', () => {
     expect(await pruneUnresolvableProfileBundles(testDir)).toEqual([])
   })
 
+  it('keeps host-inserted bundles that resolve through the installation anchor', async () => {
+    // Upstream persists the workbench enable toggle by appending the plugin to
+    // dsh.profile.bundles. In-box host plugins (dsh-godot-stack) never live in
+    // the profile node_modules — Harness resolves them from the installation
+    // anchor — so the startup prune must not treat their absence as missing.
+    const pkgPath = profilePackageJsonPath(testDir)
+    await writeFile(
+      pkgPath,
+      JSON.stringify({
+        dependencies: { dshmarket: '1.16.0', 'dsh-godot-stack': '0.1.6' },
+        dsh: {
+          profile: {
+            bundles: ['@deepseek-ai/dsh-base', 'dshmarket', 'dsh-godot-stack']
+          }
+        }
+      })
+    )
+
+    const hostInserted = new Set(['dsh-godot-stack'])
+    expect(await pruneUnresolvableProfileBundles(testDir, hostInserted)).toEqual([])
+    const updated = JSON.parse(await readFile(pkgPath, 'utf8'))
+    expect(updated.dsh.profile.bundles).toEqual(['@deepseek-ai/dsh-base', 'dshmarket', 'dsh-godot-stack'])
+    expect(updated.dependencies).toEqual({ dshmarket: '1.16.0', 'dsh-godot-stack': '0.1.6' })
+
+    // Market plugins without a profile directory are still pruned.
+    await writeFile(
+      pkgPath,
+      JSON.stringify({
+        dependencies: { 'dsh-uninstalled': '^1.0.0' },
+        dsh: {
+          profile: {
+            bundles: ['@deepseek-ai/dsh-base', 'dsh-uninstalled', 'dsh-godot-stack']
+          }
+        }
+      })
+    )
+    expect(await pruneUnresolvableProfileBundles(testDir, hostInserted)).toEqual(['dsh-uninstalled'])
+    const after = JSON.parse(await readFile(pkgPath, 'utf8'))
+    expect(after.dsh.profile.bundles).toEqual(['@deepseek-ai/dsh-base', 'dsh-godot-stack'])
+  })
+
   it('sweeps pnpm staging and sidelined package directories before launch', () => {
     // Windows refuses to replace a directory something still holds open, so
     // the packaged pnpm runner moves the blocked package aside and lets pnpm

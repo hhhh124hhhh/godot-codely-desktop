@@ -557,7 +557,7 @@ export async function uninstallPluginFromProfile(
  *
  * @returns the bundle names whose declaration was removed, empty when none was.
  */
-export async function pruneUnresolvableProfileBundles(dshHome: string): Promise<string[]> {
+export async function pruneUnresolvableProfileBundles(dshHome: string, hostInserted: ReadonlySet<string> = new Set()): Promise<string[]> {
   const manifestPath = profilePackageJsonPath(dshHome)
   const readBundles = async (): Promise<string[]> => {
     try {
@@ -568,7 +568,7 @@ export async function pruneUnresolvableProfileBundles(dshHome: string): Promise<
     }
   }
   const before = await readBundles()
-  if (!(await pruneMissingProfileBundles(dshHome))) return []
+  if (!(await pruneMissingProfileBundles(dshHome, hostInserted))) return []
   const after = new Set(await readBundles())
   return before.filter((name) => !after.has(name))
 }
@@ -579,7 +579,7 @@ export async function pruneUnresolvableProfileBundles(dshHome: string): Promise<
  * prunes it from `bundles` and `dependencies` to prevent Harness from failing with
  * "cannot resolve profile bundle".
  */
-export async function pruneMissingProfileBundles(dshHome: string): Promise<boolean> {
+export async function pruneMissingProfileBundles(dshHome: string, hostInserted: ReadonlySet<string> = new Set()): Promise<boolean> {
   const manifestPath = profilePackageJsonPath(dshHome)
   if (!existsSync(manifestPath)) return false
 
@@ -607,7 +607,12 @@ export async function pruneMissingProfileBundles(dshHome: string): Promise<boole
     if (manifest.dsh?.profile?.bundles) {
       const origBundles = manifest.dsh.profile.bundles
       const prunedBundles = origBundles.filter((bundle) => {
-        if (!isThirdPartyPackageName(bundle)) return true
+        // Host-inserted bundles (e.g. dsh-godot-stack) resolve through the
+        // installation anchor, not the profile node_modules. Upstream toggles
+        // persist them in dsh.profile.bundles, so absence from the profile
+        // tree must not prune them — otherwise the user's enable choice is
+        // silently lost on every launch.
+        if (!isThirdPartyPackageName(bundle) || hostInserted.has(bundle)) return true
         const bundleDir = join(nodeModulesPath, bundle)
         const exists = existsSync(bundleDir)
         if (!exists) {
@@ -623,7 +628,7 @@ export async function pruneMissingProfileBundles(dshHome: string): Promise<boole
 
     if (manifest.dependencies) {
       for (const dep of Object.keys(manifest.dependencies)) {
-        if (!isThirdPartyPackageName(dep)) continue
+        if (!isThirdPartyPackageName(dep) || hostInserted.has(dep)) continue
         const depDir = join(nodeModulesPath, dep)
         if (!existsSync(depDir)) {
           delete manifest.dependencies[dep]
