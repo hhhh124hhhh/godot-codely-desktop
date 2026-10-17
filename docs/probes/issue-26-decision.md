@@ -14,7 +14,7 @@
 
 | 项 | 已验证事实 | 整项判定与剩余 |
 | --- | --- | --- |
-| D1 | 0.1.4 安装包身份、真实远程安装、锁定失败回退及手动覆盖升级已有 CI 证据 | WAIT_EVIDENCE：真实自动升级见专项；尚未覆盖卸载保留和全部真人安装体验 |
+| D1 | 0.1.4 安装包身份、真实远程安装、锁定失败回退、手动覆盖升级及真实自动升级（下载/安装/重启/数据保留）均有 CI 证据 | PASS（专项）：常规目录自动升级闭环；卸载保留、自定义目录修复（`c42bb33`）发布后再验与全部真人安装体验仍缺 |
 | D2 | 真实 Lite 会话创建、项目身份/路径别名、开发 renderer/Harness 重开后同会话与草稿恢复 | WAIT_EVIDENCE：完整候选多项目实际交互与全部关闭重开生命周期 |
 | D3 | 自定义真实模型完成脚本修改、编译/冒烟、注入错误并同会话修复；真实 Godot Run/Stop 和编辑器 Play/Stop | WAIT_EVIDENCE：同一完整安装候选内模型闭环、真人最小行为确认；不能把开发证据拼成同包通过 |
 | D4 | 模型缺凭据真实报错、停止/日志保留、错误所有权、超时不重放与损坏/CAS恢复回归 | WAIT_EVIDENCE：安装候选内审批拒绝、崩溃/取消/外部修改等完整矩阵 |
@@ -35,6 +35,8 @@
 - [38990060870](https://github.com/hhhh124hhhh/godot-codely-desktop/actions/runs/38990060870)：真实 Next/Finish 已完成，应用已自动启动，但目标由自定义 `installed` 变成 `installed/Godot Codely`，没有替换原目录。此项是实际自定义目录升级缺陷，不计 PASS。
 - 根因：锁定版本 electron-builder 的 assisted installer `instFilesPre` 会给不含产品名的目录追加产品名；更新路径也执行了该逻辑。修复提交 `c42bb33` 将此行为限制为非更新安装。定向模板与夹具回归 5 PASS；**修复尚未进入已发布 0.1.4，尚无新安装包的原生修复验收**。
 - [38990761315](https://github.com/hhhh124hhhh/godot-codely-desktop/actions/runs/38990761315) 正在验证已发布 0.1.4 在常规产品目录下的其余更新与数据保留链路；即使成功，也不消除上述自定义目录缺陷。
+- [38991669999](https://github.com/hhhh124hhhh/godot-codely-desktop/actions/runs/38991669999)：修复限流后更新器真实下载/安装/自动重启全通过；最终 settings 断言误读 `settings.json`（该文件只是 godot-stack MCP 注册，权威设置在 settings 服务文档），改为经 `settings/describe` API 读回并补前后快照。
+- [38992438040](https://github.com/hhhh124hhhh/godot-codely-desktop/actions/runs/38992438040) **PASS**：已发布 0.1.4 安装包对 0.1.3 种子的真实自动升级全流程通过——更新提示、下载（SHA-256 与发布一致）、NSIS 安装、自动重启；升级后会话、凭据值与元数据、`localStorage` 草稿、`settings/describe` 的 `locale.preference='en'` 均保留（证据 artifact `windows-auto-upgrade-evidence`，`ui-result.json` 全 true）。限制：种子为降版本夹具，不代表官方旧版本兼容或真人 UX 验收；自定义目录缺陷 `c42bb33` 的修复不在 0.1.4 内，需新版本发布后再验。
 
 当前自动化决策：**WAIT_EVIDENCE；R1 BLOCKED**。不记录 R0_READY/R1_READY，不关闭 #26，也不授权《折层工厂》的正式受管试点。只有对同一候选收齐 R0 的必需证据并由人类确认，才能记录 R0_READY；R1 还必须满足现有强制边界要求，不能通过改名或隐藏工具旁路得到 PASS。
 
