@@ -25,20 +25,22 @@ it('distinguishes a Windows engine crash from a normal stop and exposes its outp
   expect(render(1)).not.toContain('engineCrashed')
   expect(render(3221225477, true)).not.toContain('engineCrashed')
 })
-function fixture({ project = { godot: true, path: '/game', name: 'Actual game' }, session = null, request, loadProject = false, engine = { checked: true, missing: false, path: '/godot' }, nativeEngine = true } = {}, { models = null, catalogFails = false } = {}) {
+function fixture({ project = { godot: true, path: '/game', name: 'Actual game' }, session = null, request, loadProject = false, engine = { checked: true, missing: false, path: '/godot' }, nativeEngine = true } = {}, { models = null } = {}) {
   let Desktop
+  let modelStore
   let stateIndex = 0
   const cleanups = []
   const setters = []
   const fetch = request || vi.fn(async () => Response.json({ sessionId: 'created' }))
-  const values = ['', 'overview', true, project, '', false, 0, null, null, engine, models]
+  const values = ['', 'overview', true, project, '', false, 0, null, null, engine]
   const react = { ...React, useState: () => { const setter = vi.fn(); setters.push(setter); return [values[stateIndex++], setter] }, useEffect: callback => { const cleanup = callback(); if (cleanup) cleanups.push(cleanup) }, useRef: value => ({ current: value }), useCallback: fn => fn, useSyncExternalStore: (_subscribe, snapshot) => snapshot() }
   // Project reads are covered by the backend tests. Do not run data-loading effects in this render fixture.
   let effectIndex = 0
   react.useEffect = callback => { const index = effectIndex++; if (index === 2 || (loadProject && index === 0)) cleanups.push(callback()) }
-  const sandboxWindow = { innerWidth: 1280, __ModuleLoader__: { load({ factory }) { Desktop = factory(name => { if (name === 'react') return react; throw Error(name) }).Desktop } } }
+  const sandboxWindow = { innerWidth: 1280, __ModuleLoader__: { load({ factory }) { const mod = factory(name => { if (name === 'react') return react; throw Error(name) }); Desktop = mod.Desktop; modelStore = mod.modelStore } } }
   if (nativeEngine) sandboxWindow.__GODOT_DESKTOP_ENGINE__ = { status: vi.fn(async () => ({ ok: true, state: { path: engine.path || '' } })), choose: vi.fn(async () => ({ ok: true })) }
   vm.runInNewContext(code, { window: sandboxWindow, fetch, AbortController, console })
+  if (models !== null) modelStore.value = models
   const subscribe = () => () => {}
   const store = value => ({ subscribe, getSnapshot: () => value })
   const ensureSession = vi.fn(async () => 'created')
@@ -121,7 +123,7 @@ it('blocks starting a session without a configured model and explains how to add
   expect(blocked.props.disabled).toBe(true)
 })
 it('keeps starting enabled when the model catalog cannot be read', () => {
-  const f = fixture({}, { models: null, catalogFails: true })
+  const f = fixture({}, { models: null })
   const start = f.nodes.find(node => node.type === 'button' && node.props.children === 'start')
   expect(start.props.disabled).toBe(false)
   expect(renderToStaticMarkup(f.tree)).not.toContain('modelNoticeTitle')

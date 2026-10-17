@@ -64,10 +64,16 @@ window.__ModuleLoader__.load({
       @media(max-width:1100px){.gcAside{position:absolute;inset:0 0 0 auto;width:min(320px,100%);z-index:2;box-shadow:0 8px 24px var(--dsw-alias-border-l2)}.gcOverview{padding:24px}.gcCards{grid-template-columns:1fr}}
       @media(prefers-reduced-motion:reduce){.gcDesktop *{scroll-behavior:auto}}
     `
-    // ctx.remote is only readable while a cordis context is active. Query the
-    // model catalog in apply()'s effect (like dsh-desktop-workbenches does)
-    // and share the resulting promise with the panel.
-    let modelCatalogPromise = null
+    // ctx.remote is only readable while a cordis context is active. Probe the
+    // model catalog inside apply()'s inject scope and publish the result to a
+    // plain store; the panel never touches ctx.remote.
+    const modelStore = {
+      value: null,
+      listeners: new Set(),
+      set(value) { this.value = value; for (const listener of this.listeners) listener() },
+      subscribe(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener) },
+      getSnapshot() { return this.value }
+    }
     async function callApi(endpoint, workspaceId, body, signal) {
       const response = await fetch('/api/godot-desktop/' + endpoint + '?workspaceId=' + encodeURIComponent(workspaceId), {
         method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal
@@ -179,16 +185,7 @@ window.__ModuleLoader__.load({
         return () => { stale = true }
       }, [workspaceId, active])
       // No configured model disables "start" with guidance instead of a silent failure.
-      const [models, setModels] = React.useState(null)
-      React.useEffect(() => {
-        if (!active || !modelCatalogPromise) return
-        let stale = false
-        modelCatalogPromise.then(catalog => {
-          if (stale) return
-          setModels(catalog.ok && catalog.value.groups.some(group => group.models.length > 0))
-        }).catch(() => { if (!stale) setModels(null) })
-        return () => { stale = true }
-      }, [active])
+      const models = React.useSyncExternalStore(React.useCallback(fn => modelStore.subscribe(fn), []), modelStore.getSnapshot.bind(modelStore))
       const chooseEngine = () => run(async () => {
         if (!native) return
         const picked = await native.choose()
@@ -260,9 +257,11 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }))
       const t = ctx.locale.bind(NS)
-      ctx.effect(() => {
-        modelCatalogPromise = ctx.remote?.session?.modelCatalog?.() ?? null
-      })
+      ctx.effect(() => ctx.inject([], scope => {
+        scope.remote.session.modelCatalog().then(catalog => {
+          modelStore.set(catalog.ok && catalog.value.groups.some(group => group.models.length > 0))
+        }).catch(() => modelStore.set(null))
+      }), 'godot: model catalog probe')
       ctx.effect(() => {
         if (document.querySelector('[data-plugin-css="godot-desktop"]')) return
         const style = document.createElement('style'); style.dataset.pluginCss = 'godot-desktop'; style.textContent = css
@@ -272,6 +271,6 @@ window.__ModuleLoader__.load({
       const Panel = props => h(Desktop, { ...props, ctx, t })
       ctx.effect(() => ctx.desktopWorkbenches.register({ title: t('title'), description: t('description'), panelTitle: t('context'), repository: 'https://github.com/hhhh124hhhh/godot-codely-desktop', customFrame: true }, Panel))
     }
-    return { apply, inject: ['desktopWorkbenches', 'locale', 'workspaces', 'sessions', 'uiWorkspace'], Desktop, EnginePanel, callApi }
+    return { apply, inject: ['desktopWorkbenches', 'locale', 'workspaces', 'sessions', 'uiWorkspace'], Desktop, EnginePanel, callApi, modelStore }
   }
 })
