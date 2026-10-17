@@ -125,11 +125,18 @@ describe('normal Profile boot preflight', () => {
   it('allows a host-inserted bundle entry with no profile package directory (upstream toggle persistence)', async () => {
     // The workbench enable toggle persists in-box host plugins (e.g.
     // dsh-godot-stack) as a bare dsh.profile.bundles entry. The package
-    // resolves from the installation anchor, so a missing profile directory
-    // is the normal enabled state, not a duplicate registration.
+    // resolves anchor-first, so a missing profile directory is the normal
+    // enabled state, not a duplicate registration. A real second copy in the
+    // profile node_modules still is one.
     const { home, profile, bundle } = await fixture()
     await rm(bundle, { recursive: true })
     const entry = join(home, 'app', 'lib', 'bin.js')
+    // Anchor-resolvable copy, mirroring how the installed app carries
+    // dsh-godot-stack outside the profile tree.
+    const anchorBundle = join(home, 'app', 'node_modules', 'test-startup-bundle')
+    await mkdir(anchorBundle, { recursive: true })
+    await writeFile(join(anchorBundle, 'package.json'), JSON.stringify({ name: 'test-startup-bundle', version: '1.0.0', dsh: { bundle: { patch: 'cordis.patch.yml' } } }))
+    await writeFile(join(anchorBundle, 'cordis.patch.yml'), '[]\n')
     const hostPatch = join(home, 'host.patch.yml')
     await writeFile(hostPatch, '- insert:\n    - id: host-test\n      name: test-startup-bundle\n')
     const manifestPath = join(profile, 'package.json')
@@ -140,7 +147,10 @@ describe('normal Profile boot preflight', () => {
     expect(await inspectProfileBootInputs(home, entry, hostPatch)).toBeUndefined()
     expect(await readFile(manifestPath, 'utf8')).toBe(manifest)
     // A real second copy in the profile is still a duplicate to arbitrate.
-    await mkdir(join(profile, 'node_modules', 'test-startup-bundle'), { recursive: true })
+    const profileBundle = join(profile, 'node_modules', 'test-startup-bundle')
+    await mkdir(profileBundle, { recursive: true })
+    await writeFile(join(profileBundle, 'package.json'), JSON.stringify({ name: 'test-startup-bundle', version: '1.0.0', dsh: { bundle: { patch: 'cordis.patch.yml' } } }))
+    await writeFile(join(profileBundle, 'cordis.patch.yml'), '[]\n')
     expect((await inspectProfileBootInputs(home, entry, hostPatch))?.packageName).toBe('test-startup-bundle')
   })
 })

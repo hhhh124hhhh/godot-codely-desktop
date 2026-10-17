@@ -2,6 +2,7 @@ node_modules/
 out/
 dist/
 dist-dev/
+dist-dev2/
 .DS_Store
 *.log
 coverage/
