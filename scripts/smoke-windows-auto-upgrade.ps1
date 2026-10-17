@@ -93,9 +93,22 @@ try {
   $deadline = (Get-Date).AddMinutes(5)
   $restart = $null
   $installerSeen = $false
+  $installerPids = [System.Collections.Generic.HashSet[int]]::new()
+  $lastInstallState = ''
   while ((Get-Date) -lt $deadline) {
     $processes = @(Get-CimInstance Win32_Process)
-    foreach ($process in $processes | Where-Object { $_.ExecutablePath -eq $download.FullName }) {
+    foreach ($process in $processes) {
+      if ($process.ExecutablePath -eq $download.FullName) { [void]$installerPids.Add([int]$process.ProcessId) }
+    }
+    # NSIS transfers its wizard to a temporary child executable. Keep the exact
+    # downloaded installer's descendants as the ownership boundary.
+    do {
+      $added = $false
+      foreach ($process in $processes) {
+        if ($installerPids.Contains([int]$process.ParentProcessId) -and $installerPids.Add([int]$process.ProcessId)) { $added = $true }
+      }
+    } while ($added)
+    foreach ($process in $processes | Where-Object { $installerPids.Contains([int]$_.ProcessId) }) {
       $installerSeen = $true
       $nativeProcess = Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue
       if ($nativeProcess.MainWindowHandle -ne [IntPtr]::Zero) {
@@ -103,12 +116,18 @@ try {
         $buttons = $element.FindAll([System.Windows.Automation.TreeScope]::Descendants,
           (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)))
         foreach ($button in $buttons) {
+          Write-Host "Owned installer button: $($button.Current.Name); enabled=$($button.Current.IsEnabled)"
           if ($button.Current.IsEnabled -and $button.Current.Name -match '^(Next|Install|Finish|下一步|安装|完成|确定)') {
             $pattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
             $pattern.Invoke()
           }
         }
       }
+    }
+    $installState = @($processes | Where-Object { $installerPids.Contains([int]$_.ProcessId) -or $_.ExecutablePath -eq $executable } | Select-Object ProcessId, ParentProcessId, ExecutablePath, CommandLine) | ConvertTo-Json -Depth 3
+    if ($installState -ne $lastInstallState) {
+      $installState | Add-Content -LiteralPath (Join-Path $evidence 'installation-processes.jsonl')
+      $lastInstallState = $installState
     }
     if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256 -ErrorAction SilentlyContinue).Hash -eq $seed.shippedAsarSha256) {
       $restart = $processes | Where-Object { $_.ExecutablePath -eq $executable -and $_.ProcessId -ne $desktop.Id -and $_.CommandLine -notmatch '--type=' } | Select-Object -First 1
