@@ -13,10 +13,9 @@ $evidence = Join-Path $root 'evidence'
 $install = Join-Path $root 'installed\Godot Codely'
 $nativeAppData = [Environment]::GetFolderPath('ApplicationData')
 $nativeLocalAppData = [Environment]::GetFolderPath('LocalApplicationData')
-$env:APPDATA = Join-Path $root 'appdata'
-$env:LOCALAPPDATA = Join-Path $root 'localappdata'
-$env:USERPROFILE = Join-Path $root 'fixture-user'
-$env:HOME = $env:USERPROFILE
+# Shell-based installer relaunch uses the logged-on account's environment.
+# The runner itself is disposable: use its real clean Profile consistently
+# instead of spoofing paths that ShellExecute does not inherit.
 $env:GODOT_CODELY_BRIDGE_PORT = '0'
 $env:GODOT_CODELY_MEMORY_DIR = Join-Path $root 'memories'
 New-Item -ItemType Directory -Path $evidence, $env:APPDATA, $env:LOCALAPPDATA, $env:USERPROFILE -Force | Out-Null
@@ -38,6 +37,17 @@ function Stop-OwnedDesktop([int]$processId) {
   $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $processId" | Select-Object -ExpandProperty ProcessId)
   foreach ($childId in $children) { Stop-OwnedDesktop $childId }
   Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+}
+function Stop-InstalledDesktop {
+  # Include late-spawned Harness children as well as the observed restart PID.
+  # Exact executable ownership confines cleanup to this disposable installation.
+  for ($attempt = 0; $attempt -lt 15; $attempt++) {
+    $owned = @(Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq $executable })
+    if ($owned.Count -eq 0) { Start-Sleep -Milliseconds 500; return }
+    foreach ($process in $owned) { Stop-OwnedDesktop $process.ProcessId }
+    Start-Sleep -Milliseconds 500
+  }
+  throw 'Installed application processes did not stop before inspection relaunch.'
 }
 $desktop = Start-Desktop
 try {
@@ -168,7 +178,11 @@ public static class InstallerButton {
   $afterHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash
   if ($afterHash -ne $seed.shippedAsarSha256) { throw 'Updater did not restore the original official package.' }
   # The installer relaunch omits CDP switches. Observe it, then reopen solely for UI/data inspection.
-  Stop-OwnedDesktop $restart.ProcessId
+  [ordered]@{ sourceAsarSha256 = $seed.shippedAsarSha256; finalAsarSha256 = $afterHash;
+    automaticRestartPid = $restart.ProcessId; automaticRestartPath = $restart.ExecutablePath;
+    downloadedInstallerSha256 = $downloadHash } | ConvertTo-Json |
+    Set-Content -LiteralPath (Join-Path $evidence 'installation-result.json')
+  Stop-InstalledDesktop
   Start-Sleep -Seconds 2
   $desktop = Start-Desktop
   & node (Join-Path $PSScriptRoot 'inspect-installed-main.mjs') 'http://127.0.0.1:49338' |
@@ -188,6 +202,7 @@ public static class InstallerButton {
 } finally {
   & node (Join-Path $PSScriptRoot 'capture-installed-startup.mjs') $debugEndpoint $evidence final 2>$null
   if ($desktop) { Stop-OwnedDesktop $desktop.Id }
+  Stop-InstalledDesktop
   foreach ($file in Get-ChildItem -LiteralPath $root -Filter '*.log') {
     (Get-Content -LiteralPath $file.FullName -ErrorAction SilentlyContinue) |
       ForEach-Object { $_ -replace '([?&]token=)[^\s&]+', '$1[redacted]' } |
