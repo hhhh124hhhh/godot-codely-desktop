@@ -1,6 +1,14 @@
 # Desktop release runbook
 
-Godot Codely early builds use manual updates from this fork's GitHub Releases. The inherited DSH update, version-index and failure-report services are disabled; packaging or signing a build does not enable them. Dev and production builds have independent Godot Codely application IDs and data directories. Seed-user acceptance and current native evidence are recorded in [seed readiness](seed-user-readiness.md).
+Godot Codely production Windows builds starting with 0.1.4 check this fork's unsigned GitHub Releases channel. The user accepts download and then explicitly restarts to install. Earlier builds require a manual installation to enter this channel; macOS, Linux and Dev builds retain manual updates. The inherited DSH update and failure-report services remain disabled. Dev and production builds have independent application IDs and data directories. Seed-user acceptance and current native evidence are recorded in [seed readiness](seed-user-readiness.md).
+
+### Automatic update acceptance on disposable Windows
+
+Dispatch `Release desktop installers` on the branch under test with `mode=auto-upgrade`, `target=windows`, `update_target_version` naming an already published unsigned release, and a lower same-length `update_seed_version` (for example target `0.1.4`, seed `0.1.3`). This mode does not build or publish a release and does not send notifications.
+
+The runner installs the verified published production package, then lowers only that disposable installed copy's package.json version and matching ASAR integrity fields. This is a declared fixture using the target's shipped updater code, **not an official older release**. Its real update UI must offer/download the official target, run its NSIS installer and automatically restart. The final ASAR must exactly match the original published installation, and the real UI, session, settings, fixture credential metadata and local storage must survive. The installer restart is observed before a separate debugging relaunch inspects UI/data. Keep this distinction in acceptance reports; it does not prove compatibility with every historic version or replace human release approval.
+
+`windows-auto-upgrade-evidence` retains the declared fixture identity, hashes, receipts and screenshots for seven days. Both installer scripts refuse developer PCs because even a custom installation directory changes Windows shortcuts/registration. No environment override should bypass that guard.
 
 ## Orchestrated release (recommended)
 

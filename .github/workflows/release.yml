@@ -21,7 +21,7 @@ on:
           - macos
           - linux
       mode:
-        description: development=Dev artifacts only; unsigned=GitHub Release without signing; signed=test notify; resign=sign artifact; prerelease=signed publish; smoke=check signed artifact
+        description: development=Dev artifacts; unsigned=publish unsigned; signed=test notify; resign=sign artifact; prerelease=signed publish; smoke=check signed artifact; auto-upgrade=disposable updater acceptance
         required: false
         default: development
         type: choice
@@ -32,6 +32,7 @@ on:
           - resign
           - prerelease
           - smoke
+          - auto-upgrade
       prerelease_tag:
         description: Non-v semver tag for prerelease mode (e.g. 2.1.0-rc.1)
         required: false
@@ -50,6 +51,14 @@ on:
         type: string
       unsigned_run_id:
         description: Release run ID containing an existing windows-x64-unsigned artifact (resign mode)
+        required: false
+        type: string
+      update_target_version:
+        description: Published unsigned version for disposable Windows auto-upgrade acceptance
+        required: false
+        type: string
+      update_seed_version:
+        description: Lower same-length manifest-only fixture version; not an official old release
         required: false
         type: string
 
@@ -79,10 +88,22 @@ jobs:
           UNSIGNED_VERSION: ${{ inputs.unsigned_version }}
           SMOKE_RUN_ID: ${{ inputs.smoke_run_id }}
           UNSIGNED_RUN_ID: ${{ inputs.unsigned_run_id }}
+          UPDATE_TARGET_VERSION: ${{ inputs.update_target_version }}
+          UPDATE_SEED_VERSION: ${{ inputs.update_seed_version }}
         run: |
           set -euo pipefail
           semver_re='^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'
           case "$MODE" in
+            auto-upgrade)
+              if [ "$TARGET" != 'windows' ] || ! [[ "$UPDATE_TARGET_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || ! [[ "$UPDATE_SEED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "::error::auto-upgrade requires target=windows and two stable core versions"
+                exit 1
+              fi
+              if [ "${#UPDATE_TARGET_VERSION}" != "${#UPDATE_SEED_VERSION}" ] || [ "$UPDATE_TARGET_VERSION" = "$UPDATE_SEED_VERSION" ] || [ "$(printf '%s\n' "$UPDATE_TARGET_VERSION" "$UPDATE_SEED_VERSION" | sort -V | head -1)" != "$UPDATE_SEED_VERSION" ]; then
+                echo "::error::update_seed_version must be lower and have the same byte length"
+                exit 1
+              fi
+              ;;
             prerelease)
               if [ -z "${PRERELEASE_TAG:-}" ]; then
                 echo "::error::prerelease mode requires prerelease_tag"
@@ -337,7 +358,7 @@ jobs:
       startsWith(github.ref, 'refs/tags/v') ||
       github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' &&
-        inputs.mode != 'smoke' && inputs.mode != 'resign' &&
+        inputs.mode != 'smoke' && inputs.mode != 'resign' && inputs.mode != 'auto-upgrade' &&
         (inputs.target == 'all' || inputs.target == 'windows'))
     runs-on: windows-2022
     steps:
@@ -571,6 +592,55 @@ jobs:
             dist/latest.yml
           compression-level: 0
           if-no-files-found: error
+
+  windows-auto-upgrade:
+    name: Windows real automatic upgrade
+    needs: validate-dispatch
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'auto-upgrade' && inputs.target == 'windows'
+    permissions:
+      contents: read
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Only test tooling is used; the application is the published, self-contained installer.
+      - run: npm ci --ignore-scripts
+      - name: Verify fixture mutation behavior
+        run: node node_modules/vitest/vitest.mjs run test/auto-upgrade-seed.test.mjs
+      - name: Download and verify published production installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_VERSION: ${{ inputs.update_target_version }}
+        run: |
+          gh release download "v${env:TARGET_VERSION}-unsigned" --repo $env:GITHUB_REPOSITORY `
+            --pattern godot-codely-windows-x64-setup.exe --pattern SHA256SUMS.txt --dir update-package
+          if ($LASTEXITCODE -ne 0) { throw 'Published installer download failed.' }
+          $row = Get-Content update-package/SHA256SUMS.txt | Where-Object { $_ -match '  godot-codely-windows-x64-setup\.exe$' }
+          if (@($row).Count -ne 1) { throw 'Installer digest entry missing or ambiguous.' }
+          $expected = ($row -split '\s+')[0]
+          if ((Get-FileHash update-package/godot-codely-windows-x64-setup.exe -Algorithm SHA256).Hash -ne $expected) { throw 'Published installer SHA-256 mismatch.' }
+      - name: Exercise shipped updater, restart and retained user data
+        shell: pwsh
+        env:
+          # electron-updater 用未认证 api.github.com 请求在托管 runner 共享 IP 上
+          # 会被限流（GitHub releases request failed: 403）；注入只读 token 供其鉴权。
+          GH_TOKEN: ${{ github.token }}
+          TARGET_VERSION: ${{ inputs.update_target_version }}
+          SEED_VERSION: ${{ inputs.update_seed_version }}
+        run: |
+          ./scripts/smoke-windows-auto-upgrade.ps1 -Installer update-package/godot-codely-windows-x64-setup.exe `
+            -Version $env:TARGET_VERSION -SeedVersion $env:SEED_VERSION
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-auto-upgrade-evidence
+          path: ${{ runner.temp }}/auto-upgrade-*/evidence/**
+          retention-days: 7
+          if-no-files-found: warn
 
   windows-installed:
     name: Windows installer and client UI
