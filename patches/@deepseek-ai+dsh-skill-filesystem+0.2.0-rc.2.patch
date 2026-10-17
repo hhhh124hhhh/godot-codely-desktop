@@ -1,0 +1,115 @@
+diff --git a/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js b/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
+index d1eb543..d8cdd4c 100644
+--- a/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
+@@ -26,6 +26,12 @@ const USER_AGENTS_RANK = 500;
+ const DEFAULT_WATCH_STABILITY_THRESHOLD_MS = 200;
+ const DEFAULT_WATCH_POLL_INTERVAL_MS = 100;
+ const DEFAULT_WATCH_MAX_PROJECTS = 128;
++// Host patch (issue #34 P0-2): a hostile user skill root (huge archives,
++// junction cycles) can keep chokidar from ever emitting "ready", which left
++// list() awaiting the watcher forever and blocked Harness startup. Bound the
++// readiness wait and back off before retrying an unhealthy root.
++const DEFAULT_WATCH_READY_TIMEOUT_MS = 5000;
++const WATCH_RETRY_COOLDOWN_MS = 60000;
+ const name = "skill-filesystem";
+ const inject = ["skills"];
+ const Config = z.object({
+@@ -40,6 +46,7 @@ const Config = z.object({
+ 	watchPollIntervalMs: z.number().default(DEFAULT_WATCH_POLL_INTERVAL_MS),
+ 	watchMaxProjects: z.number().default(DEFAULT_WATCH_MAX_PROJECTS),
+ 	watchFollowSymlinks: z.boolean().default(true),
++	watchReadyTimeoutMs: z.number().default(DEFAULT_WATCH_READY_TIMEOUT_MS),
+ 	bundledSkillDir: z.string()
+ });
+ /** Register the local filesystem skill provider on `ctx.skills`. */
+@@ -296,6 +303,9 @@ var SkillWatchManager = class {
+ 		return opening;
+ 	}
+ 	async ensureCurrentWatcher(state) {
++		// Host patch (issue #34 P0-2): a root whose watcher cannot reach
++		// readiness must not be retried on every list(); cool down first.
++		if (state.unhealthy && Date.now() < state.retryAfter) return;
+ 		const watcher = state.watcher;
+ 		if (watcher !== void 0 && !state.unhealthy) {
+ 			const current = await resolveRootWatchMode(state.root.path, this.config.followSymlinks);
+@@ -321,9 +331,11 @@ var SkillWatchManager = class {
+ 			/* v8 ignore stop */
+ 			state.watcher = watcher;
+ 			state.unhealthy = false;
++			state.retryAfter = 0;
+ 		} catch (error) {
+ 			if (!this.closing) {
+ 				state.unhealthy = true;
++				state.retryAfter = Date.now() + WATCH_RETRY_COOLDOWN_MS;
+ 				this.ctx.logger.warn(`skill-filesystem: failed to watch ${state.root.path}: ${errorMessage(error)}`);
+ 			}
+ 			throw error;
+@@ -393,12 +405,19 @@ var SkillWatchManager = class {
+ 			await this.closeWatcher(handle);
+ 			signal.throwIfAborted();
+ 		}
++		const readyTimeoutMs = this.config.readyTimeoutMs;
++		const readyTimer = setTimeout(() => {
++			readiness.reject(new Error(`watcher did not become ready within ${readyTimeoutMs}ms; continuing without live watch for ${state.root.path}`));
++		}, readyTimeoutMs);
++		readyTimer.unref?.();
+ 		const onAbort = () => {
++			clearTimeout(readyTimer);
+ 			readiness.reject(signal.reason);
+ 		};
+ 		signal.addEventListener("abort", onAbort, { once: true });
+ 		const onError = (error) => {
+ 			if (!ready) {
++				clearTimeout(readyTimer);
+ 				readiness.reject(error);
+ 				return;
+ 			}
+@@ -407,6 +426,7 @@ var SkillWatchManager = class {
+ 		watcher.on("error", onError);
+ 		watcher.once("ready", () => {
+ 			ready = true;
++			clearTimeout(readyTimer);
+ 			readiness.resolve(void 0);
+ 		});
+ 		for (const event of [
+@@ -421,9 +441,11 @@ var SkillWatchManager = class {
+ 		try {
+ 			await readiness.promise;
+ 		} catch (error) {
++			clearTimeout(readyTimer);
+ 			await this.closeWatcher(handle);
+ 			throw error;
+ 		} finally {
++			clearTimeout(readyTimer);
+ 			signal.removeEventListener("abort", onAbort);
+ 		}
+ 		return handle;
+@@ -487,18 +509,27 @@ function resolveWatchConfig(config) {
+ 	const stabilityThresholdMs = config.watchStabilityThresholdMs ?? DEFAULT_WATCH_STABILITY_THRESHOLD_MS;
+ 	const pollIntervalMs = config.watchPollIntervalMs ?? DEFAULT_WATCH_POLL_INTERVAL_MS;
+ 	const maxProjects = config.watchMaxProjects ?? DEFAULT_WATCH_MAX_PROJECTS;
++	const readyTimeoutMs = config.watchReadyTimeoutMs ?? envWatchReadyTimeoutMs() ?? DEFAULT_WATCH_READY_TIMEOUT_MS;
+ 	assertPositiveInteger("watchStabilityThresholdMs", stabilityThresholdMs);
+ 	assertPositiveInteger("watchPollIntervalMs", pollIntervalMs);
+ 	assertPositiveInteger("watchMaxProjects", maxProjects);
++	assertPositiveInteger("watchReadyTimeoutMs", readyTimeoutMs);
+ 	return {
+ 		enabled: config.watch ?? true,
+ 		usePolling: config.watchUsePolling ?? false,
+ 		stabilityThresholdMs,
+ 		pollIntervalMs,
+ 		maxProjects,
++		readyTimeoutMs,
+ 		followSymlinks: config.watchFollowSymlinks ?? true
+ 	};
+ }
++function envWatchReadyTimeoutMs() {
++	const raw = process.env.DSH_SKILL_WATCH_READY_TIMEOUT_MS;
++	if (raw === void 0) return void 0;
++	const value = Number(raw);
++	return Number.isInteger(value) && value > 0 ? value : void 0;
++}
+ async function resolveRootWatchMode(root, followSymlinks) {
+ 	let candidate = root;
+ 	while (true) {
