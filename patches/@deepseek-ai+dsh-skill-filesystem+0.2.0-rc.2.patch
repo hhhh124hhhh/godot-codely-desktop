@@ -1,5 +1,5 @@
 diff --git a/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js b/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
-index d1eb543..9200c40 100644
+index d1eb543..d8cdd4c 100644
 --- a/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-skill-filesystem/lib/index.js
 @@ -26,6 +26,12 @@ const USER_AGENTS_RANK = 500;
@@ -10,7 +10,7 @@ index d1eb543..9200c40 100644
 +// junction cycles) can keep chokidar from ever emitting "ready", which left
 +// list() awaiting the watcher forever and blocked Harness startup. Bound the
 +// readiness wait and back off before retrying an unhealthy root.
-+const DEFAULT_WATCH_READY_TIMEOUT_MS = 15000;
++const DEFAULT_WATCH_READY_TIMEOUT_MS = 5000;
 +const WATCH_RETRY_COOLDOWN_MS = 60000;
  const name = "skill-filesystem";
  const inject = ["skills"];
