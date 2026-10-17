@@ -15,6 +15,7 @@ window.__ModuleLoader__.load({
       context: '项目信息', path: '项目位置', main: '启动场景', unset: '尚未设置', editor: '编辑器', unknown: '尚未检查', connected: '上次检查已连接', offline: '未连接', refresh: '检查连接',
       editorHelp: '在 Godot 中启用 Godot Codely 插件并连接后，可使用编辑器操作。', play: '在编辑器中运行', stop: '停止编辑器运行', scan: '刷新资源', busy: '正在处理…', done: '操作已完成',
       running: '游戏运行中', stopped: '游戏已停止', unsaved: '编辑器有未保存的场景，请先在 Godot 中保存。', result: '操作结果',
+      engineNoticeTitle: '尚未配置 Godot 引擎', engineNoticeHelp: '智能体的运行验证需要 Godot 4 可执行文件。选择一次后，工作台与开发会话共用此路径；也可以直接开始，让智能体自动检测。', engineNoticeAction: '选择 Godot 引擎',
       guidance: '从这里推进你的游戏', understand: '读懂这个项目', understandHelp: '梳理场景与脚本，找到玩法的实现位置。', gameplay: '做出一个玩法', gameplayHelp: '比如二段跳、敌人巡逻，或一套背包交互。', troubleshoot: '修好一个问题', troubleshootHelp: '贴上报错和复现步骤，一起找到原因。',
       guidanceHelp: '把目标写进开发会话。修改后回到 Godot 运行，确认实际效果。', show: '展开项目信息', hide: '收起项目信息',
       WORKSPACE_REQUIRED: '请先选择项目。', WORKSPACE_MISSING: '项目已从工作区移除，请重新打开。', NOT_GODOT_PROJECT: '请选择 Godot 项目根目录。', PROJECT_TOO_LARGE: '项目配置过大，无法读取。',
@@ -32,6 +33,7 @@ window.__ModuleLoader__.load({
       context: 'Project details', path: 'Project location', main: 'Main scene', unset: 'Not configured', editor: 'Editor', unknown: 'Not checked', connected: 'Connected at last check', offline: 'Disconnected', refresh: 'Check connection',
       editorHelp: 'Enable and connect the Godot Codely plugin in Godot to use editor actions.', play: 'Play in editor', stop: 'Stop editor play', scan: 'Refresh resources', busy: 'Working…', done: 'Action completed',
       running: 'Game is running', stopped: 'Game has stopped', unsaved: 'The editor has unsaved scenes. Save them in Godot first.', result: 'Action result',
+      engineNoticeTitle: 'Godot engine not configured yet', engineNoticeHelp: 'Run verification needs a Godot 4 executable. Choose it once and both the workbench and development sessions share the path; you can also start directly and let the agent auto-detect it.', engineNoticeAction: 'Choose Godot engine',
       guidance: 'Move your game forward', understand: 'Explore this project', understandHelp: 'Trace scenes and scripts to find where gameplay lives.', gameplay: 'Build a mechanic', gameplayHelp: 'Try a double jump, enemy patrol, or inventory interaction.', troubleshoot: 'Fix a problem', troubleshootHelp: 'Share an error and steps to reproduce it.',
       guidanceHelp: 'Describe your goal in a development session, then run the changes in Godot to check the result.', show: 'Show project details', hide: 'Hide project details',
       WORKSPACE_REQUIRED: 'Choose a project first.', WORKSPACE_MISSING: 'This workspace was removed. Open the project again.', NOT_GODOT_PROJECT: 'Choose a Godot project root.', PROJECT_TOO_LARGE: 'The project configuration is too large to read.',
@@ -143,6 +145,7 @@ window.__ModuleLoader__.load({
       const [revision, setRevision] = React.useState(0)
       const [editor, setEditor] = React.useState(null)
       const [result, setResult] = React.useState(null)
+      const [engine, setEngine] = React.useState({ checked: false, missing: false, path: '' })
       const request = React.useRef(null)
       const pending = React.useRef(false)
       const available = workspaces.items.filter(item => service.workspaceVisible(item.workspaceId, entry.id))
@@ -157,6 +160,24 @@ window.__ModuleLoader__.load({
       }, [workspaceId, active, revision])
       React.useEffect(() => { if (currentId && state.state.sessionBindings[currentId] === entry.id) { setSelected(''); setView('conversation') } }, [currentId, entry.id])
       React.useEffect(() => () => request.current?.abort(), [workspaceId, active])
+      const native = window.__GODOT_DESKTOP_ENGINE__
+      React.useEffect(() => {
+        if (!active || !native || !workspaceId) { setEngine({ checked: false, missing: false, path: '' }); return }
+        let stale = false
+        native.status(workspaceId).then(response => {
+          if (stale) return
+          setEngine({ checked: true, missing: response.ok && !response.state?.path, path: response.state?.path || '' })
+        }).catch(() => { if (!stale) setEngine({ checked: true, missing: false, path: '' }) })
+        return () => { stale = true }
+      }, [workspaceId, active])
+      const chooseEngine = () => run(async () => {
+        if (!native) return
+        const picked = await native.choose()
+        if (!picked.ok || !workspaceId) return
+        const updated = await native.status(workspaceId)
+        setEngine({ checked: true, missing: updated.ok && !updated.state?.path, path: updated.state?.path || '' })
+        setRevision(value => value + 1)
+      })
       const run = async task => {
         if (pending.current) return
         pending.current = true; setBusy(true); setError(''); setResult(null)
@@ -203,13 +224,14 @@ window.__ModuleLoader__.load({
               if (!signal.aborted) { await service.showWorkspace(workspace.workspaceId, entry.id); setSelected(workspace.workspaceId) }
             }))),
             project?.godot && h(React.Fragment, null,
+              engine.checked && engine.missing && native && h('div', { className: 'gcNotice', role: 'status' }, h('strong', null, t('engineNoticeTitle')), h('p', null, t('engineNoticeHelp')), h('div', { className: 'gcActions' }, button('engineNoticeAction', chooseEngine, busy, { className: 'gcPrimary' }))),
               h('p', { className: 'gcMuted' }, t('startHelp')),
               h('section', { className: 'gcSection' }, h('h2', null, t('guidance')), h('div', { className: 'gcCards' }, ...['understand', 'gameplay', 'troubleshoot'].map(key => h('article', { key, className: 'gcCard' }, h('strong', null, t(key)), h('p', null, t(key + 'Help'))))), h('p', { className: 'gcMuted' }, t('guidanceHelp'))),
               h('section', { className: 'gcSection' }, h('h2', null, t('recent')), recent.length ? h('div', { className: 'gcSessionList' }, ...recent.map(id => h('button', { key: id, type: 'button', disabled: busy, onClick: () => run(() => ctx.desktopWorkbenches.ensureSession({ sessionId: id })) }, sessions.byId[id].displayTitle || t('untitled')))) : h('p', { className: 'gcMuted' }, t('noSessions'))))))),
           details && h('aside', { className: 'gcAside', 'aria-label': t('context') }, h('h2', null, t('context')), h('dl', null,
             h('dt', null, t('path')), h('dd', null, project?.path || t('unset')),
             h('dt', null, t('main')), h('dd', null, project?.mainScene || t('unset'))),
-            h(EnginePanel, { workspaceId: project?.godot ? workspaceId : undefined, active, t }), h('dl', null,
+            h(EnginePanel, { key: String(workspaceId) + ':' + revision, workspaceId: project?.godot ? workspaceId : undefined, active, t }), h('dl', null,
             h('dt', null, t('editor')), h('dd', { role: 'status' }, t(editor?.ok ? 'connected' : editor?.offline ? 'offline' : 'unknown'))),
             h('p', { className: 'gcMuted' }, t('editorHelp')),
             h('div', { className: 'gcActions' }, button('refresh', () => editorAction('status'), busy || !project?.godot), button('play', () => editorAction('play'), busy || !editor?.ok), button('stop', () => editorAction('stop'), busy || !editor?.ok), button('scan', () => editorAction('scan'), busy || !editor?.ok)),

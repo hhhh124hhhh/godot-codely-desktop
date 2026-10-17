@@ -25,18 +25,20 @@ it('distinguishes a Windows engine crash from a normal stop and exposes its outp
   expect(render(1)).not.toContain('engineCrashed')
   expect(render(3221225477, true)).not.toContain('engineCrashed')
 })
-function fixture({ project = { godot: true, path: '/game', name: 'Actual game' }, session = null, request, loadProject = false } = {}) {
+function fixture({ project = { godot: true, path: '/game', name: 'Actual game' }, session = null, request, loadProject = false, engine = { checked: true, missing: false, path: '/godot' }, nativeEngine = true } = {}) {
   let Desktop
   let stateIndex = 0
   const cleanups = []
   const setters = []
   const fetch = request || vi.fn(async () => Response.json({ sessionId: 'created' }))
-  const values = ['', 'overview', true, project, '', false, 0, null, null]
+  const values = ['', 'overview', true, project, '', false, 0, null, null, engine]
   const react = { ...React, useState: () => { const setter = vi.fn(); setters.push(setter); return [values[stateIndex++], setter] }, useEffect: callback => { const cleanup = callback(); if (cleanup) cleanups.push(cleanup) }, useRef: value => ({ current: value }), useCallback: fn => fn, useSyncExternalStore: (_subscribe, snapshot) => snapshot() }
   // Project reads are covered by the backend tests. Do not run data-loading effects in this render fixture.
   let effectIndex = 0
   react.useEffect = callback => { const index = effectIndex++; if (index === 2 || (loadProject && index === 0)) cleanups.push(callback()) }
-  vm.runInNewContext(code, { window: { innerWidth: 1280, __ModuleLoader__: { load({ factory }) { Desktop = factory(name => { if (name === 'react') return react; throw Error(name) }).Desktop } } }, fetch, AbortController, console })
+  const sandboxWindow = { innerWidth: 1280, __ModuleLoader__: { load({ factory }) { Desktop = factory(name => { if (name === 'react') return react; throw Error(name) }).Desktop } } }
+  if (nativeEngine) sandboxWindow.__GODOT_DESKTOP_ENGINE__ = { status: vi.fn(async () => ({ ok: true, state: { path: engine.path || '' } })), choose: vi.fn(async () => ({ ok: true })) }
+  vm.runInNewContext(code, { window: sandboxWindow, fetch, AbortController, console })
   const subscribe = () => () => {}
   const store = value => ({ subscribe, getSnapshot: () => value })
   const ensureSession = vi.fn(async () => 'created')
@@ -85,4 +87,17 @@ it('keeps the native conversation mounted while showing overview, and blocks edi
   expect(f.nodes.find(node => node.type === 'button' && node.props.children === 'play').props.disabled).toBe(true)
   const ordinary = fixture({ project: { godot: false, path: '/game', name: 'Folder' } })
   expect(ordinary.nodes.some(node => node.type === 'button' && node.props.children === 'start')).toBe(false)
+})
+it('surfaces a first-run engine notice with a choose action until an engine path exists', async () => {
+  const missing = fixture({ engine: { checked: true, missing: true, path: '' } })
+  const markup = renderToStaticMarkup(missing.tree)
+  expect(markup).toContain('engineNoticeTitle')
+  expect(markup).toContain('engineNoticeHelp')
+  const choose = missing.nodes.find(node => node.type === 'button' && node.props.children === 'engineNoticeAction')
+  expect(choose).toBeDefined()
+  expect(choose.props.disabled).toBe(false)
+  const configured = fixture({ engine: { checked: true, missing: false, path: '/godot' } })
+  expect(renderToStaticMarkup(configured.tree)).not.toContain('engineNoticeTitle')
+  const webOnly = fixture({ engine: { checked: true, missing: true, path: '' }, nativeEngine: false })
+  expect(renderToStaticMarkup(webOnly.tree)).not.toContain('engineNoticeTitle')
 })
