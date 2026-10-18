@@ -1,6 +1,6 @@
 # 社区项目介绍草稿
 
-状态：未发布。发布前检查是否已有同项目主题，并上传真实截图；不要把本文件当成上游已收录证明。
+状态：DSH 已发布至 [Show Your Plugins! #10104](https://github.com/deepseek-ai/deepseek-harness/discussions/10104)，含真实截图；Godot Forum 仍为未发布草稿。下文保留初始文案供维护参考，勿重复发布 DSH 主题。
 
 ## DSH：Show Your Plugins!
 
