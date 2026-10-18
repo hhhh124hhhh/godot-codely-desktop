@@ -50,3 +50,58 @@ describe('pinned NSIS directory transaction', () => {
       .toThrow('electron-builder NSIS template changed')
   })
 })
+
+describe('hardened directory transaction (#48)', () => {
+  const directories = join(dirname(dirname(require.resolve('./windows-directory-installer.test.ts'))), 'build', 'installer-directories.nsh')
+  const installer = join(dirname(dirname(require.resolve('./windows-directory-installer.test.ts'))), 'build', 'installer.nsh')
+
+  it('captures the Windows error and retries only transient lock errors', async () => {
+    const source = await readFile(directories, 'utf8')
+    // MoveFileEx exposes GetLastError before rollback overwrites it.
+    // The .rN output register and the checked register must be the same
+    // mapping this toolchain uses (rN -> $N), or every failure reads as
+    // success and promotion silently no-ops (#48).
+    expect(source).toContain("MoveFileExW(w \"${SOURCE}\", w \"${DESTINATION}\", i 0) i.r2 ?e")
+    expect(source).toContain('${If} $2 != 0')
+    // Retry is bounded and only for access denied / sharing / lock violation.
+    expect(source).toContain('${AndIf} ${RESULT} != 33')
+    expect(source).toContain('${If} $0 >= 20')
+    expect(source.match(/IntOp \$0 \$0 \+ 1/g)).toHaveLength(1)
+    expect(source).toContain('IntOp $1 $0 * 250')
+    expect(source).toContain('Sleep $1')
+    // Evidence lands in a log that survives the installer exit.
+    expect(source).toContain('$TEMP\\godot-codely-installer-directories.log')
+  })
+
+  it('routes every promote and restore rename through the operation macro', async () => {
+    const source = await readFile(directories, 'utf8')
+    const promote = source.slice(source.indexOf('Function dshPromoteDirectories'), source.indexOf('!macro dshFinishDirectories'))
+    expect(promote.match(/!insertmacro dshDirectoryOperation/g) ?? []).toHaveLength(2)
+    expect(promote).toContain('Call dshRollbackDirectories')
+    expect(promote).toContain('!insertmacro dshReportDirectoryFailure')
+    expect(promote).toContain('SetErrors')
+    const rollback = source.slice(source.indexOf('Function dshRollbackDirectories'), source.indexOf('Function dshPromoteDirectories'))
+    expect(rollback.match(/!insertmacro dshDirectoryOperation/g) ?? []).toHaveLength(1)
+    expect(rollback).toContain('$dshRestoreError')
+    // Recursive cleanup stays best-effort recursive removal.
+    expect(rollback).toContain('RMDir /r')
+  })
+
+  it('reports failures instead of exiting silently', async () => {
+    const dirs = await readFile(directories, 'utf8')
+    expect(dirs).toContain('!ifmacrodef customInstallerDirectoryFailed')
+    expect(dirs).toContain('!ifmacrodef customInstallerExtractFailed')
+    const inst = await readFile(installer, 'utf8')
+    expect(inst).toContain('!macro customInstallerDirectoryFailed')
+    expect(inst).toContain('!macro customInstallerExtractFailed')
+    expect(inst).toContain('MessageBox MB_OK|MB_ICONEXCLAMATION')
+    // Silent installs keep the non-interactive exit contract.
+    expect(inst).toContain('IfSilent +2 0')
+  })
+
+  it('keeps the silent exit contract on promote failure', async () => {
+    const source = await readFile(join(dirname(template), 'installSection.nsh'), 'utf8')
+    const adapted = directoryInstallSection(source)
+    expect(adapted).toContain('Call dshPromoteDirectories\nIfErrors 0 +3\n  SetErrorLevel 2\n  Quit')
+  })
+})

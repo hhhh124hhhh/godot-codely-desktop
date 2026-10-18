@@ -184,6 +184,12 @@ Set-Content -LiteralPath $profileMarker -Value 'keep-user-data'
 $lock = [System.IO.File]::Open($firstExecutable, 'Open', 'Read', 'Read')
 try {
   $blockedExitCode = Invoke-Installer $firstDirectory 'Locked upgrade'
+  $directoryLog = Join-Path $env:TEMP 'godot-codely-installer-directories.log'
+  if (Test-Path $directoryLog) {
+    Write-Host 'Installer directory-transaction log from the locked upgrade:'
+    Get-Content -LiteralPath $directoryLog
+    Remove-Item -Force $directoryLog
+  }
   if ($blockedExitCode -eq 0) { throw 'Locked same-path upgrade reported success.' }
   if (-not (Test-Path $firstExecutable)) { throw 'Locked upgrade removed the previous application.' }
   Assert-Signature $firstExecutable $true
