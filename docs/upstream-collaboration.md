@@ -40,3 +40,35 @@ GitHub Topics 使用 `dsh-plugin`、`godot`、`godot-engine` 帮助发现。Topi
 
 上述是实施计划，不能据此声称自动跟版已可用。兼容结论必须绑定实际应用提交、DSH/Godot 完整版本、目标平台和验收证据。
 
+
+
+## English: upstream collaboration
+
+Godot Codely is an independently maintained, unofficial community project. References to upstream projects do not imply review, partnership, or endorsement.
+
+### Origins and sharing
+
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) supplies the agent runtime, Web UI, and plugin system.
+- [DSH Desktop](https://github.com/dataelement/dsh-desktop) is the upstream Electron host fork. Preserve its copyright and license.
+- [Godot Engine](https://github.com/godotengine/godot) is integrated through engine CLI, editor, and project workflows.
+- Use this project's [Releases](https://github.com/hhhh124hhhh/godot-codely-desktop/releases) and read their supported platforms and limitations. Upstream desktop installers do not include this fork's additions.
+
+Share the DSH integration in [Show Your Plugins!](https://github.com/deepseek-ai/deepseek-harness/discussions/categories/show-your-plugins), following its [rules](https://github.com/deepseek-ai/deepseek-harness/discussions/2004): one thread per project, a `DSH | Godot Codely | ...` title, an explicit unofficial label, project URL, integration details, and real screenshots. For Godot, use an appropriate category in the [official community](https://godotengine.org/community/) or [forum](https://forum.godotengine.org/) after checking its rules. Register permanent post URLs here only after publication; drafts are not evidence of upstream listing.
+
+The repository topics `dsh-plugin`, `godot`, and `godot-engine` help discovery and do not establish official endorsement.
+
+### Contributing fixes upstream
+
+Policies were checked on 2026-10-18; check the official guidance again before submission.
+
+- DSH's [contribution guide](https://github.com/deepseek-ai/deepseek-harness/blob/master/CONTRIBUTING.md) currently does not accept external PRs. Submit minimal reproductions and proposed fixes through Discussions, or contribute reusable ecosystem plugins.
+- Follow [Godot's contribution guide](https://github.com/godotengine/godot/blob/master/CONTRIBUTING.md) for engine bug reports and focused fix PRs, including a minimal reproduction project and exact versions. New engine features belong in [Godot Proposals](https://github.com/godotengine/godot-proposals). Follow the applicable testing, style, and AI disclosure requirements.
+- Check DSH Desktop's current contribution requirements and existing reports before proposing general host fixes. Product-specific workbench behavior belongs in this repository.
+
+Track each candidate's local patch ID, cause, minimal reproduction, regression test, upstream discussion/PR, merged commit, first released version containing the fix, and local patch removal PR. Remove a patch only after that released version includes the fix and the original regression passes without it. Do not create engine bug reports solely to promote this project.
+
+### Compatibility implementation queue
+
+[#38](https://github.com/hhhh124hhhh/godot-codely-desktop/issues/38) is the overall plan. Implement [#39 monitoring and compatibility manifests](https://github.com/hhhh124hhhh/godot-codely-desktop/issues/39), [#40 patch tracking and adaptation](https://github.com/hhhh124hhhh/godot-codely-desktop/issues/40), and [#41 combination acceptance and release gates](https://github.com/hhhh124hhhh/godot-codely-desktop/issues/41) as P0 work; [#42 upstream contributions and patch retirement](https://github.com/hhhh124hhhh/godot-codely-desktop/issues/42) is P1, with contribution records established alongside patch tracking.
+
+These are implementation tasks, not claims of working automatic upgrades. Compatibility evidence must identify the exact application commit, DSH/Godot versions, target platform, and completed acceptance stages.
