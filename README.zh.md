@@ -18,6 +18,10 @@
   <img alt="Windows" src="https://img.shields.io/badge/Windows-x64-171513.svg" />
 </p>
 
+## 上游与社区协作
+
+Godot Codely 是社区独立维护的非官方项目：基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)，fork 自 [DSH Desktop](https://github.com/dataelement/dsh-desktop)，集成 [Godot Engine](https://github.com/godotengine/godot)。项目展示、贡献入口与兼容计划见[上游协作说明](docs/upstream-collaboration.md)。
+
 ## 这个仓库
 
 Godot Codely 用 `godot-codely` 命令改 Godot 工程。命令走 `godot-codely-lite` 预设、Godot 技能和 Godot MCP。`.tscn` 与 `.gd` 按文本修改，Godot 编辑器不必一直开着。`project.run`、`project.export` 和 `editor.launch` 需要 `GODOT_PATH`。
