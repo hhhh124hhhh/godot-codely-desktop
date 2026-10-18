@@ -22,8 +22,8 @@ description: Godot UI 与界面专家。覆盖 Control 节点布局（ui.* 工�
 
 ## 无窗几何断言（画面验收，不是每次改 UI 的默认步骤）
 
-- 文案、字号、单个控件：`scenes.info` 复核后停。不要自动跑游戏或像素对比
-- 用户要验收画面时再做视觉验证：截图（vision_html_screenshot 或用户提供游戏截图）→ `vision_pixel_diff` 与设计稿/改动前对比 → 差异率 > 5% 时用 `vision_crop` 裁剪放大定位最差区域 → 修正 → 再验证
+- 纯文案用 `scenes.info` 复核；字号、锚点、布局等影响画面时做针对性视觉检查，不自动跑无关的完整玩法验收
+- 布局/画面效果变更或用户要验收画面时做视觉验证：截图（vision_html_screenshot 或用户提供游戏截图）→ `vision_pixel_diff` 与设计稿/改动前对比 → 差异率 > 5% 时用 `vision_crop` 裁剪放大定位最差区域 → 修正 → 再验证
 
 ## 商业化 UI 基准
 

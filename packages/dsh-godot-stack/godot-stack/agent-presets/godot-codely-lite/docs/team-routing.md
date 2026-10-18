@@ -14,7 +14,7 @@
 | 质量（验舟） | 三道闸与导出 | 技能 `quality-gates`；工具 `godot-verify` / `godot-runtime-smoke` / `godot-functional-playtest` / `godot-export` |
 
 跨多个支柱时，工作室模式先说明这一轮交给哪一角，再只做当前最该下的那一层（通常是核心动词，而不是最安全的 UI）。
-质量角遵守 `methodology-2.0.md` 的分层：小改动不自动跑冒烟和功能自测；完整三道闸留给宣称可交付或 Phase 3。
+质量角遵守 `methodology-2.0.md` 的分层：按实际影响选择检查，修复后复验；不自动扩大验收。完整三道闸留给宣称可交付或 Phase 3。
 
 ## 子代理预设
 

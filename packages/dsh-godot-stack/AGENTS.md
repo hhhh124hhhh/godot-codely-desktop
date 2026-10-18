@@ -29,7 +29,7 @@ npm run package:win
 
 ## Persona 同步（DeepSeek-V4.1-Flash 短提示词）
 
-每轮只注入短 persona。下面两处正文必须逐字相同（比较时去掉文件末尾那一个换行；YAML 用 `|-`，加载结果不带末尾换行）：
+每轮只注入短 persona。下面两处正文必须逐字相同（比较时先统一 LF/CRLF，再去掉末尾换行；YAML 用 `|-`）：
 
 - `godot-stack/agent-presets/godot-codely-lite/SYSTEM_PROMPT.md`
 - `godot-stack/agent-presets/godot-codely-lite/agent.cordis.yml` 中 `@deepseek-ai/dsh-persona` 的 `config.prefix`
@@ -41,7 +41,9 @@ npm run package:win
 - `zfoo-framework.md` — 框架 API 表
 - `team-routing.md` — 五人团与专家预设，**仅 Game Studio / 多 Agent**。单人 Codely 不要先五人团再动手
 
-分层验证：结构/编辑器用 `scenes.info`（脚本用 `scripts.read`）；必须引擎的行为才一次 `project.run`；宣称可交付或 Phase 3 才跑完整三道闸。小改动不自动跑冒烟或功能自测。
+分层验证按实际改动影响选择：读回只证明文本/结构，代码/类型用编译或 LSP，行为用针对性引擎检查。修复后重跑失败项，直到任务完成或明确阻塞；可交付或 Phase 3 跑完整三道闸，不追加无关验收。
+
+`__GODOT_CODELY_DOCS_ROOT__` 是源 persona 的路径占位符；provisioning 同步替换 YAML 与 Markdown 为当前 Profile 的绝对文档根目录，供 `read` 按需读取，不依赖项目 cwd。
 
 ## 关键陷阱
 - **cordis.patch.yml 追加插件行**：必须放 `- insert:` 块；普通 `- id:` 只覆盖已有行。

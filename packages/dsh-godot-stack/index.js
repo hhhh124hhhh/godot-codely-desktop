@@ -20,7 +20,7 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import z from '@deepseek-ai/schemastery'
 import AgentPreset from '@deepseek-ai/dsh-agent-preset'
@@ -64,7 +64,14 @@ export async function provisionGodotPresets(home) {
     // package, rather than depending on a copied preset finding a Desktop package.
     const agentFile = join(home, '.agent-presets', name, 'agent.cordis.yml')
     const content = await readFile(agentFile, 'utf8')
-    await writeFile(agentFile, content.replace("name: 'dsh-godot-stack/mcp-agent'", 'name: ' + JSON.stringify(pathToFileURL(join(here, 'mcp-agent.mjs')).href)))
+    // Agent filesystem tools resolve relative paths from the user's project, not
+    // this preset. Keep source prompts in sync and bind their docs root at copy time.
+    const bindDocsRoot = text => text.replaceAll('__GODOT_CODELY_DOCS_ROOT__', JSON.stringify(resolve(home, '.agent-presets', 'godot-codely-lite', 'docs')))
+    await writeFile(agentFile, bindDocsRoot(content.replace("name: 'dsh-godot-stack/mcp-agent'", 'name: ' + JSON.stringify(pathToFileURL(join(here, 'mcp-agent.mjs')).href))))
+    if (name === 'godot-codely-lite') {
+      const promptFile = join(home, '.agent-presets', name, 'SYSTEM_PROMPT.md')
+      await writeFile(promptFile, bindDocsRoot(await readFile(promptFile, 'utf8')))
+    }
   }
 }
 

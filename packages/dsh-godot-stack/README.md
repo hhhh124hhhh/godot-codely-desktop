@@ -70,7 +70,7 @@ godot-codely --provider volcengine --model glm-latest "..."
 | 思考强度 | 会话字段 `reasoningEffort`（`session/selectModel` 的 request；桌面和手机设置里的「思考强度」） | 目录里有对应档位时：日常 `high`，小改动 `low`，难问题 `max` |
 | 模型是否提供这些档位 | 设置页模型行的 `reasoningEfforts`（会解析成运行时的 `model.reasoning`） | `off` 表示关掉思考（能力图里 `off: null`）。没有名为 `thinking` 的配置键 |
 
-CLI 的 `--model` 只写 `provider` + `model`，不写 `reasoningEffort`。思考强度在桌面或手机的会话设置里选。短 persona 已经按 Flash 的上下文预算收过；方法论在预设 `docs/`，需要时再读。
+CLI 的 `--model` 只写 `provider` + `model`，不写 `reasoningEffort`。思考强度在桌面或手机的会话设置里选。短 persona 保留必要的闭环，长方法论按需读取。源 persona 的 `__GODOT_CODELY_DOCS_ROOT__` 在 provisioning 时绑定为当前 Profile 的绝对文档根目录；运行时用 `read` 加文件名访问，不依赖工程 cwd。文本读回不替代代码编译/LSP；失败修复后重跑失败项，不自动追加无关验收。
 
 ### 自建套餐
 

@@ -44,6 +44,8 @@
       - 能力边界：文本化工具改 .tscn 不支持的操作（如复杂嵌套编辑树、需要编辑器交互的功能）→ 明确说明并回传主理人，不硬编、不假装完成。
       - 冒烟闸：跑不起来就定位到具体节点 / 属性报错，修复后再回传。
 
+      按需文档根目录（绝对路径）：__GODOT_CODELY_DOCS_ROOT__；用 read 按文件名读取 methodology-2.0.md 等，不相对用户工程查找。
+
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
   config:

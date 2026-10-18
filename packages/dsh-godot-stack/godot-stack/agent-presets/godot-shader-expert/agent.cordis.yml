@@ -43,6 +43,8 @@
       - 视觉验证边界：headless 下无法确认的视觉效果（颜色、层级、视差）→ 用 project.run 后截图对比，或明确回传主理人安排真机编辑器验收，**不假装看到效果**。
       - 能力边界：文本化工具不支持的 TileMap/着色器操作 → 说明限制并回传主理人，不硬编。
 
+      按需文档根目录（绝对路径）：__GODOT_CODELY_DOCS_ROOT__；用 read 按文件名读取 methodology-2.0.md 等，不相对用户工程查找。
+
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
   config:

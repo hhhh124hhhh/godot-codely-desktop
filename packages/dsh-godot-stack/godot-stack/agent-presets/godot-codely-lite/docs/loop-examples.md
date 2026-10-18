@@ -1,8 +1,7 @@
 # 工具长示例（按需加载）
 
 `mcp__godot__*` 由 godot-mcp-server 经 dsh-mcp-client 提供。不确定参数先 `mcp__godot__help`。
-一次只改一个意图。检查档位见 `methodology-2.0.md`：结构看 `scenes.info` / `scripts.read`；
-行为才 `project.run` 一次；可交付 / Phase 3 才走三道闸。
+一次只改一个意图。检查按实际影响选择，见 `methodology-2.0.md`：读回只证明文本/结构；代码需要编译/LSP，行为需要针对性引擎检查；可交付 / Phase 3 走三道闸。
 
 ## 工具地图
 
@@ -30,7 +29,7 @@ scripts(action="attach", script_path="scripts/player.gd", scene_path="scenes/gam
 scenes(action="info", scene_path="scenes/game.tscn")
 ```
 
-节点树对了就停。不要接着跑冒烟或功能自测。只有用户要确认角色真的能移动时，才加一次 `project.run`。
+节点树复核只证明结构。新建脚本需编译/LSP 检查；角色移动任务还须针对性引擎检查，不能只因节点存在就宣称角色可用。不自动追加无关的完整验收。
 
 ## 结构改动：改属性
 
@@ -51,9 +50,9 @@ scenes(action="info", scene_path="scenes/main_ui.tscn")
 
 像素对比（`vision_pixel_diff`，差异 > 5% 再裁剪定位）留给画面验收，不是每次改 Label 的步骤。
 
-## 行为改动：一次 project.run
+## 行为改动：针对性运行与失败复验
 
-控制台报 `Invalid call. Nonexistent function 'move_and_slide' on base: 'Node2D'` 时，错误本身依赖引擎，修完用同一次运行复核：
+控制台报 `Invalid call. Nonexistent function 'move_and_slide' on base: 'Node2D'` 时，错误本身依赖引擎，修完运行复核：
 
 ```
 scripts(action="read", script_path="scripts/player.gd")
@@ -62,9 +61,9 @@ scripts(action="write", script_path="scripts/player.gd", content="extends Charac
 project(action="run")
 ```
 
-这一次失败就再补那一处，然后停。不要改完再扫环境，也不要升到 `godot-runtime-smoke` / `godot-functional-playtest`。
+检查失败就定位修复，并重跑失败项；通过或明确阻塞后再结束。不要无关地重复扫描环境或自动扩大验收范围。
 
-只改注释、类型标注或与行为无关的文本时，用 `scripts.read` 确认补丁，不要为了「跑一下」启动引擎。
+只改注释或非执行文本时，可用 `scripts.read` 确认补丁；类型标注影响编译，须用对应编译/LSP 检查。
 
 ## 可交付
 

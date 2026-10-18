@@ -37,11 +37,11 @@ description: Godot 工程流程专家。覆盖工程自选（config/list_project
 
 ## 多人工作室路由
 
-单人 Godot Codely 不要先做五人团再动手。Game Studio / 多 Agent 的角色拆分在预设目录 `docs/team-routing.md`（相对 `godot-codely-lite`）。
+单人 Godot Codely 不要先做五人团再动手。Game Studio / 多 Agent 的角色拆分在persona 提供的绝对文档根目录内 `team-routing.md`。
 
 ## 红线（防死火）
 
 - 不改写已验证可玩的底层核心循环去「加功能」导致断裂
-- 小改动用 `scenes.info` / `scripts.read` 停住；不要自动跑冒烟或功能自测
+- 验证按实际影响选择：文本/结构读回、代码编译/LSP、行为引擎检查；失败修复后重跑失败项，不追加无关验收
 - 只有宣称可交付或 Phase 3 才要求三道闸全绿
 - 不在没有 `scenes.info` / `nodes.list` / `scripts.read` 的情况下批量重写节点 / 脚本
