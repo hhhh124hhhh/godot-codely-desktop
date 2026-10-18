@@ -50,8 +50,8 @@ Step 2: nodes(action="add", scene_path="scenes/game.tscn", name="Player", type="
 Step 3: nodes(action="add", scene_path="scenes/game.tscn", name="HitBox", type="CollisionShape2D", parent="Player")
 Step 4: scripts(action="create", script_path="scripts/player.gd", extends="CharacterBody2D", content="extends CharacterBody2D\n\nconst SPEED = 200.0\n\nfunc _physics_process(delta):\n\tvar direction = Input.get_vector(\"move_left\", \"move_right\", \"move_up\", \"move_down\")\n\tvelocity = direction * SPEED\n\tmove_and_slide()\n")
 Step 5: scripts(action="attach", script_path="scripts/player.gd", scene_path="scenes/game.tscn", node_name="Player")
-Step 6: scenes(action="info", scene_path="scenes/game.tscn")   # 复核结构
-Step 7: project(action="run")                                   # 验证能跑
+Step 6: scenes(action="info", scene_path="scenes/game.tscn")   # 结构复核到此可停
+# 新建脚本先做对应编译/LSP；移动等行为做针对性 project.run。失败修复后复验，不追加无关全量验收。
 ```
 
 ### 修改已有节点属性

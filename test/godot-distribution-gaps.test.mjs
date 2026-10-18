@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, isAbsolute } from 'node:path'
+import { parse } from 'yaml'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -19,14 +20,69 @@ describe('factory expert presets', () => {
     roots.push(home)
     await provisionGodotPresets(home)
     const lite = await readFile(join(home, '.agent-presets/godot-codely-lite/agent.cordis.yml'), 'utf8')
-    expect(lite).toContain('godot-scene-expert')
-    expect(lite).toContain('godot-shader-expert')
-    expect(lite).toContain('godot-gdscript-expert')
+    expect(lite).toContain('You are a helpful Godot coding agent')
+    expect(lite).toContain('methodology-2.0.md')
+    expect(lite).not.toContain('先五人团')
+    const routing = await readFile(join(home, '.agent-presets/godot-codely-lite/docs/team-routing.md'), 'utf8')
+    expect(routing).toContain('godot-scene-expert')
+    expect(routing).toContain('godot-shader-expert')
+    expect(routing).toContain('godot-gdscript-expert')
     for (const name of ['godot-scene-expert', 'godot-shader-expert', 'godot-gdscript-expert']) {
       const agent = await readFile(join(home, '.agent-presets', name, 'agent.cordis.yml'), 'utf8')
       expect(agent, name).toContain('工具与边界')
       expect(agent, name).toContain('失败出口')
       expect(await readFile(join(home, '.agent-presets', name, 'preset.yml'), 'utf8')).toContain('name:')
+    }
+  })
+})
+
+describe('preset docs runtime paths', () => {
+  it('reads docs from an unrelated project and rebinds a relocated Profile', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'godot-persona-docs-'))
+    roots.push(root)
+    const project = join(root, 'unrelated-game')
+    await mkdir(project)
+    for (const label of ['profile with spaces', 'relocated-profile']) {
+      const home = join(root, label)
+      await provisionGodotPresets(home)
+      await provisionGodotPresets(home)
+      const preset = join(home, '.agent-presets/godot-codely-lite')
+      const yaml = await readFile(join(preset, 'agent.cordis.yml'), 'utf8')
+      const rows = parse(yaml, { customTags: [{ tag: 'tag:yaml.org,2002:js', resolve: value => value }] })
+      const prefix = rows.find(row => row.name === '@deepseek-ai/dsh-persona').config.prefix
+      const match = prefix.match(/^On-demand docs root \(absolute, not project cwd\): (.+)$/m)
+      expect(match).not.toBeNull()
+      const docsRoot = JSON.parse(match[1])
+      expect(isAbsolute(docsRoot)).toBe(true)
+      expect(docsRoot).toBe(join(preset, 'docs'))
+      expect(prefix).not.toContain('__GODOT_CODELY_DOCS_ROOT__')
+      expect(prefix).not.toContain('# 方法论 2.0')
+      expect((await readFile(join(preset, 'SYSTEM_PROMPT.md'), 'utf8')).replaceAll('\r\n', '\n').trimEnd()).toBe(prefix)
+      const { stdout } = await promisify(execFile)(process.execPath, ['--input-type=module', '--eval', `
+        import { join } from 'node:path'
+        import { Context } from ${JSON.stringify(import.meta.resolve('@deepseek-ai/cordis'))}
+        import { SystemPrompt } from ${JSON.stringify(import.meta.resolve('@deepseek-ai/dsh-system-prompt'))}
+        import { ToolRuntime } from ${JSON.stringify(import.meta.resolve('@deepseek-ai/dsh-tools'))}
+        import { LocalFileSystem } from ${JSON.stringify(import.meta.resolve('@deepseek-ai/dsh-fs-local'))}
+        import * as fsTools from ${JSON.stringify(import.meta.resolve('@deepseek-ai/dsh-tool-fs'))}
+        const root = ${JSON.stringify(docsRoot)}
+        const names = ['methodology-2.0.md', 'loop-examples.md', 'zfoo-framework.md', 'team-routing.md']
+        const ctx = new Context()
+        const forks = []
+        try {
+          for (const [plugin, config] of [[SystemPrompt], [ToolRuntime], [LocalFileSystem, { cwd: process.cwd() }], [fsTools]]) {
+            const fork = ctx.plugin(plugin, config)
+            forks.push(fork)
+            await fork
+          }
+          const docs = await Promise.all(names.map(name => ctx.tools.execute({
+            name: 'read', arguments: { file_path: join(root, name) },
+            callId: name, signal: new AbortController().signal
+          })))
+          process.stdout.write(JSON.stringify(docs.map(doc => !doc.isError && doc.content.some(item => item.type === 'text' && item.text.includes('# ')))))
+        } finally { for (const fork of forks.reverse()) await fork.dispose() }
+      `], { cwd: project })
+      expect(JSON.parse(stdout)).toEqual([true, true, true, true])
     }
   })
 })

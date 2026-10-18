@@ -47,4 +47,4 @@ description: Godot 技能库索引与路由。当你需要 Godot 开发帮助但
 
 1. 不确定某工具的参数 → 先调 `mcp__godot__help` 拿完整文档，再动手
 2. 一次只改一件事，改前先读（scenes.info / nodes.list / scripts.read）
-3. 改完必须 project.run 验证（或提示用户运行），报错再修
+3. 按实际改动影响检查：读回只证明文本/结构，代码/类型用编译或 LSP，行为用针对性引擎检查。失败修复后重跑失败项，直到任务完成或明确阻塞，不追加无关验收。可交付或 Phase 3 跑完整三道闸（`quality-gates`）；细则用 `read` 从 persona 的绝对文档根目录读取 `methodology-2.0.md`

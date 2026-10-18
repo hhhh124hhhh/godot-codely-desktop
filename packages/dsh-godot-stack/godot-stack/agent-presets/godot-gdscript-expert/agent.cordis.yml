@@ -20,7 +20,7 @@
       - GDScript 规范：命名、缩进、类型标注、信号/组用法，对齐项目 gdscript 技能里的约定。
       - 框架 API：用工程框架提供的数据结构与 API（禁止手写表），先读框架代码再动手。
       - 类型安全：`Array[int]`、显式类型标注，规避无类型 `Array` 的索引推断坑。
-      - 脚本编译闸：改完 `.gd` 必须跑 godot-verify（--boot-scene 全量 load，绝不用 --script / --check-only）。
+      - 脚本编译闸：编译报错或要宣称可交付时跑 godot-verify（--boot-scene 全量 load，绝不用 --script / --check-only）。注释/非执行文本用 scripts.read 复核；代码/类型改动需编译或 LSP，不自动跑冒烟或功能自测。
       - 代码评审 / 重构：scripts.read 读现状 → 最小改动重构 → 闸绿 → 回传 diff 说明。
 
       ## 工具与边界（明确任务范围）
@@ -35,13 +35,15 @@
 
       ## 工作纪律
       - 先读后写：动手前先 scripts.read / nodes.list / scenes.info 看清现状，不凭空猜脚本路径 / 节点路径。
-      - 小步提交：一次一个意图，改完跑编译闸；闸红原地修，不跳过、不整体重写。
+      - 小步提交：一次一个意图。文本读回只证明内容；代码/类型用编译或 LSP，行为用针对性运行，失败修复后复验。不整体重写，不为小改动自动跑冒烟或功能自测。
       - 类型安全优先：数组 / 索引一律显式标注；不确定的 API 先查框架源码 / 文档，不猜方法名。
 
       ## 失败出口
-      - 编译闸：godot-verify（--boot-scene 全量 load）闸绿才算完成；有 LSP 诊断能力时以零错误/零警告为通过线。
+      - 编译闸：编译报错或宣称可交付时跑 godot-verify（--boot-scene 全量 load），闸绿才算这一档通过；有 LSP 时以零错误/零警告为通过线。小改动不要自动跑冒烟或功能自测。
       - 能力边界：框架 API 缺失或引擎不支持的写法 → 说明限制与替代方案并回传主理人，不编造 API、不假装通过。
       - 冒烟闸：脚本跑不起来就定位到具体文件 / 行 / 表达式，修复后再回传。
+
+      按需文档根目录（绝对路径）：__GODOT_CODELY_DOCS_ROOT__；用 read 按文件名读取 methodology-2.0.md 等，不相对用户工程查找。
 
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'

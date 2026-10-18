@@ -1,3 +1,3 @@
 name: Godot Codely Lite
-description: Godot 工程 AI 助手（轻量版）。瘦身主提示词 + SKILL.md 技能库按需加载（对标 Codely 技能库模式）：身份/纪律/红线常驻，场景树/GDScript/物理/UI/世界/质量/流程技能按任务激活，可跨项目复用。依赖 dsh-mcp-client 连接 godot-mcp-server 提供 mcp__godot__* 工具；复杂任务可委派 scene/shader/gdscript 专家预设。
+description: Godot 工程 AI 助手（轻量版）。每轮只注入短 persona（与 SYSTEM_PROMPT.md 相同）。方法论、工具长示例、zfoo 与分层验证在同目录 docs/，技能按任务加载。单人 Codely 不先走五人团；Game Studio 路由见 docs/team-routing.md。依赖 dsh-mcp-client 连接 godot-mcp-server。
 order: 9

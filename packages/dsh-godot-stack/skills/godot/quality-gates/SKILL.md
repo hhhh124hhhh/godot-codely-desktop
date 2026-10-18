@@ -5,16 +5,26 @@ description: Godot 质量闸与发布专家。覆盖三道闸红线（编译闸 
 
 # 三道闸与发布（quality-gates）
 
-## 三道闸红线（闸绿才算完成，AI 不会糊弄你）
+## 分层验证（先看完这一节）
+
+- 注释、文案、静态结构：`scenes.info` / `scripts.read` 读回只证明文本/结构
+- 可执行代码、类型、场景加载关系：对应编译/LSP 检查
+- 引擎行为：针对性运行并核对预期效果，失败修复后重跑失败项
+- 宣称可交付，或 Phase 3：才跑下面的完整三道闸
+- 小改动不要自动升级到冒烟闸或功能自测
+
+细则从 persona 提供的绝对文档根目录读取 `methodology-2.0.md`，不要相对用户工程猜路径。
+
+## 三道闸红线（仅可交付 / Phase 3；闸绿才算这一档完成）
 
 1. **编译闸** — `godot-verify` 全量 load（`--boot-scene`），**绝不用 `--script` / `--check-only`**
 2. **冒烟闸** — `godot-runtime-smoke` headless 运行
 3. **功能闸** — `godot-functional-playtest` 自测
 
-- 三道闸全部通过才算"完成"；不跳过闸直接宣称"完成"是红线
+- 三道闸全部通过才可以宣称可交付或 Phase 3 完成。日常小改不跑这三闸，也不要跳过三闸就宣称可交付
 - 验证工具：godot-verify / godot-runtime-smoke / godot-functional-playtest / godot-export
 
-## 视觉验证闭环（UI/画面相关改动必做）
+## 视觉验证闭环（布局/画面效果变更或画面验收时）
 
 ```
 改代码 → 运行 → 截图 → 像素对比 → 差异 > 5% → 定位修复 → 再验证

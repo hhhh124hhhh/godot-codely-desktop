@@ -1,7 +1,9 @@
 # Godot 技能库（SKILL.md 体系）
 
-> 对标 Tuanjie Codely 的 `~/.codely-cli/skills/` 技能库模式：**瘦主提示词 + 按需加载技能**。
-> 把原来一次性注入的 15KB SYSTEM_PROMPT.md 拆成可按需加载的领域技能，技能可跨项目复用、可单独迭代（未做 token 用量量化对比，此处不承诺具体省 token 比例）。
+> 对标 Tuanjie Codely 的技能库模式：**短 persona + 按需加载**。
+> 每轮提示词是 `godot-stack/agent-presets/godot-codely-lite/SYSTEM_PROMPT.md`（与该预设 `agent.cordis.yml` 的 `config.prefix` 逐字相同）。
+> 方法论、工具长示例、zfoo 表、分层验证在该预设的 `docs/`；五人团只在 `docs/team-routing.md`（Game Studio / 多 Agent）。
+> 领域技能仍按任务加载，可跨项目复用（未做 token 用量量化对比，此处不承诺具体省 token 比例）。
 
 ## 结构
 
@@ -35,9 +37,12 @@ skills/godot/
 
 ## 与 agent-presets 的关系
 
-- `agent-presets/godot-codely-lite/` = 瘦身主提示词预设，按上面路由规则激活技能
-- 完整一次性注入版仅存于本地用户 Profile 作对照，**不随仓库分发**；仓库只分发 `godot-codely-lite` 瘦身版
-- 技能文件是**纯知识**，不绑定预设：任何预设/项目都能引用
+- `agent-presets/godot-codely-lite/` = 短 persona 预设。同步点只有两处，正文必须相同：
+  - `SYSTEM_PROMPT.md`（无 YAML 包装）
+  - `agent.cordis.yml` 里 `@deepseek-ai/dsh-persona` 的 `config.prefix`
+- 本仓库 Harness 不接受旧键 `config.text`（挂载前会改写成 `prefix`）。不要把源文件改回 `text`。
+- 长材料在 `agent-presets/godot-codely-lite/docs/`：`methodology-2.0.md`、`loop-examples.md`、`zfoo-framework.md`、`team-routing.md`
+- 技能文件是**纯知识**，不绑定预设：任何预设/项目都能引用。技能里的「每次都跑完全部闸 / 先五人团」不要写回去
 
 ## 发现方式与验证
 

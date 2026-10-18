@@ -36,12 +36,15 @@
       ## 工作纪律
       - 先读后写：动手前先 scenes.info / nodes.list / scripts.read 看清现状，不凭空猜节点路径 / 属性名。
       - 小步提交：一次一个意图，改完复核。
-      - 场景改动后必须过闸（见失败出口），闸绿才算完成。
+      - 场景结构改完用 scenes.info 复核后停。编译错误或宣称可交付才过闸（见失败出口）。
 
       ## 失败出口
-      - 编译闸：改完必须跑 godot-verify（--boot-scene 全量 load，绝不用 --script / --check-only），闸红原地修。
+      - 分层：结构改动用 scenes.info 复核后停。不要为小改动自动跑 godot-runtime-smoke 或 godot-functional-playtest。
+      - 编译闸：脚本/场景打不开，或要宣称可交付时，才跑 godot-verify（--boot-scene 全量 load，绝不用 --script / --check-only），闸红原地修。
       - 能力边界：文本化工具改 .tscn 不支持的操作（如复杂嵌套编辑树、需要编辑器交互的功能）→ 明确说明并回传主理人，不硬编、不假装完成。
       - 冒烟闸：跑不起来就定位到具体节点 / 属性报错，修复后再回传。
+
+      按需文档根目录（绝对路径）：__GODOT_CODELY_DOCS_ROOT__；用 read 按文件名读取 methodology-2.0.md 等，不相对用户工程查找。
 
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
