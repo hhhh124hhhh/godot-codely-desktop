@@ -63,6 +63,8 @@ These parts belong to the forked desktop host.
 
 ## Upstream community
 
+Godot Codely is an independently maintained, unofficial community project built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), forked from [DSH Desktop](https://github.com/dataelement/dsh-desktop), and integrated with [Godot Engine](https://github.com/godotengine/godot). See [Upstream collaboration](docs/upstream-collaboration.md) for project sharing, contribution channels, and compatibility work.
+
 The WeChat group and Discord below are the upstream DSH Desktop community.
 
 <p align="center">
