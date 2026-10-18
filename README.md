@@ -18,6 +18,14 @@
   <img alt="Windows" src="https://img.shields.io/badge/Windows-x64-171513.svg" />
 </p>
 
+## Application screenshot
+
+![Godot Codely development workbench](docs/images/godot-codely-dev-20261018.png)
+
+Windows development build, 2026-10-18: a temporary project running Godot 4.6.3, with engine output visible in the workbench. This screenshot does not establish complete editor, real-model agent, or installer acceptance.
+
+Community introduction: [DeepSeek Harness — Show Your Plugins!](https://github.com/deepseek-ai/deepseek-harness/discussions/10104).
+
 ## This repository
 
 Godot Codely changes a Godot project from the `godot-codely` command. That command uses the `godot-codely-lite` preset, the Godot skills, and the Godot MCP server. `.tscn` and `.gd` files are edited as text, so the Godot editor does not have to stay open. `project.run`, `project.export`, and `editor.launch` need `GODOT_PATH`.
