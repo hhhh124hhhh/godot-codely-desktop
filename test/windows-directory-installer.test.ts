@@ -65,6 +65,7 @@ describe('hardened directory transaction (#48)', () => {
     expect(source).toContain('${If} $2 != 0')
     // Retry is bounded and only for access denied / sharing / lock violation.
     expect(source).toContain('${AndIf} ${RESULT} != 33')
+    expect(source).toContain('${If} $0 >= 20')
     expect(source.match(/IntOp \$0 \$0 \+ 1/g)).toHaveLength(1)
     expect(source).toContain('IntOp $1 $0 * 250')
     expect(source).toContain('Sleep $1')

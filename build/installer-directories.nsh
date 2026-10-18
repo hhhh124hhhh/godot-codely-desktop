@@ -19,6 +19,9 @@ Var dshRecoveryStopped
 ; Retry only transient lock errors (5 access denied, 32 sharing violation,
 ; 33 lock violation) with linear backoff; anything else fails immediately.
 ; ${RESULT} receives 0 on success or the genuine Windows error on failure.
+; 20 attempts with 250ms steps keep the transaction window around one minute:
+; consumer AV suites were observed holding locks on the freshly extracted
+; executable for more than the previous 10-attempt (~14s) window.
 ; Note: this toolchain's System plugin maps .rN outputs onto $N registers.
 !macro dshDirectoryOperation SOURCE DESTINATION RESULT PHASE
   Push $0
@@ -45,7 +48,7 @@ Var dshRecoveryStopped
       FileClose $1
     ${EndIf}
     IntOp $0 $0 + 1
-    ${If} $0 >= 10
+    ${If} $0 >= 20
       ${ExitDo}
     ${EndIf}
     IntOp $1 $0 * 250
