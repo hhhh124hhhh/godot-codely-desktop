@@ -24,7 +24,7 @@
 
 Windows development build, 2026-10-18: a temporary project running Godot 4.6.3, with engine output visible in the workbench. This screenshot does not establish complete editor, real-model agent, or installer acceptance.
 
-Community introduction: [DeepSeek Harness — Show Your Plugins!](https://github.com/deepseek-ai/deepseek-harness/discussions/10104).
+Community introductions: [DeepSeek Harness — Show Your Plugins!](https://github.com/deepseek-ai/deepseek-harness/discussions/10104) · [Godot Forum — Plugins](https://forum.godotengine.org/t/godot-codely-open-source-ai-workspace-for-godot-game-creation-early-development/145595).
 
 ## This repository
 
