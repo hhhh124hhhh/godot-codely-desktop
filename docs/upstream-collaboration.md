@@ -2,6 +2,11 @@
 
 Godot Codely 是社区独立开发与维护的非官方项目。下面的来源与社区关联不表示上游审核、合作或背书。
 
+## 已发布的社区介绍 / Published community introduction
+
+- DSH：[Show Your Plugins! #10104](https://github.com/deepseek-ai/deepseek-harness/discussions/10104)，2026-10-18 发布，包含真实开发截图。
+- Godot Forum：尚未发布，首次账号注册待完成。 / Not yet published; initial account registration is pending.
+
 ## 项目来源
 
 | 项目 | 本项目与其关系 | 仓库 |
