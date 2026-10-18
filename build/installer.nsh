@@ -90,5 +90,18 @@
         Delete "$APPDATA\godot-codely\desktop-service\session.json"
       !endif
     !macroend
+
+    ; Directory transaction failure (see installer-directories.nsh): rollback has
+    ; already restored the previous installation. Tell the user why the upgrade
+    ; did not apply and where the evidence lives instead of exiting silently.
+    !macro customInstallerDirectoryFailed
+      IfSilent +2 0
+      MessageBox MB_OK|MB_ICONEXCLAMATION "升级未能完成：替换安装目录失败（Windows 错误 $dshDirectoryError，恢复错误 $dshRestoreError）。已保留原版本。详情日志：$TEMP\godot-codely-installer-directories.log" /SD IDOK
+    !macroend
+
+    !macro customInstallerExtractFailed FILE
+      IfSilent +2 0
+      MessageBox MB_OK|MB_ICONEXCLAMATION "升级未能完成：解压缩安装内容失败（${FILE}）。已保留原版本。详情日志：$TEMP\godot-codely-installer-directories.log" /SD IDOK
+    !macroend
   !endif
 !endif
