@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { loadOverlayPatches, loadProfileDirectory } from '@deepseek-ai/dsh-app-boot'
@@ -37,11 +38,23 @@ export async function inspectProfileBootInputs(
     }
     const loaded = loadProfileDirectory('dsh-desktop', profile, join(dirname(dshEntryPath), '..', 'package.json'))
     if (desktopPatchPath !== undefined) {
+      // A bare bundle entry without a package directory is the upstream toggle
+      // persistence for an in-box host plugin (e.g. dsh-godot-stack), which
+      // Harness resolves from the installation anchor — not a second copy of
+      // the plugin. Only a real directory in the profile node_modules is a
+      // duplicate registration that Safe Mode must arbitrate.
       const hostNames = new Set(hostInsertedPluginNames(
         await readFile(desktopPatchPath, 'utf8'),
         await readDisabledHostPlugins(dshHome)
       ))
-      const duplicate = loaded.layers.find((layer) => hostNames.has(layer.packageName))
+      const duplicate = loaded.layers.find((layer) => {
+        if (!hostNames.has(layer.packageName)) return false
+        try {
+          return existsSync(join(profile, 'node_modules', layer.packageName))
+        } catch {
+          return false
+        }
+      })
       if (duplicate) return {
         message: `${duplicate.packageName} is enabled in both the Profile bundle and Desktop; disable it in Safe Mode before normal startup`,
         packageName: duplicate.packageName

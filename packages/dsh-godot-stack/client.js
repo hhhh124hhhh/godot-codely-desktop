@@ -16,6 +16,7 @@ window.__ModuleLoader__.load({
       editorHelp: '在 Godot 中启用 Godot Codely 插件并连接后，可使用编辑器操作。', play: '在编辑器中运行', stop: '停止编辑器运行', scan: '刷新资源', busy: '正在处理…', done: '操作已完成',
       running: '游戏运行中', stopped: '游戏已停止', unsaved: '编辑器有未保存的场景，请先在 Godot 中保存。', result: '操作结果',
       engineNoticeTitle: '尚未配置 Godot 引擎', engineNoticeHelp: '智能体的运行验证需要 Godot 4 可执行文件。选择一次后，工作台与开发会话共用此路径；也可以直接开始，让智能体自动检测。', engineNoticeAction: '选择 Godot 引擎',
+      modelNoticeTitle: '尚未配置模型', modelNoticeHelp: '添加模型后，即可开始协作。你的输入已保留，配置完成后可直接继续。前往「设置 → 模型」添加。', modelNoticeAction: '去配置模型',
       guidance: '从这里推进你的游戏', understand: '读懂这个项目', understandHelp: '梳理场景与脚本，找到玩法的实现位置。', gameplay: '做出一个玩法', gameplayHelp: '比如二段跳、敌人巡逻，或一套背包交互。', troubleshoot: '修好一个问题', troubleshootHelp: '贴上报错和复现步骤，一起找到原因。',
       guidanceHelp: '把目标写进开发会话。修改后回到 Godot 运行，确认实际效果。', show: '展开项目信息', hide: '收起项目信息',
       WORKSPACE_REQUIRED: '请先选择项目。', WORKSPACE_MISSING: '项目已从工作区移除，请重新打开。', NOT_GODOT_PROJECT: '请选择 Godot 项目根目录。', PROJECT_TOO_LARGE: '项目配置过大，无法读取。',
@@ -34,6 +35,7 @@ window.__ModuleLoader__.load({
       editorHelp: 'Enable and connect the Godot Codely plugin in Godot to use editor actions.', play: 'Play in editor', stop: 'Stop editor play', scan: 'Refresh resources', busy: 'Working…', done: 'Action completed',
       running: 'Game is running', stopped: 'Game has stopped', unsaved: 'The editor has unsaved scenes. Save them in Godot first.', result: 'Action result',
       engineNoticeTitle: 'Godot engine not configured yet', engineNoticeHelp: 'Run verification needs a Godot 4 executable. Choose it once and both the workbench and development sessions share the path; you can also start directly and let the agent auto-detect it.', engineNoticeAction: 'Choose Godot engine',
+      modelNoticeTitle: 'No model configured yet', modelNoticeHelp: 'Add a model to start collaborating. Your input is kept — continue right after configuring. Add one under Settings → Models.', modelNoticeAction: 'Configure a model',
       guidance: 'Move your game forward', understand: 'Explore this project', understandHelp: 'Trace scenes and scripts to find where gameplay lives.', gameplay: 'Build a mechanic', gameplayHelp: 'Try a double jump, enemy patrol, or inventory interaction.', troubleshoot: 'Fix a problem', troubleshootHelp: 'Share an error and steps to reproduce it.',
       guidanceHelp: 'Describe your goal in a development session, then run the changes in Godot to check the result.', show: 'Show project details', hide: 'Hide project details',
       WORKSPACE_REQUIRED: 'Choose a project first.', WORKSPACE_MISSING: 'This workspace was removed. Open the project again.', NOT_GODOT_PROJECT: 'Choose a Godot project root.', PROJECT_TOO_LARGE: 'The project configuration is too large to read.',
@@ -62,6 +64,16 @@ window.__ModuleLoader__.load({
       @media(max-width:1100px){.gcAside{position:absolute;inset:0 0 0 auto;width:min(320px,100%);z-index:2;box-shadow:0 8px 24px var(--dsw-alias-border-l2)}.gcOverview{padding:24px}.gcCards{grid-template-columns:1fr}}
       @media(prefers-reduced-motion:reduce){.gcDesktop *{scroll-behavior:auto}}
     `
+    // ctx.remote is only readable while a cordis context is active. Probe the
+    // model catalog inside apply()'s inject scope and publish the result to a
+    // plain store; the panel never touches ctx.remote.
+    const modelStore = {
+      value: null,
+      listeners: new Set(),
+      set(value) { this.value = value; for (const listener of this.listeners) listener() },
+      subscribe(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener) },
+      getSnapshot() { return this.value }
+    }
     async function callApi(endpoint, workspaceId, body, signal) {
       const response = await fetch('/api/godot-desktop/' + endpoint + '?workspaceId=' + encodeURIComponent(workspaceId), {
         method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal
@@ -161,8 +173,10 @@ window.__ModuleLoader__.load({
       React.useEffect(() => { if (currentId && state.state.sessionBindings[currentId] === entry.id) { setSelected(''); setView('conversation') } }, [currentId, entry.id])
       React.useEffect(() => () => request.current?.abort(), [workspaceId, active])
       const native = window.__GODOT_DESKTOP_ENGINE__
+      // The engine path is global: status works without a workspace, so
+      // first-run users see the notice before importing any project.
       React.useEffect(() => {
-        if (!active || !native || !workspaceId) { setEngine({ checked: false, missing: false, path: '' }); return }
+        if (!active || !native) { setEngine({ checked: false, missing: false, path: '' }); return }
         let stale = false
         native.status(workspaceId).then(response => {
           if (stale) return
@@ -170,13 +184,15 @@ window.__ModuleLoader__.load({
         }).catch(() => { if (!stale) setEngine({ checked: true, missing: false, path: '' }) })
         return () => { stale = true }
       }, [workspaceId, active])
+      // No configured model disables "start" with guidance instead of a silent failure.
+      const models = React.useSyncExternalStore(React.useCallback(fn => modelStore.subscribe(fn), []), modelStore.getSnapshot.bind(modelStore))
       const chooseEngine = () => run(async () => {
         if (!native) return
         const picked = await native.choose()
-        if (!picked.ok || !workspaceId) return
+        if (!picked.ok) return
         const updated = await native.status(workspaceId)
         setEngine({ checked: true, missing: updated.ok && !updated.state?.path, path: updated.state?.path || '' })
-        setRevision(value => value + 1)
+        if (workspaceId) setRevision(value => value + 1)
       })
       const run = async task => {
         if (pending.current) return
@@ -217,14 +233,15 @@ window.__ModuleLoader__.load({
             h('h1', null, !workspaceId ? t('empty') : project ? project.name : t('loading')),
             h('p', { className: 'gcMuted' }, project?.path || t('emptyHelp')),
             project && !project.godot && h('div', { className: 'gcCard' }, h('h2', null, t('notGodot')), h('p', null, t('notGodotHelp'))),
-            h('div', { className: 'gcActions' }, project?.godot && button('start', createSession, busy, { className: 'gcPrimary' }), button('import', () => run(async signal => {
+            engine.checked && engine.missing && native && h('div', { className: 'gcNotice', role: 'status' }, h('strong', null, t('engineNoticeTitle')), h('p', null, t('engineNoticeHelp')), h('div', { className: 'gcActions' }, button('engineNoticeAction', chooseEngine, busy, { className: 'gcPrimary' }))),
+            project?.godot && models === false && h('div', { className: 'gcNotice', role: 'status' }, h('strong', null, t('modelNoticeTitle')), h('p', null, t('modelNoticeHelp'))),
+            h('div', { className: 'gcActions' }, project?.godot && button('start', createSession, busy || models === false, { className: 'gcPrimary' }), button('import', () => run(async signal => {
               const path = await ctx.uiWorkspace.pickDirectory()
               if (!path || signal.aborted) return
               const workspace = await ctx.workspaces.create({ path })
               if (!signal.aborted) { await service.showWorkspace(workspace.workspaceId, entry.id); setSelected(workspace.workspaceId) }
             }))),
             project?.godot && h(React.Fragment, null,
-              engine.checked && engine.missing && native && h('div', { className: 'gcNotice', role: 'status' }, h('strong', null, t('engineNoticeTitle')), h('p', null, t('engineNoticeHelp')), h('div', { className: 'gcActions' }, button('engineNoticeAction', chooseEngine, busy, { className: 'gcPrimary' }))),
               h('p', { className: 'gcMuted' }, t('startHelp')),
               h('section', { className: 'gcSection' }, h('h2', null, t('guidance')), h('div', { className: 'gcCards' }, ...['understand', 'gameplay', 'troubleshoot'].map(key => h('article', { key, className: 'gcCard' }, h('strong', null, t(key)), h('p', null, t(key + 'Help'))))), h('p', { className: 'gcMuted' }, t('guidanceHelp'))),
               h('section', { className: 'gcSection' }, h('h2', null, t('recent')), recent.length ? h('div', { className: 'gcSessionList' }, ...recent.map(id => h('button', { key: id, type: 'button', disabled: busy, onClick: () => run(() => ctx.desktopWorkbenches.ensureSession({ sessionId: id })) }, sessions.byId[id].displayTitle || t('untitled')))) : h('p', { className: 'gcMuted' }, t('noSessions'))))))),
@@ -240,6 +257,11 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }))
       const t = ctx.locale.bind(NS)
+      ctx.effect(() => ctx.inject([], scope => {
+        scope.remote.session.modelCatalog().then(catalog => {
+          modelStore.set(catalog.ok && catalog.value.groups.some(group => group.models.length > 0))
+        }).catch(() => modelStore.set(null))
+      }), 'godot: model catalog probe')
       ctx.effect(() => {
         if (document.querySelector('[data-plugin-css="godot-desktop"]')) return
         const style = document.createElement('style'); style.dataset.pluginCss = 'godot-desktop'; style.textContent = css
@@ -249,6 +271,6 @@ window.__ModuleLoader__.load({
       const Panel = props => h(Desktop, { ...props, ctx, t })
       ctx.effect(() => ctx.desktopWorkbenches.register({ title: t('title'), description: t('description'), panelTitle: t('context'), repository: 'https://github.com/hhhh124hhhh/godot-codely-desktop', customFrame: true }, Panel))
     }
-    return { apply, inject: ['desktopWorkbenches', 'locale', 'workspaces', 'sessions', 'uiWorkspace'], Desktop, EnginePanel, callApi }
+    return { apply, inject: ['desktopWorkbenches', 'locale', 'workspaces', 'sessions', 'uiWorkspace'], Desktop, EnginePanel, callApi, modelStore }
   }
 })

@@ -25,8 +25,9 @@ it('distinguishes a Windows engine crash from a normal stop and exposes its outp
   expect(render(1)).not.toContain('engineCrashed')
   expect(render(3221225477, true)).not.toContain('engineCrashed')
 })
-function fixture({ project = { godot: true, path: '/game', name: 'Actual game' }, session = null, request, loadProject = false, engine = { checked: true, missing: false, path: '/godot' }, nativeEngine = true } = {}) {
+function fixture({ project = { godot: true, path: '/game', name: 'Actual game' }, session = null, request, loadProject = false, engine = { checked: true, missing: false, path: '/godot' }, nativeEngine = true } = {}, { models = null } = {}) {
   let Desktop
+  let modelStore
   let stateIndex = 0
   const cleanups = []
   const setters = []
@@ -36,13 +37,14 @@ function fixture({ project = { godot: true, path: '/game', name: 'Actual game' }
   // Project reads are covered by the backend tests. Do not run data-loading effects in this render fixture.
   let effectIndex = 0
   react.useEffect = callback => { const index = effectIndex++; if (index === 2 || (loadProject && index === 0)) cleanups.push(callback()) }
-  const sandboxWindow = { innerWidth: 1280, __ModuleLoader__: { load({ factory }) { Desktop = factory(name => { if (name === 'react') return react; throw Error(name) }).Desktop } } }
+  const sandboxWindow = { innerWidth: 1280, __ModuleLoader__: { load({ factory }) { const mod = factory(name => { if (name === 'react') return react; throw Error(name) }); Desktop = mod.Desktop; modelStore = mod.modelStore } } }
   if (nativeEngine) sandboxWindow.__GODOT_DESKTOP_ENGINE__ = { status: vi.fn(async () => ({ ok: true, state: { path: engine.path || '' } })), choose: vi.fn(async () => ({ ok: true })) }
   vm.runInNewContext(code, { window: sandboxWindow, fetch, AbortController, console })
+  if (models !== null) modelStore.value = models
   const subscribe = () => () => {}
   const store = value => ({ subscribe, getSnapshot: () => value })
   const ensureSession = vi.fn(async () => 'created')
-  const ctx = { locale: store({ active: 'en' }), workspaces: { list: store({ items: [{ workspaceId: 'game', title: 'Game', path: '/game' }] }) }, sessions: { list: store({ ids: session ? ['native'] : [], byId: session ? { native: { cwd: '/game', displayTitle: 'Task' } } : {} }) }, desktopWorkbenches: { ensureSession } }
+  const ctx = { locale: store({ active: 'en' }), workspaces: { list: store({ items: [{ workspaceId: 'game', title: 'Game', path: '/game' }] }) }, sessions: { list: store({ ids: session ? ['native'] : [], byId: session ? { native: { cwd: '/game', displayTitle: 'Task' } } : {} }) }, desktopWorkbenches: { ensureSession }, remote: { session: { modelCatalog: vi.fn(async () => catalogFails ? { ok: false } : { ok: true, value: { groups: [{ models: [{}] }] } }) } } }
   const service = { subscribe, getSnapshot: () => ({ state: { sessionBindings: session ? { native: 'owner/repo' } : {} } }), currentSession: () => session ? 'native' : null, workspaceVisible: () => true, ensureSession: vi.fn(() => { throw Error('Host cannot claim provider identity') }) }
   const tree = Desktop({ service, ctx, entry: { id: 'owner/repo' }, active: true, conversation: session, t: key => key })
   const nodes = []
@@ -100,4 +102,29 @@ it('surfaces a first-run engine notice with a choose action until an engine path
   expect(renderToStaticMarkup(configured.tree)).not.toContain('engineNoticeTitle')
   const webOnly = fixture({ engine: { checked: true, missing: true, path: '' }, nativeEngine: false })
   expect(renderToStaticMarkup(webOnly.tree)).not.toContain('engineNoticeTitle')
+})
+it('shows engine guidance before any project is chosen on first run', () => {
+  // Without a workspace the engine path is still global: the notice must
+  // render on the empty overview, not only inside a Godot project's fragment.
+  const empty = fixture({ project: null, loadProject: false, engine: { checked: true, missing: true, path: '' } })
+  const markup = renderToStaticMarkup(empty.tree)
+  expect(markup).toContain('engineNoticeTitle')
+  expect(markup).not.toContain('modelNoticeTitle')
+})
+it('blocks starting a session without a configured model and explains how to add one', () => {
+  const f = fixture({})
+  const start = f.nodes.find(node => node.type === 'button' && node.props.children === 'start')
+  expect(start.props.disabled).toBe(false)
+  const unconfigured = fixture({}, { models: false })
+  const markup = renderToStaticMarkup(unconfigured.tree)
+  expect(markup).toContain('modelNoticeTitle')
+  expect(markup).toContain('modelNoticeHelp')
+  const blocked = unconfigured.nodes.find(node => node.type === 'button' && node.props.children === 'start')
+  expect(blocked.props.disabled).toBe(true)
+})
+it('keeps starting enabled when the model catalog cannot be read', () => {
+  const f = fixture({}, { models: null })
+  const start = f.nodes.find(node => node.type === 'button' && node.props.children === 'start')
+  expect(start.props.disabled).toBe(false)
+  expect(renderToStaticMarkup(f.tree)).not.toContain('modelNoticeTitle')
 })
