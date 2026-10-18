@@ -18,6 +18,14 @@
   <img alt="Windows" src="https://img.shields.io/badge/Windows-x64-171513.svg" />
 </p>
 
+## 程序截图
+
+![Godot Codely 开发工作台](docs/images/godot-codely-dev-20261018.png)
+
+2026-10-18 Windows 开发构建：临时工程运行 Godot 4.6.3，右侧显示实际引擎日志。截图不代表完整编辑器、真实模型 Agent 或安装包验收。
+
+社区介绍：[DeepSeek Harness 插件展示帖](https://github.com/deepseek-ai/deepseek-harness/discussions/10104)。
+
 ## 上游与社区协作
 
 Godot Codely 是社区独立维护的非官方项目：基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)，fork 自 [DSH Desktop](https://github.com/dataelement/dsh-desktop)，集成 [Godot Engine](https://github.com/godotengine/godot)。项目展示、贡献入口与兼容计划见[上游协作说明](docs/upstream-collaboration.md)。
