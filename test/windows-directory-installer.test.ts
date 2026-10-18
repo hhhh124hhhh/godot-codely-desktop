@@ -58,7 +58,11 @@ describe('hardened directory transaction (#48)', () => {
   it('captures the Windows error and retries only transient lock errors', async () => {
     const source = await readFile(directories, 'utf8')
     // MoveFileEx exposes GetLastError before rollback overwrites it.
+    // The .rN output register and the checked register must be the same
+    // mapping this toolchain uses (rN -> $N), or every failure reads as
+    // success and promotion silently no-ops (#48).
     expect(source).toContain("MoveFileExW(w \"${SOURCE}\", w \"${DESTINATION}\", i 0) i.r2 ?e")
+    expect(source).toContain('${If} $2 != 0')
     // Retry is bounded and only for access denied / sharing / lock violation.
     expect(source).toContain('${AndIf} ${RESULT} != 33')
     expect(source.match(/IntOp \$0 \$0 \+ 1/g)).toHaveLength(1)

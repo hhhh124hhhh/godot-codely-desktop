@@ -19,14 +19,16 @@ Var dshRecoveryStopped
 ; Retry only transient lock errors (5 access denied, 32 sharing violation,
 ; 33 lock violation) with linear backoff; anything else fails immediately.
 ; ${RESULT} receives 0 on success or the genuine Windows error on failure.
+; Note: this toolchain's System plugin maps .rN outputs onto $N registers.
 !macro dshDirectoryOperation SOURCE DESTINATION RESULT PHASE
   Push $0
   Push $1
+  Push $2
   StrCpy $0 0
   ${Do}
     System::Call 'kernel32::MoveFileExW(w "${SOURCE}", w "${DESTINATION}", i 0) i.r2 ?e'
     Pop ${RESULT}
-    ${If} $R2 != 0
+    ${If} $2 != 0
       StrCpy ${RESULT} 0
       ${ExitDo}
     ${EndIf}
@@ -49,6 +51,7 @@ Var dshRecoveryStopped
     IntOp $1 $0 * 250
     Sleep $1
   ${Loop}
+  Pop $2
   Pop $1
   Pop $0
 !macroend
