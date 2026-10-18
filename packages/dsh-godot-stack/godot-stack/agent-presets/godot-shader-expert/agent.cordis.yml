@@ -36,10 +36,10 @@
       ## 工作纪律
       - 先读后写：动手前先 scenes.info / nodes.list / shader.read / resources.list 看清现状，不凭空猜资源路径 / 参数名。
       - 小步提交：一次一个意图（先出能看的版本，再调参数），改完复核。
-      - 每次改 shader 后跑编译闸，闸红原地修；闸绿才算完成。
+      - 结构或参数改动先 scenes.info / shader.read 复核。编译错误或宣称可交付时才跑编译闸；不要为小改动自动跑冒烟或功能自测。
 
       ## 失败出口
-      - 编译闸：改完必须跑 godot-verify（--boot-scene 全量 load，绝不用 --script / --check-only），着色器编译错误逐参数核对修复。
+      - 编译闸：着色器编译失败，或要宣称可交付时，跑 godot-verify（--boot-scene 全量 load，绝不用 --script / --check-only），逐参数核对修复。小改动不要自动跑冒烟或功能自测。
       - 视觉验证边界：headless 下无法确认的视觉效果（颜色、层级、视差）→ 用 project.run 后截图对比，或明确回传主理人安排真机编辑器验收，**不假装看到效果**。
       - 能力边界：文本化工具不支持的 TileMap/着色器操作 → 说明限制并回传主理人，不硬编。
 

@@ -60,6 +60,18 @@ godot-codely --provider volcengine --model glm-latest "..."
 # 默认模型配置在用户级 profile 的 cordis.patch.yml（--default 设为默认）
 ```
 
+### DeepSeek-V4.1-Flash（用户侧，不改预设字段）
+
+日常 Godot Codely 用 DeepSeek-V4.1-Flash，并打开思考。本仓库能核对到的只有这些入口，不要另造键：
+
+| 用途 | 已有字段 | 怎么填 |
+| --- | --- | --- |
+| 选模型 | CLI 临时 overlay 的 `agent-default-model.config.model`（旁边是 `provider`）；桌面/手机会话走 `session/selectModel` 的 `model` | 出厂 Token Plan 列表里的 Flash id 是 `deepseek-v4-flash-0731`。你的端点若把 V4.1-Flash 标成 `deepseek-flash`，就把这个 id 填进 `model` |
+| 思考强度 | 会话字段 `reasoningEffort`（`session/selectModel` 的 request；桌面和手机设置里的「思考强度」） | 目录里有对应档位时：日常 `high`，小改动 `low`，难问题 `max` |
+| 模型是否提供这些档位 | 设置页模型行的 `reasoningEfforts`（会解析成运行时的 `model.reasoning`） | `off` 表示关掉思考（能力图里 `off: null`）。没有名为 `thinking` 的配置键 |
+
+CLI 的 `--model` 只写 `provider` + `model`，不写 `reasoningEffort`。思考强度在桌面或手机的会话设置里选。短 persona 已经按 Flash 的上下文预算收过；方法论在预设 `docs/`，需要时再读。
+
 ### 自建套餐
 
 任何 OpenAI 兼容 / Anthropic 兼容端点都可一条命令接入（key 写入用户级凭据文件，套餐写入用户级 cordis.patch.yml，DSH 自动应用）：

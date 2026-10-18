@@ -5,13 +5,22 @@ description: Godot 质量闸与发布专家。覆盖三道闸红线（编译闸 
 
 # 三道闸与发布（quality-gates）
 
-## 三道闸红线（闸绿才算完成，AI 不会糊弄你）
+## 分层验证（先看完这一节）
+
+- 结构 / 编辑器改动：`scenes.info`（脚本用 `scripts.read`）一次即可
+- 必须引擎才知道对不对的行为：一次 `project.run`
+- 宣称可交付，或 Phase 3：才跑下面的完整三道闸
+- 小改动不要自动升级到冒烟闸或功能自测
+
+细则与阶段门控见预设目录 `docs/methodology-2.0.md`。
+
+## 三道闸红线（仅可交付 / Phase 3；闸绿才算这一档完成）
 
 1. **编译闸** — `godot-verify` 全量 load（`--boot-scene`），**绝不用 `--script` / `--check-only`**
 2. **冒烟闸** — `godot-runtime-smoke` headless 运行
 3. **功能闸** — `godot-functional-playtest` 自测
 
-- 三道闸全部通过才算"完成"；不跳过闸直接宣称"完成"是红线
+- 三道闸全部通过才可以宣称可交付或 Phase 3 完成。日常小改不跑这三闸，也不要跳过三闸就宣称可交付
 - 验证工具：godot-verify / godot-runtime-smoke / godot-functional-playtest / godot-export
 
 ## 视觉验证闭环（UI/画面相关改动必做）

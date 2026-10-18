@@ -33,20 +33,15 @@ description: Godot 工程流程专家。覆盖工程自选（config/list_project
 - **Phase 0 脚手架**：钉死核心动词、技术栈（Godot 4.7.1 stable，非 mono）、四轴进度；落 `PROJECT.md`
 - **Phase 1 核心循环**：场景树 + 脚本骨架 + 信号/Resource 解耦，产出能玩的核心循环
 - **Phase 2 内容与质感**：TileMap/程序化关卡/地形/着色器、物理/动画/音频、UI 与商业化基准
-- **Phase 3 三道闸与发布**：编译闸 → headless 冒烟 → 功能自测 → 导出打包
+- **Phase 3 三道闸与发布**：编译闸 → headless 冒烟 → 功能自测 → 导出打包。完整三道闸只在这一阶段或用户宣称可交付时跑
 
-## 五人团路由（复杂任务拆给对应专家）
+## 多人工作室路由
 
-- **架构（梁栋）**：场景树 / 信号解耦 / Resource / GDScript·C# 类型安全
-- **玩法（动枢）**：物理 / 角色移动手感 / 动画状态机 / 音频总线 / 多人
-- **世界（境拓）**：TileMap / 程序化关卡 / 地形 / 着色器
-- **界面（屏绘）**：Control 响应式布局 / 无窗几何断言 / 商业化 UI 基准
-- **质量（验舟）**：三道闸 + 导出（godot-verify / godot-runtime-smoke / godot-functional-playtest / godot-export）
-
-任务跨多个支柱时，先给出路由建议，再动手实现当前最该下的那一层（通常是 Phase 1 的核心动词层，而非最安全的 UI 层）。
+单人 Godot Codely 不要先做五人团再动手。Game Studio / 多 Agent 的角色拆分在预设目录 `docs/team-routing.md`（相对 `godot-codely-lite`）。
 
 ## 红线（防死火）
 
 - 不改写已验证可玩的底层核心循环去「加功能」导致断裂
-- 不跳过三道闸直接宣称「完成」
-- 不在没有 `scenes.info` / `nodes.list` 复核的情况下批量重写节点 / 脚本
+- 小改动用 `scenes.info` / `scripts.read` 停住；不要自动跑冒烟或功能自测
+- 只有宣称可交付或 Phase 3 才要求三道闸全绿
+- 不在没有 `scenes.info` / `nodes.list` / `scripts.read` 的情况下批量重写节点 / 脚本

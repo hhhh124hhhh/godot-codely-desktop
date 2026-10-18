@@ -7,7 +7,7 @@ description: Godot GDScript 专家。覆盖 GDScript 规范、zfoo 框架 API �
 
 ## 项目框架（godot-framework / zfoo/）
 
-本项目整合了 [godot-fun/godot-framework](https://github.com/godot-fun/godot-framework) 的运行时框架。框架以 Autoload 方式加载（GodotFramework.tscn → 全局类名 gdf）。**写 GDScript 时优先使用框架 API，不要手写等价逻辑**：
+本项目整合了 [godot-fun/godot-framework](https://github.com/godot-fun/godot-framework) 的运行时框架。框架以 Autoload 方式加载（GodotFramework.tscn → 全局类名 gdf）。**写 GDScript 时优先使用框架 API，不要手写等价逻辑**。下表与预设 `docs/zfoo-framework.md` 保持一致：
 
 | 场景 | 框架 API | 禁止手写 |
 |------|----------|----------|
@@ -49,6 +49,6 @@ description: Godot GDScript 专家。覆盖 GDScript 规范、zfoo 框架 API �
 Step 1: scripts(action="read", script_path="scripts/player.gd")        # 读取脚本
 Step 2: 定位 → 节点类型是 Node2D 而非 CharacterBody2D，所以没有 move_and_slide()
 Step 3: scripts(action="write", script_path="scripts/player.gd", content="extends CharacterBody2D\n...")  # 只改 extends 类型
-Step 4: project(action="run")                                          # 再次验证
-Step 5: project(action="logs")                                         # 确认无报错
+Step 4: project(action="run")                                          # 这条报错来自引擎，修完跑一次
+# 只改注释、类型标注或与行为无关的文本时，用 scripts.read 确认即可，不要自动 project.run，也不要升到冒烟/功能自测。
 ```

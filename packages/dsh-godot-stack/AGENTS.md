@@ -12,7 +12,7 @@ Godot Codely = 垂直 AI 编程助手：内核 @deepseek-ai/dsh + Godot UI（桌
   （勿恢复全量 cp，会拖慢启动至 95s+ 超时）。
 - `cli/godot-codely.mjs` —— CLI 启动器（品牌横幅 + --model/--provider/--list-models + config add|list）。
 - `godot-stack/mcp/godot-mcp-server/` —— MCP server（src 编译到 build；node_modules 现场安装，不入库）。
-- `godot-stack/agent-presets/godot-codely-lite/` —— agent 预设。
+- `godot-stack/agent-presets/godot-codely-lite/` —— agent 预设（短 persona + `docs/`）。
 - `skills/godot/` —— Godot 领域技能。
 - `README.md` —— 模型套餐 / 多模态 / 子代理 / 启动修复 文档。
 
@@ -26,6 +26,22 @@ node packages/dsh-godot-stack/cli/godot-codely.mjs --list-models
 # 打包（仓库根）
 npm run package:win
 ```
+
+## Persona 同步（DeepSeek-V4.1-Flash 短提示词）
+
+每轮只注入短 persona。下面两处正文必须逐字相同（比较时去掉文件末尾那一个换行；YAML 用 `|-`，加载结果不带末尾换行）：
+
+- `godot-stack/agent-presets/godot-codely-lite/SYSTEM_PROMPT.md`
+- `godot-stack/agent-presets/godot-codely-lite/agent.cordis.yml` 中 `@deepseek-ai/dsh-persona` 的 `config.prefix`
+
+本仓库桌面 Harness 的字段是 `prefix`，不是旧键 `text`。`src/shared/persona-prefix.ts` 会在用户预设挂载前把 `text` 改成 `prefix`；源文件写 `text` 会在迁移前挂不上。长材料不进热路径，放在同目录 `docs/`：
+
+- `methodology-2.0.md` — 方法论 2.0、四轴、阶段、分层验证
+- `loop-examples.md` — 工具地图与长示例
+- `zfoo-framework.md` — 框架 API 表
+- `team-routing.md` — 五人团与专家预设，**仅 Game Studio / 多 Agent**。单人 Codely 不要先五人团再动手
+
+分层验证：结构/编辑器用 `scenes.info`（脚本用 `scripts.read`）；必须引擎的行为才一次 `project.run`；宣称可交付或 Phase 3 才跑完整三道闸。小改动不自动跑冒烟或功能自测。
 
 ## 关键陷阱
 - **cordis.patch.yml 追加插件行**：必须放 `- insert:` 块；普通 `- id:` 只覆盖已有行。
