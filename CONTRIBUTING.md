@@ -26,6 +26,8 @@ Say which checks you ran and which you did not. Do not put API keys, tokens, or 
 
 ## Issues
 
+For fixes that belong to DeepSeek Harness or Godot, see [Upstream collaboration](docs/upstream-collaboration.md). Include a minimal reproduction and track the upstream discussion or PR alongside the local patch. Product-specific issues belong in this repository.
+
 Use the templates for bugs and feature requests. Include the operating system, whether you built from this fork's source, and the command or screen that failed. Leave out secrets.
 
 ## Conduct and vulnerabilities
