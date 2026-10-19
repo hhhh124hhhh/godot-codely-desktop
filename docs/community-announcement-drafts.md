@@ -1,6 +1,6 @@
 # 社区项目介绍草稿
 
-状态：DSH 已发布至 [Show Your Plugins! #10104](https://github.com/deepseek-ai/deepseek-harness/discussions/10104)，含真实截图；Godot Forum 仍为未发布草稿。下文保留初始文案供维护参考，勿重复发布 DSH 主题。
+状态：DSH 已发布至 [Show Your Plugins! #10104](https://github.com/deepseek-ai/deepseek-harness/discussions/10104)，含真实截图；Godot Forum 已于 2026-10-18 审核通过并公开至 [Plugins #145595](https://forum.godotengine.org/t/godot-codely-open-source-ai-workspace-for-game-creation-early-development/145595)。下文保留初始文案供维护参考，勿重复发布。
 
 ## DSH：Show Your Plugins!
 
