@@ -28,7 +28,11 @@ describe('GitHub release contract', () => {
     const workflow = parse(await readFile(path.join(projectRoot, '.github/workflows/release.yml'), 'utf8'))
     const installed = workflow.jobs['windows-installed']
     expect(installed.needs).toBe('windows-x64')
+    expect(installed.strategy.matrix['install-mode']).toEqual(['currentuser', 'allusers'])
     expect(installed.steps.some((step: { uses?: string }) => step.uses === 'actions/download-artifact@v4')).toBe(true)
+    const verification = installed.steps.find((step: { name?: string }) => step.name === 'Verify installed Windows app and upgrades')
+    expect(verification.env.INSTALL_MODE).toBe('${{ matrix.install-mode }}')
+    expect(verification.run).toContain('-InstallMode $env:INSTALL_MODE')
     const publish = workflow.jobs['publish-unsigned-github']
     expect(publish.needs).toContain('windows-installed')
     expect(publish.if).toContain("needs.windows-installed.result == 'success'")

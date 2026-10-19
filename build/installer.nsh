@@ -103,5 +103,10 @@
       IfSilent +2 0
       MessageBox MB_OK|MB_ICONEXCLAMATION "升级未能完成：解压缩安装内容失败（${FILE}）。已保留原版本。详情日志：$TEMP\godot-codely-installer-directories.log" /SD IDOK
     !macroend
+
+    !macro customInstallerStageFailed PHASE
+      IfSilent +2 0
+      MessageBox MB_OK|MB_ICONEXCLAMATION "安装无法继续：无法准备安装目录（错误码 $dshDirectoryError）。目标目录：$dshFinalDirectory。请选择有写权限的目录，或选择为所有用户安装并允许管理员授权。原安装未更改。详情日志：$TEMP\godot-codely-installer-directories.log" /SD IDOK
+    !macroend
   !endif
 !endif
