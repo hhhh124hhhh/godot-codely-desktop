@@ -1,0 +1,61 @@
+diff --git a/node_modules/@deepseek-ai/dsh-sandbox-windows-acl/lib/types-Cl_DXjhk.js b/node_modules/@deepseek-ai/dsh-sandbox-windows-acl/lib/types-Cl_DXjhk.js
+index 4d906d1e..ab4d12a9 100644
+--- a/node_modules/@deepseek-ai/dsh-sandbox-windows-acl/lib/types-Cl_DXjhk.js
++++ b/node_modules/@deepseek-ai/dsh-sandbox-windows-acl/lib/types-Cl_DXjhk.js
+@@ -14,6 +14,12 @@ import { parse } from "yaml";
+ const PROCESS_QUERY_INFORMATION = 1024;
+ /** Group attribute identifying the token logon SID. */
+ const SE_GROUP_LOGON_ID = 3221225472;
++/** SECURITY_INFORMATION flag selecting the owner SID. */
++const OWNER_SECURITY_INFORMATION = 1;
++/** Standard right required to set the mandatory integrity label. */
++const WRITE_OWNER = 524288;
++/** Win32 ERROR_ACCESS_DENIED. */
++const ERROR_ACCESS_DENIED = 5;
+ /**
+ * Capability-SID access mask granting write, delete, and child deletion.
+ * WRITE_DAC and WRITE_OWNER stay excluded so a confined child cannot rewrite
+@@ -590,6 +596,41 @@ function hasForeignGrant(oldAcl, sidPtr) {
+ * @param worldSidPtr - the Everyone SID the ambient-delete deny names.
+ */
+ function grantWrite(api, path, sidPtr, lowLabelSidPtr, worldSidPtr) {
++	try {
++		grantWriteOnce(api, path, sidPtr, lowLabelSidPtr, worldSidPtr);
++	} catch (error) {
++		// Data-volume defaults often give the owner WRITE_DAC but not WRITE_OWNER,
++		// which the Low-label edit needs. Repair only that access-denied case and
++		// retry once; if this path is not owned/writable by the caller, preserve the
++		// original failure and keep the sandbox fail-closed.
++		if (!(error instanceof Win32Error) || error.api !== "SetNamedSecurityInfoW" || error.win32Code !== ERROR_ACCESS_DENIED) throw error;
++		try {
++			grantOwnerWriteOwner(api, path);
++		} catch {
++			throw error;
++		}
++		grantWriteOnce(api, path, sidPtr, lowLabelSidPtr, worldSidPtr);
++	}
++}
++function grantOwnerWriteOwner(api, path) {
++	withPathLock(api, path, () => {
++		const ownerSlot = allocPtrSlot();
++		const groupSlot = allocPtrSlot();
++		const daclSlot = allocPtrSlot();
++		const saclSlot = allocPtrSlot();
++		const descriptorSlot = allocPtrSlot();
++		const readResult = api.getNamedSecurityInfoW(path, 1, OWNER_SECURITY_INFORMATION | 4, ownerSlot, groupSlot, daclSlot, saclSlot, descriptorSlot);
++		if (readResult !== 0) throwWin32(api, "GetNamedSecurityInfoW", readResult, `grantOwnerWriteOwner(${path})`);
++		const owner = decodePtr(ownerSlot);
++		const descriptor = decodePtr(descriptorSlot);
++		if (owner === null) {
++			if (descriptor !== null) api.localFree(descriptor);
++			throwWin32(api, "GetNamedSecurityInfoW", 1336, `grantOwnerWriteOwner(${path}): no owner`);
++		}
++		mergeAndApply(api, path, buildExplicitAccess(owner, 1, WRITE_OWNER), decodePtr(daclSlot), { kind: "keep" }, descriptor, "grantOwnerWriteOwner");
++	});
++}
++function grantWriteOnce(api, path, sidPtr, lowLabelSidPtr, worldSidPtr) {
+ 	withPathLock(api, path, () => {
+ 		const { oldAcl, labelAcl, descriptor } = readCurrentSecurity(api, path);
+ 		if (oldAcl !== null && labelAcl !== null && hasExactGrant(oldAcl, sidPtr) && hasExactDeny(oldAcl, worldSidPtr) && hasExactLabel(labelAcl, lowLabelSidPtr)) {
+
+
