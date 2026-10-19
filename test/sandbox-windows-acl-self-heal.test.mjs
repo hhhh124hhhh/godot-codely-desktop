@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AclSandbox, tempWriteSid, workspaceWriteSid } from '@deepseek-ai/dsh-sandbox-windows-acl'
-import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
 
 const isWin32 = process.platform === 'win32'
 
@@ -47,7 +46,7 @@ describe.skipIf(!isWin32)('Windows workspace-write ACL self-heal', () => {
       await sandbox.init()
       const command = `$ErrorActionPreference='Stop'; Set-Content -LiteralPath '${insideFile}' -Value inside; try { Set-Content -LiteralPath '${outsideFile}' -Value outside -ErrorAction Stop } catch {}; exit 0`
       const result = await sandbox.spawn({
-        command: resolvePwshPath(),
+        command: join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
         args: ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', command],
         cwd: workspace,
       }).wait()

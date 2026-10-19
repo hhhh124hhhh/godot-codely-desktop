@@ -57,5 +57,3 @@ index 4d906d1e..ab4d12a9 100644
  	withPathLock(api, path, () => {
  		const { oldAcl, labelAcl, descriptor } = readCurrentSecurity(api, path);
  		if (oldAcl !== null && labelAcl !== null && hasExactGrant(oldAcl, sidPtr) && hasExactDeny(oldAcl, worldSidPtr) && hasExactLabel(labelAcl, lowLabelSidPtr)) {
-
-
