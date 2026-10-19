@@ -24,7 +24,7 @@
 
 2026-10-18 Windows 开发构建：临时工程运行 Godot 4.6.3，右侧显示实际引擎日志。截图不代表完整编辑器、真实模型 Agent 或安装包验收。
 
-社区介绍：[DeepSeek Harness 插件展示帖](https://github.com/deepseek-ai/deepseek-harness/discussions/10104)。
+社区介绍：[DeepSeek Harness 插件展示帖](https://github.com/deepseek-ai/deepseek-harness/discussions/10104) · [Godot 官方论坛 Plugins](https://forum.godotengine.org/t/godot-codely-open-source-ai-workspace-for-godot-game-creation-early-development/145595)。
 
 ## 上游与社区协作
 
