@@ -87,13 +87,20 @@ describe('checkGithubUpdate', () => {
     expect(policy.feedUrl).toBe(releaseFeedUrl('v0.1.3-unsigned'))
   })
 
-  it('reports no update when only the current or older versions exist', async () => {
+  it('does not offer the installed 0.1.7 build as its own update', async () => {
     const fetchImpl = async (): Promise<Response> =>
-      jsonResponse([githubRelease('v0.1.3-unsigned'), githubRelease('v0.1.1-unsigned')])
-    const policy = await checkGithubUpdate('0.1.3', fetchImpl)
+      jsonResponse([githubRelease('v0.1.7-unsigned'), githubRelease('v0.1.6-unsigned')])
+    const policy = await checkGithubUpdate('0.1.7', fetchImpl)
     expect(policy.updateAvailable).toBe(false)
-    expect(policy.version).toBe('0.1.3')
+    expect(policy.version).toBe('0.1.7')
     expect(policy.feedUrl).toBe('')
+  })
+
+  it('does not treat a lower release as an update', async () => {
+    const fetchImpl = async (): Promise<Response> =>
+      jsonResponse([githubRelease('v0.1.1-unsigned')])
+    const policy = await checkGithubUpdate('0.1.2', fetchImpl)
+    expect(policy.updateAvailable).toBe(false)
   })
 
   it('does not treat a downgrade as an update', async () => {
