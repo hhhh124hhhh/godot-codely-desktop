@@ -110,6 +110,10 @@ index 7f3f791..d87a11a 100644
  			const input = useInput((s) => s);
  			const notice = useNotices((s) => s);
  			const busyEnter = useBusyEnter((s) => s);
+@@ -17416,1 +17416,1 @@
+-			const interruptible = running && continuable;
++			const interruptible = running && (continuable || subagent === null && !empty);
+
 @@ -17451,10 +17466,6 @@ window.__ModuleLoader__.load({
  								className: InputBar_module_css_default.overlayAnchor,
  								children: renderSlot("conversation.input.overlay", {})
@@ -278,9 +282,6 @@ index 7f3f791..d87a11a 100644
  				}, ConversationPanel);
  				yield registerConversationRoot();
  				yield registerConversationContent();
-@@ -17416,1 +17416,1 @@
--			const interruptible = running && continuable;
-+			const interruptible = running && (continuable || subagent === null && !empty);
 
 diff --git a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts
 index 74f5846..a0c86f5 100644
