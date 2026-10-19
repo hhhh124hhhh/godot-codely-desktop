@@ -410,6 +410,11 @@ jobs:
       - name: Build isolated Windows development package
         if: ${{ !startsWith(github.ref, 'refs/tags/v') && (github.event_name != 'workflow_dispatch' || inputs.mode == 'development') }}
         run: node scripts/verify-target.mjs win32 x64 && node scripts/electron-builder-windows.mjs --win --x64 --publish never --config electron-builder.dev.cjs
+      - name: Verify Windows installer directory transactions
+        shell: pwsh
+        env:
+          INSTALLER_OUTPUT: ${{ (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (inputs.mode == 'signed' || inputs.mode == 'prerelease' || inputs.mode == 'unsigned'))) && 'dist' || 'dist-dev' }}
+        run: node scripts/probe-windows-installer.mjs $env:INSTALLER_OUTPUT
       - name: Smoke test packaged Windows Harness
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         shell: pwsh
@@ -643,13 +648,17 @@ jobs:
           if-no-files-found: warn
 
   windows-installed:
-    name: Windows installer and client UI
+    name: Windows installer and client UI (${{ matrix.install-mode }})
     needs: windows-x64
     if: >-
       github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' &&
         (inputs.mode == 'development' || inputs.mode == 'unsigned') &&
         (inputs.target == 'all' || inputs.target == 'windows'))
+    strategy:
+      fail-fast: false
+      matrix:
+        install-mode: [currentuser, allusers]
     runs-on: windows-2022
     timeout-minutes: 20
     steps:
@@ -666,19 +675,20 @@ jobs:
         shell: pwsh
         env:
           INSTALL_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'unsigned' }}
+          INSTALL_MODE: ${{ matrix.install-mode }}
         run: |
           if ($env:INSTALL_RELEASE -eq 'true') {
             ./scripts/smoke-signed-windows-installer.ps1 -Unsigned `
-              -Installer 'installed-package/godot-codely-windows-x64-setup.exe'
+              -Installer 'installed-package/godot-codely-windows-x64-setup.exe' -InstallMode $env:INSTALL_MODE
           } else {
             ./scripts/smoke-signed-windows-installer.ps1 -Unsigned `
               -Installer 'installed-package/dsh-desktop-dev-windows-x64-setup.exe' `
-              -ExecutableName 'Godot Codely Dev.exe' -UserDataName 'godot-codely-dev'
+              -ExecutableName 'Godot Codely Dev.exe' -UserDataName 'godot-codely-dev' -InstallMode $env:INSTALL_MODE
           }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: windows-installed-ui
+          name: windows-installed-ui-${{ matrix.install-mode }}
           path: ${{ runner.temp }}/dsh-signed-smoke-*/installed-ui.png
           if-no-files-found: warn
           retention-days: 7

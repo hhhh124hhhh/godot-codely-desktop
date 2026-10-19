@@ -3,7 +3,8 @@ param(
   [string]$PublisherName,
   [switch]$Unsigned,
   [string]$ExecutableName = 'Godot Codely.exe',
-  [string]$UserDataName = 'godot-codely'
+  [string]$UserDataName = 'godot-codely',
+  [ValidateSet('currentuser', 'allusers')][string]$InstallMode = 'currentuser'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,6 +15,12 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hoste
 }
 if (-not $Unsigned -and [string]::IsNullOrWhiteSpace($PublisherName)) {
   throw 'Signed installer smoke requires PublisherName.'
+}
+if ($InstallMode -eq 'allusers') {
+  $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+  if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    throw 'All-users installer smoke requires an administrator token.'
+  }
 }
 $installer = (Resolve-Path $Installer).Path
 $root = Join-Path $env:RUNNER_TEMP ('dsh-signed-smoke-' + [guid]::NewGuid().ToString('N'))
@@ -46,7 +53,7 @@ function Assert-Signature([string]$path, [bool]$requirePublisher = $false) {
 function Invoke-Installer([string]$directory, [string]$stage) {
   Write-Host "$stage at $directory"
   $elapsed = [System.Diagnostics.Stopwatch]::StartNew()
-  $process = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$directory") -WindowStyle Hidden -PassThru
+  $process = Start-Process -FilePath $installer -ArgumentList @('/S', "/$InstallMode", "/D=$directory") -WindowStyle Hidden -PassThru
   $deadline = (Get-Date).AddMinutes(5)
   while (-not $process.HasExited) {
     if ((Get-Date) -ge $deadline) {
@@ -167,7 +174,11 @@ function Assert-Starts([string]$executable) {
 }
 
 Assert-Signature $installer $true
-$firstDirectory = Join-Path $root 'install-one'
+# Exercise the default-path shape through fresh install, locked rollback and upgrade.
+$firstDirectory = Join-Path $root 'Program Files\Godot Codely'
+if ($InstallMode -eq 'allusers') {
+  $firstDirectory = Join-Path $env:ProgramFiles ('Godot Codely Smoke ' + [guid]::NewGuid().ToString('N'))
+}
 $secondDirectory = Join-Path $root 'install-two'
 
 $firstExecutable = Install-At $firstDirectory

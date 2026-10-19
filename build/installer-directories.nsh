@@ -60,6 +60,7 @@ Var dshRecoveryStopped
 !macroend
 
 !macro dshLogDirectoryFailure LINE
+  Push $0
   ClearErrors
   FileOpen $0 "$TEMP\godot-codely-installer-directories.log" a
   ${IfNot} ${Errors}
@@ -67,6 +68,7 @@ Var dshRecoveryStopped
     FileWrite $0 "${LINE}$\r$\n"
     FileClose $0
   ${EndIf}
+  Pop $0
 !macroend
 
 ; Reporting hook: the product installer.nsh defines customInstallerDirectoryFailed
@@ -83,6 +85,7 @@ Var dshRecoveryStopped
 !macroend
 
 !macro dshExtractPayload FILE
+  !insertmacro dshLogDirectoryFailure "extract: begin ${FILE} -> $INSTDIR"
   nsExec::ExecToStack '"$PLUGINSDIR\dsh-7za.exe" x -y -bd -bb0 "-o$INSTDIR" "${FILE}"'
   Pop $R0
   Pop $R1
@@ -96,14 +99,27 @@ Var dshRecoveryStopped
     SetErrorLevel 2
     Quit
   ${EndIf}
+  !insertmacro dshLogDirectoryFailure "extract: complete $INSTDIR"
+!macroend
+
+; Setup can fail before extraction starts (notably when a per-user installer
+; targets Program Files). Preserve that phase and target instead of a bare Quit.
+!macro dshReportStageFailure PHASE ERROR
+  StrCpy $dshDirectoryError "${ERROR}"
+  !insertmacro dshLogDirectoryFailure "stage: ${PHASE} failed, error $dshDirectoryError, target $dshFinalDirectory, staging $dshNewDirectory"
+  !ifmacrodef customInstallerStageFailed
+    !insertmacro customInstallerStageFailed "${PHASE}"
+  !endif
+  SetErrorLevel 2
+  Quit
 !macroend
 
 !macro dshStageApplication
   StrCpy $dshFinalDirectory $INSTDIR
+  !insertmacro dshLogDirectoryFailure "stage: begin $dshFinalDirectory"
   System::Call 'ole32::CoCreateGuid(g .r0) i .r1'
   ${If} $1 != 0
-    SetErrorLevel 2
-    Quit
+    !insertmacro dshReportStageFailure "create-guid" "$1"
   ${EndIf}
   StrCpy $dshNewDirectory "$INSTDIR.new-$0"
   StrCpy $dshOldDirectory "$INSTDIR.old-$0"
@@ -115,8 +131,15 @@ Var dshRecoveryStopped
   ClearErrors
   CreateDirectory $dshNewDirectory
   ${If} ${Errors}
-    SetErrorLevel 2
-    Quit
+    ; NSIS exposes only its error flag here. A native retry returns the actual
+    ; directory-creation error without guessing from a stale GetLastError.
+    ; Keep NSIS's normal path handling, including long paths, on the fast path.
+    System::Call 'shell32::SHCreateDirectoryExW(p 0, w "$dshNewDirectory", p 0) i.r2'
+    ${If} $2 != 0
+    ${AndIf} $2 != 183
+      !insertmacro dshReportStageFailure "create-directory" "$2"
+    ${EndIf}
+    ClearErrors
   ${EndIf}
   File /oname=$PLUGINSDIR\dsh-7za.exe "${DSH_SEVENZIP_PATH}"
   StrCpy $INSTDIR $dshNewDirectory
