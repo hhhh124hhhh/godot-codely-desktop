@@ -24,6 +24,21 @@ describe('GitHub release contract', () => {
     expect(install).toBeGreaterThan(-1)
     expect(merge).toBeGreaterThan(install)
   })
+  it('mirrors unsigned releases after GitHub publication and offers a verified backfill workflow', async () => {
+    const workflow = parse(await readFile(path.join(projectRoot, '.github/workflows/release.yml'), 'utf8'))
+    const steps = workflow.jobs['publish-unsigned-github'].steps as { name?: string; run?: string; env?: Record<string, string> }[]
+    const publishIndex = steps.findIndex(step => step.name === 'Publish traceable unsigned GitHub Release')
+    const mirrorIndex = steps.findIndex(step => step.name === 'Mirror unsigned release assets to ModelScope')
+    expect(mirrorIndex).toBeGreaterThan(publishIndex)
+    expect(steps[mirrorIndex].env?.MODELSCOPE_TOKEN).toBe('${{ secrets.MODELSCOPE_TOKEN }}')
+    expect(steps[mirrorIndex].run).toContain('mirror_unsigned_release.py')
+    expect(steps[mirrorIndex].run).toContain('skipping ModelScope mirror')
+
+    const backfill = parse(await readFile(path.join(projectRoot, '.github/workflows/mirror-unsigned-release.yml'), 'utf8'))
+    expect(backfill.on.workflow_dispatch.inputs.version.required).toBe(true)
+    expect(backfill.jobs.mirror.steps.some((step: { run?: string }) => step.run?.includes('gh release download'))).toBe(true)
+    expect(backfill.jobs.mirror.steps.some((step: { run?: string }) => step.run?.includes('mirror_unsigned_release.py'))).toBe(true)
+  })
   it('runs installer verification on a fresh runner and requires it before Windows publication', async () => {
     const workflow = parse(await readFile(path.join(projectRoot, '.github/workflows/release.yml'), 'utf8'))
     const installed = workflow.jobs['windows-installed']

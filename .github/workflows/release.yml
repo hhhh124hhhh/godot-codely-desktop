@@ -1041,6 +1041,26 @@ jobs:
               --repo "$GITHUB_REPOSITORY"
           fi
 
+      - name: Mirror unsigned release assets to ModelScope
+        env:
+          MODELSCOPE_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
+          MODELSCOPE_REPO_ID: ${{ vars.MODELSCOPE_REPO_ID || github.repository }}
+          RELEASE_VERSION: ${{ inputs.unsigned_version }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MODELSCOPE_TOKEN:-}" ]; then
+            echo "::warning::MODELSCOPE_TOKEN not set; skipping ModelScope mirror. Configure it in repository Actions secrets to enable uploads."
+            exit 0
+          fi
+          python3 -m venv "$RUNNER_TEMP/ms-env"
+          "$RUNNER_TEMP/ms-env/bin/pip" install -q modelscope
+          "$RUNNER_TEMP/ms-env/bin/python3" .github/scripts/mirror_unsigned_release.py \
+            --directory release-assets \
+            --version "$RELEASE_VERSION" \
+            --repo-id "$MODELSCOPE_REPO_ID" \
+            --source-commit "$GITHUB_SHA" \
+            --run-id "$GITHUB_RUN_ID"
+
   publish-signed-test:
     name: Upload signed test installers and notify
     needs: [macos, sign-windows, smoke-signed-windows]

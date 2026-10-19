@@ -1,0 +1,77 @@
+name: Mirror unsigned release to ModelScope
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published unsigned release version, without v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    name: Verify and mirror published release
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download and verify the published GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version must be a non-v semver without a v prefix."
+            exit 1
+          fi
+          mkdir -p release-assets
+          gh release download "v${VERSION}-unsigned" --repo "$GITHUB_REPOSITORY" --dir release-assets
+          python3 - <<'PY'
+          import hashlib
+          import pathlib
+          import re
+
+          directory = pathlib.Path("release-assets")
+          manifest = directory / "SHA256SUMS.txt"
+          if not manifest.is_file():
+              raise SystemExit("GitHub release has no SHA256SUMS.txt")
+          entries = manifest.read_text(encoding="utf-8").splitlines()
+          if not entries:
+              raise SystemExit("SHA256SUMS.txt is empty")
+          for line in entries:
+              match = re.fullmatch(r"([a-fA-F0-9]{64})  ([^/\\]+)", line)
+              if not match:
+                  raise SystemExit(f"Invalid SHA256SUMS.txt entry: {line!r}")
+              digest, name = match.groups()
+              asset = directory / name
+              if not asset.is_file() or hashlib.sha256(asset.read_bytes()).hexdigest().lower() != digest.lower():
+                  raise SystemExit(f"Missing asset or SHA-256 mismatch: {name}")
+          print(f"Verified {len(entries)} published asset checksum(s).")
+          PY
+      - name: Upload verified release to ModelScope
+        env:
+          MODELSCOPE_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
+          MODELSCOPE_REPO_ID: ${{ vars.MODELSCOPE_REPO_ID || github.repository }}
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MODELSCOPE_TOKEN:-}" ]; then
+            echo "::error::Configure the MODELSCOPE_TOKEN repository secret before running this workflow."
+            exit 1
+          fi
+          python3 -m venv "$RUNNER_TEMP/ms-env"
+          "$RUNNER_TEMP/ms-env/bin/pip" install -q modelscope
+          source_commit="$(gh api "repos/${GITHUB_REPOSITORY}/commits/v${VERSION}-unsigned" --jq .sha)"
+          "$RUNNER_TEMP/ms-env/bin/python3" .github/scripts/mirror_unsigned_release.py \
+            --directory release-assets \
+            --version "$VERSION" \
+            --repo-id "$MODELSCOPE_REPO_ID" \
+            --source-commit "$source_commit" \
+            --run-id "$GITHUB_RUN_ID"
