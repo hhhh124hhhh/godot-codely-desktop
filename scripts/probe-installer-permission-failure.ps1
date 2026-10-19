@@ -42,6 +42,10 @@ SectionEnd
   $identity = [Security.Principal.WindowsIdentity]::GetCurrent().User
   & icacls.exe $denied /inheritance:r /grant:r "*$($identity.Value):(OI)(CI)(RX)" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw 'Could not prepare the disposable permission fixture.' }
+  # Hosted runners are elevated and can retain an explicit Administrators grant.
+  # Deny creation for this SID as well, so the fixture fails for either token.
+  & icacls.exe $denied /deny "*$($identity.Value):(OI)(CI)(WD,AD)" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Could not deny writes in the disposable permission fixture.' }
   foreach ($name in $directoryNames) {
     $target = Join-Path $denied $name
     $process = Start-Process -FilePath (Join-Path $root 'probe.exe') -ArgumentList "/D=$target" -WindowStyle Hidden -PassThru
