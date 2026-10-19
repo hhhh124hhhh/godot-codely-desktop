@@ -27,4 +27,14 @@ describe('packaged conversation input CSS', () => {
     expect(styles[0]?.textContent).toContain('.uV2eYG_input{padding-left:12px}')
     expect(styles[0]?.textContent).toContain('.uV2eYG_placeholder{left:12px}')
   })
+
+  it('keeps a stop action visible beside a queued draft during a non-continuable main turn', async () => {
+    const entry = require.resolve('@deepseek-ai/dsh-client-ui-conversation/package.json')
+      .replace(/package\.json$/u, 'lib/client.js')
+    const bundle = await readFile(entry, 'utf8')
+
+    expect(bundle).toContain('const interruptible = running && (continuable || subagent === null && !empty);')
+    expect(bundle).toContain('onClick: stop')
+    expect(bundle).toContain('scopedConversation(sessions, sessionId).cancel()')
+  })
 })
