@@ -28,9 +28,8 @@ Manual alternative (same result):
 3. **Unsigned** needs no signing secrets. **Formal / prerelease** require **Settings → Secrets and variables → Actions**:
    - **macOS**: `DESKTOP_CSC_LINK`, `DESKTOP_CSC_KEY_PASSWORD`, `DESKTOP_APPLE_API_KEY`, `DESKTOP_APPLE_API_KEY_ID`, `DESKTOP_APPLE_API_ISSUER`, `DESKTOP_APPLE_TEAM_ID`
    - **Windows**: `DESKTOP_WINDOWS_SIGNING_PIN` and a self-hosted runner with labels `self-hosted`, `macOS`, `ARM64` (UKey signing host; see [release runbook](release-runbook.md))
-3. Optional:
-   - `MODELSCOPE_TOKEN` — mirror installers (skipped when unset)
-   - **Variables** `MODELSCOPE_REPO_ID` — defaults to `owner/repo` for this GitHub repository
+3. Optional ModelScope mirror: create a public ModelScope **model** repository first, then add its write token as the GitHub Actions secret `MODELSCOPE_TOKEN`. Set the Actions variable `MODELSCOPE_REPO_ID` to that `owner/repo` (it defaults to this GitHub repository ID). Unsigned releases upload verified assets to `releases/archive/<version>` and `releases/latest`; when the token is unset, GitHub publication succeeds with a warning and skips the mirror. To mirror an existing unsigned GitHub release without rebuilding it, run **Actions → Mirror unsigned release to ModelScope** and enter its version (for example `0.1.8-4`). Each mirrored directory includes `SHA256SUMS.txt` and `MIRROR-INFO.json`.
+4. Optional:
    - `FEISHU_RELEASE_WEBHOOK`, `MODELS_TOKEN`, `CRASH_ADMIN_TOKEN`
 
 Signed publication requires macOS secrets and the Windows signing runner. Unsigned publication requires neither: all selected targets must pass before **Publish unsigned GitHub Release** runs. PR and `development` builds produce short-lived workflow artifacts only; Linux PR builds include an extracted-AppImage UI smoke.
