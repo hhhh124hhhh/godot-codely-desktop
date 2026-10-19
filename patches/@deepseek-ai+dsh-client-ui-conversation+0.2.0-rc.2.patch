@@ -278,6 +278,10 @@ index 7f3f791..d87a11a 100644
  				}, ConversationPanel);
  				yield registerConversationRoot();
  				yield registerConversationContent();
+@@ -17416,1 +17416,1 @@
+-			const interruptible = running && continuable;
++			const interruptible = running && (continuable || subagent === null && !empty);
+
 diff --git a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts b/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts
 index 74f5846..a0c86f5 100644
 --- a/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/types/client/contract/slots.d.ts
