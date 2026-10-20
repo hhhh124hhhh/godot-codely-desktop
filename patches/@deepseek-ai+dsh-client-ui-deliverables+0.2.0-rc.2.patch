@@ -139,3 +139,71 @@ index b7b52a1..52fb035 100644
 +}) => void, label: (path: string) => string): MarkdownFileMentions;
  //# sourceMappingURL=turn-deliverables.d.ts.map
 \ No newline at end of file
+diff --git a/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/index.js b/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/index.js
+index 6fa1d11f..94e0cc6b 100644
+--- a/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/index.js
++++ b/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/index.js
+@@ -101,6 +101,20 @@ const NUMERIC = /^\d+$/;
+ function coordinate(value) {
+ 	return value !== null && NUMERIC.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : void 0;
+ }
++function isWorkspaceChangesData(value) {
++	return typeof value === "object" && value !== null && !Array.isArray(value) && Number.isSafeInteger(value.turn) && value.turn >= 1;
++}
++async function readChangesTarget(ctx, request, id, seq) {
++	request.signal.throwIfAborted();
++	try {
++		const read = await ctx.sessionQuery.readEvent({ sessionId: id, seq, before: 0, after: 0 }, request.signal);
++		if (read instanceof Response) return read;
++		return read?.target?.type === "workspace/changes" && isWorkspaceChangesData(read.target.data) ? read : new Response("Change event not found.", { status: 404 });
++	} catch (error) {
++		request.signal.throwIfAborted();
++		return new Response("Change event unavailable.", { status: failureStatus(error) });
++	}
++}
+ /** Translate lookup and filesystem failures into the not-found or failure status the browser retries from. */
+ function failureStatus(error) {
+ 	const remote = remoteErrorOf(error);
+@@ -167,13 +181,15 @@ async function handlePresentOpen(ctx, request) {
+ 	}
+ }
+ /** The summary one `workspace/changes` event announced, without the Host working directory; 404 once the Host no longer serves it. */
+-function handleChangesSummary(ctx, request) {
++async function handleChangesSummary(ctx, request) {
+ 	const query = new URL(request.url).searchParams;
+ 	const id = query.get("sessionId");
+ 	const seq = coordinate(query.get("seq"));
+ 	if (!id || seq === void 0) return new Response("Invalid change summary coordinates.", { status: 400 });
+-	const summary = ctx.workspaceChanges.summary(id, seq);
+-	if (summary === void 0) return new Response("Change summary unavailable.", { status: 404 });
++	const read = await readChangesTarget(ctx, request, id, seq);
++	if (read instanceof Response) return read;
++	const summary = await ctx.workspaceChanges.summary(id, seq);
++	if (summary === void 0 || summary.turn !== read.target.data.turn) return new Response("Change summary unavailable.", { status: 404 });
+ 	const { turn, files, total, added, deleted } = summary;
+ 	return Response.json({
+ 		turn,
+@@ -202,6 +218,10 @@ async function handleChangesDiff(ctx, request) {
+ 	if (coordinates instanceof Response) return coordinates;
+ 	const { id, seq, index } = coordinates;
+ 	try {
++		const read = await readChangesTarget(ctx, request, id, seq);
++		if (read instanceof Response) return read;
++		const summary = await ctx.workspaceChanges.summary(id, seq);
++		if (summary === void 0 || summary.turn !== read.target.data.turn || summary.files[index] === void 0) return new Response("Change summary unavailable.", { status: 404 });
+ 		const diff = await ctx.workspaceChanges.diff(id, seq, index, request.signal);
+ 		if (diff === void 0) return new Response("Change comparison unavailable.", { status: 404 });
+ 		return Response.json(diff, { headers: { "cache-control": "no-store" } });
+@@ -219,8 +239,10 @@ async function handleChangesOpen(ctx, request) {
+ 	try {
+ 		request.signal.throwIfAborted();
+ 		if (!ctx.sessionController.workspaceDesktop().available) return new Response("Host desktop unavailable.", { status: 409 });
+-		const changes = ctx.workspaceChanges.summary(id, seq);
+-		if (changes === void 0) return new Response("Change summary unavailable.", { status: 404 });
++		const read = await readChangesTarget(ctx, request, id, seq);
++		if (read instanceof Response) return read;
++		const changes = await ctx.workspaceChanges.summary(id, seq);
++		if (changes === void 0 || changes.turn !== read.target.data.turn) return new Response("Change summary unavailable.", { status: 404 });
+ 		const workspaceRoot = changes.cwd;
+ 		const file = changes.files[index];
+ 		if (file === void 0) return new Response("Changed file not found in this summary.", { status: 404 });
