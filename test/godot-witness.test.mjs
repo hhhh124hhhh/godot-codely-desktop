@@ -12,7 +12,8 @@ import { ProjectStore } from '../packages/dsh-godot-stack/governance/index.mjs'
 const context = { status: 'READY', projectId: 'project', taskId: 'task', runId: 'run', stateRevision: 4, scope: 'player only', inputFingerprint: 'input', environmentFingerprint: 'environment' }
 const evidence = { ...context, id: 'proof', kind: 'godot_headless', collector: 'godot-project-verify/v1', provenance: 'ADAPTER_CAPTURED', target: 'headless', runState: 'DONE', outcome: 'PASS', assertions: ['godot.verify'] }
 const verdict = (items, ctx = context, policy = HEADLESS_POLICY, humans = []) => evaluateGate(policy, ctx, items, humans).verdict
-it('keeps headless success separate from device evidence and human task completion', () => {
+it('keeps headless compile PASS separate from player FUN confirmation and device evidence', () => {
+  expect(TASK_REVIEW_POLICY.humanCheckpointRule.question).toMatch(/human played.*fun/i)
   expect(verdict([evidence])).toBe('PASS')
   expect(verdict([evidence], context, TASK_REVIEW_POLICY)).toBe('WAIT_HUMAN')
   const device = { ...HEADLESS_POLICY, gateId: 'ANDROID-ACCESS', requirements: [{ ...HEADLESS_POLICY.requirements[0], id: 'android', kind: 'device', target: 'android' }] }
