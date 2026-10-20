@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 import { createHash } from 'node:crypto'
 import { readdir, open, realpath, lstat } from 'node:fs/promises'
 import { join, relative, isAbsolute } from 'node:path'
