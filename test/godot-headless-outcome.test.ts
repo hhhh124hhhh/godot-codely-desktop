@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 import { expect, it } from 'vitest'
 import { execGodotAsync } from '../packages/dsh-godot-stack/godot-stack/mcp/godot-mcp-server/src/better/src/godot/headless'
 
