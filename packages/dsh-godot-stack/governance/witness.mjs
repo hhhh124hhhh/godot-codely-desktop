@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 import { execFile } from 'node:child_process'
 import { open, mkdir, readFile, realpath, lstat } from 'node:fs/promises'
 import { join, relative, isAbsolute } from 'node:path'
