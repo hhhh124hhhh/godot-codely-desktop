@@ -140,7 +140,7 @@ index b7b52a1..52fb035 100644
  //# sourceMappingURL=turn-deliverables.d.ts.map
 \ No newline at end of file
 diff --git a/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/index.js b/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/index.js
-index 6fa1d11f..604f414a 100644
+index 6fa1d11f..94e0cc6b 100644
 --- a/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-client-ui-deliverables/lib/index.js
 @@ -101,6 +101,20 @@ const NUMERIC = /^\d+$/;
@@ -194,12 +194,16 @@ index 6fa1d11f..604f414a 100644
  		const diff = await ctx.workspaceChanges.diff(id, seq, index, request.signal);
  		if (diff === void 0) return new Response("Change comparison unavailable.", { status: 404 });
  		return Response.json(diff, { headers: { "cache-control": "no-store" } });
-@@ -219,7 +239,7 @@ async function handleChangesOpen(ctx, request) {
+@@ -219,8 +239,10 @@ async function handleChangesOpen(ctx, request) {
  	try {
  		request.signal.throwIfAborted();
  		if (!ctx.sessionController.workspaceDesktop().available) return new Response("Host desktop unavailable.", { status: 409 });
 -		const changes = ctx.workspaceChanges.summary(id, seq);
+-		if (changes === void 0) return new Response("Change summary unavailable.", { status: 404 });
++		const read = await readChangesTarget(ctx, request, id, seq);
++		if (read instanceof Response) return read;
 +		const changes = await ctx.workspaceChanges.summary(id, seq);
- 		if (changes === void 0) return new Response("Change summary unavailable.", { status: 404 });
++		if (changes === void 0 || changes.turn !== read.target.data.turn) return new Response("Change summary unavailable.", { status: 404 });
  		const workspaceRoot = changes.cwd;
  		const file = changes.files[index];
+ 		if (file === void 0) return new Response("Changed file not found in this summary.", { status: 404 });

@@ -110,6 +110,7 @@ it('serves persisted change evidence only for a durable workspace/changes event'
     connection: { fetch: { register: route => routes.set(route.path, route) } },
     effect: () => {},
     systemPrompt: { section: () => {}, getSectionOrder: () => 0 },
+    sessionController: { workspaceDesktop: () => ({ available: true }) },
     sessionQuery: { readEvent: vi.fn(async () => ({ target: { type: 'workspace/changes', data: { turn: 1 } }, session: { cwd: f.project } })) },
     workspaceChanges: reopened.service(),
   }
@@ -130,6 +131,9 @@ it('serves persisted change evidence only for a durable workspace/changes event'
   expect(await rejected.text()).toBe('Change event not found.')
   const rejectedDiff = await diffRoute.fetch(new Request(`http://dsh.internal/api/changes.diff?sessionId=${f.session.id}&seq=${f.seq}&index=0`))
   expect(rejectedDiff.status).toBe(404)
+  const openRoute = routes.get('/api/changes.open')
+  const rejectedOpen = await openRoute.fetch(new Request(`http://dsh.internal/api/changes.open?sessionId=${f.session.id}&seq=${f.seq}&index=0`))
+  expect(rejectedOpen.status).toBe(404)
   ctx.sessionQuery.readEvent = vi.fn(async () => { throw Object.assign(new Error('missing session'), { code: 'SESSION_QUERY_SESSION_NOT_FOUND' }) })
   const missingSession = await route.fetch(request)
   expect(missingSession.status).toBe(404)
