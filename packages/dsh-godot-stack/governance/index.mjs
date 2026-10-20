@@ -5,7 +5,7 @@ export { GovernanceError } from './contract.mjs'
 export { projectHandoff } from './handoff.mjs'
 
 /** Read-only restoration on the existing Harness prompt seam. No tool/permission changes. */
-export function registerProjectHandoff(ctx, store) {
+export function registerProjectHandoff(ctx, store, witness) {
   return ctx.on('system-prompt/assemble', async (assembly, context, next) => {
     const assembled = await next()
     const root = context.agent?.session?.header?.cwd
@@ -15,6 +15,10 @@ export function registerProjectHandoff(ctx, store) {
       const loaded = await store.read(root)
       if (loaded.status === 'NOT_FOUND') return assembled
       handoff = projectHandoff(loaded)
+      if (witness) {
+        const report = await witness.report(root)
+        handoff.verification = { technicalGate: report.technicalGate, taskGate: report.taskGate, currentInputFingerprint: report.currentInputFingerprint, inspectionError: report.inspectionError, issues: report.issues }
+      }
     } catch (error) {
       // Ordinary non-Godot workspaces have no project state to restore.
       if (['ENOENT', 'NOT_GODOT_PROJECT'].includes(error.code)) return assembled
