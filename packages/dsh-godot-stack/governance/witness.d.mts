@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 import type { ProjectStore } from './index.mjs'
 import type { GateResult } from './gate.mjs'
 export interface WitnessReport {
