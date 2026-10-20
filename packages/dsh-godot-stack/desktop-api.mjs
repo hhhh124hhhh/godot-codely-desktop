@@ -1,9 +1,19 @@
 import { projectHandoff } from './governance/handoff.mjs'
+import { saveDesktopRecord } from './governance/desktop-record.mjs'
 import { open, realpath } from 'node:fs/promises'
 import { join, basename } from 'node:path'
 
 const failure = (code, status = 400) => Object.assign(new Error(code), { code, status })
-const publicCodes = new Set(['ORIGIN_REJECTED', 'WORKSPACE_REQUIRED', 'WORKSPACE_MISSING', 'NOT_GODOT_PROJECT', 'PROJECT_TOO_LARGE', 'INVALID_ACTION'])
+const conflictCodes = ['CONFLICT', 'ALREADY_EXISTS', 'RECOVERY_REQUIRED', 'UNSUPPORTED_SCHEMA', 'WITNESS_BUSY', 'RECONCILIATION_REQUIRED', 'TASK_REQUIRED', 'NOT_FOUND', 'UNSUPPORTED_INPUT_LINK', 'INPUT_CHANGED', 'ENGINE_MISSING', 'ENGINE_VERSION', 'WITNESS_STOPPED']
+const publicCodes = new Set(['ORIGIN_REJECTED', 'WORKSPACE_REQUIRED', 'WORKSPACE_MISSING', 'NOT_GODOT_PROJECT', 'PROJECT_TOO_LARGE', 'INVALID_ACTION', 'INVALID_RECORD', ...conflictCodes])
+
+async function recordInput(request) {
+  if (!request.headers.get('origin')) throw failure('ORIGIN_REJECTED', 403)
+  if (Number(request.headers.get('content-length')) > 32768) throw failure('INVALID_RECORD')
+  const raw = await request.text()
+  if (raw.length > 32768) throw failure('INVALID_RECORD')
+  try { return JSON.parse(raw) } catch { throw failure('INVALID_RECORD') }
+}
 
 /** Read only a registered workspace root. Never accept a renderer-supplied file path. */
 export async function inspectProject(workspace) {
@@ -30,7 +40,7 @@ export async function inspectProject(workspace) {
 }
 
 /** Same-origin, authenticated Harness routes; the editor bridge is never exposed through CORS. */
-export function registerDesktopApi(ctx, bridge, projectStore) {
+export function registerDesktopApi(ctx, bridge, projectStore, witness) {
   const register = (path, methods, handler) => ctx.connection.fetch.register({
     path: '/api/godot-desktop/' + path, methods, requestBody: 'buffered',
     async fetch(request) {
@@ -48,11 +58,20 @@ export function registerDesktopApi(ctx, bridge, projectStore) {
         return Response.json(await handler(request, project), { headers: { 'cache-control': 'no-store' } })
       } catch (error) {
         ctx.logger?.warn?.('godot-desktop %s: %s', path, error.message)
-        return Response.json({ code: publicCodes.has(error.code) ? error.code : error.status === 503 ? 'EDITOR_OFFLINE' : error.status === 504 ? 'EDITOR_TIMEOUT' : error.status === 409 ? 'EDITOR_BUSY' : 'REQUEST_FAILED' }, { status: error.status || 500, headers: { 'cache-control': 'no-store' } })
+        const status = error.status || (conflictCodes.includes(error.code) ? 409 : error.code === 'INVALID_RECORD' ? 400 : 500)
+        return Response.json({ code: publicCodes.has(error.code) ? error.code : error.status === 503 ? 'EDITOR_OFFLINE' : error.status === 504 ? 'EDITOR_TIMEOUT' : error.status === 409 ? 'EDITOR_BUSY' : 'REQUEST_FAILED' }, { status, headers: { 'cache-control': 'no-store' } })
       }
     }
   })
   if (projectStore) register('handoff', ['GET'], async (_request, project) => projectHandoff(await projectStore.read(project.path)))
+  if (projectStore) register('record', ['POST'], async (request, project) => {
+    // User record mutations require an explicit same-origin browser request.
+    return saveDesktopRecord(projectStore, project.path, await recordInput(request))
+  })
+  if (projectStore && witness) {
+    register('witness', ['GET', 'POST'], async (request, project) => request.method === 'GET'
+      ? witness.report(project.path) : witness.run(project.path, await recordInput(request)))
+  }
   register('project', ['GET'], async (_request, project) => project)
   register('session', ['POST'], async (_request, project) => {
     const created = await bridge.client.createSession({ workspaceId: project.workspaceId, preset: 'godot-codely-lite' })
