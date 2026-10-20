@@ -1,4 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
+import type { WitnessService, WitnessReport } from './witness.mjs'
 export type Actor = { kind: 'HUMAN' | 'AGENT' | 'ADAPTER' | 'SYSTEM'; id: string }
 export type ImplementationRevision = { contentFingerprint: string | null; gitHead: string | null; godotVersion: string | null }
 export type TaskCard = { id: string; runId: string; intent: string; boundary: string; stop: string; stage: 'PROBE' | 'IMPLEMENT' | 'WITNESS' | 'REPAIR' | 'PUBLISH'; progress: string; unverifiedChanges: string[]; stopReason: string | null; recommendedNextAction: string; requiresHuman: string | null }
@@ -55,7 +56,8 @@ export interface ProjectHandoff {
   issues: LoadedProject['issues']
   stopReason?: string | null
   recommendedNextAction?: string
+  verification?: Pick<WitnessReport, 'technicalGate' | 'taskGate' | 'currentInputFingerprint' | 'inspectionError' | 'issues'>
 }
 export function projectHandoff(loaded: LoadedProject, now?: number): ProjectHandoff
-export function registerProjectHandoff(ctx: Context, store: ProjectStore): () => void
+export function registerProjectHandoff(ctx: Context, store: ProjectStore, witness?: WitnessService): () => void
 export function createProjectStore(home: string): ProjectStore
