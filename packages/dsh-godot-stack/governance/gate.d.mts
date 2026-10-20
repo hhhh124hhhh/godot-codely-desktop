@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 export type GateVerdict = 'PASS' | 'WAIT_EVIDENCE' | 'WAIT_HUMAN' | 'REPAIR' | 'STOP' | 'UNKNOWN'
 export interface GatePolicy {
   gateId: string
