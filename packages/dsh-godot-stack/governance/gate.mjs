@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 /** Named, versioned gates. A technical PASS never closes the task or proves gameplay/device UX. */
 export const HEADLESS_POLICY = Object.freeze({
   gateId: 'GODOT-COMPILE-SMOKE', gateKind: 'TASK', policyVersion: '1',
