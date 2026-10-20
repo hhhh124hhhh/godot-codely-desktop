@@ -27,6 +27,13 @@ await fs.cp(source, output, {
       && !name.endsWith('.config.json')
   },
 })
+// Reuse the same Godot validator for MCP and the trusted Desktop witness collector.
+// This bundle is generated only; its TypeScript source remains the sole authority.
+await build({
+  entryPoints: [path.join(server, 'src/project-validation.ts')],
+  outfile: path.join(output, 'governance/validator.mjs'),
+  bundle: true, platform: 'node', format: 'esm', target: 'node24',
+})
 const runtime = path.join(output, 'godot-stack/mcp/godot-mcp-server/runtime')
 // Override the source-only .gitignore: its unanchored build/ would also hide runtime/build in npm pack.
 await fs.writeFile(path.join(path.dirname(runtime), '.npmignore'), 'node_modules/\n/build/\n.env\n.env.*\n*.config.json\n')

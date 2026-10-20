@@ -32,6 +32,7 @@ import { cliHome } from './data-home.mjs'
 import { copyBundledDirectory } from './copy-bundled-directory.mjs'
 import { registerDesktopApi } from './desktop-api.mjs'
 import { createProjectStore, registerProjectHandoff } from './governance/index.mjs'
+import { createWitnessService } from './governance/witness.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -98,7 +99,9 @@ export async function apply(ctx, config = {}) {
   trace('apply-start')
   const home = dshHome()
   const projectStore = createProjectStore(home)
-  ctx.inject(['systemPrompt'], child => registerProjectHandoff(child, projectStore))
+  const witness = createWitnessService(projectStore, home)
+  ctx.on('dispose', () => witness.dispose())
+  ctx.inject(['systemPrompt'], child => registerProjectHandoff(child, projectStore, witness))
   // Refresh only our tiny proxy; native OCU installation is an explicit setup step.
   try {
     trace('ocu-start')
@@ -158,7 +161,7 @@ export async function apply(ctx, config = {}) {
       trace('bridge-start')
       await bridge.start()
       trace('bridge-done')
-      ctx.inject(['connection', 'workspaceRegistry'], child => registerDesktopApi(child, bridge, projectStore))
+      ctx.inject(['connection', 'workspaceRegistry'], child => registerDesktopApi(child, bridge, projectStore, witness))
       ctx.on('approval/request', (request, next) => bridge.approval(request, next), { global: true })
       ctx.on('agent/assistant-stream', payload => bridge.assistantStream(payload), { global: true })
       ctx.logger?.info?.('godot-stack: bridge started on :%d -> dsh :%d', bridge.port, dshPort)

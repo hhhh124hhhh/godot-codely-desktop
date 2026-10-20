@@ -3,7 +3,6 @@
  */
 
 import { execFile, execFileSync, spawn, spawnSync } from 'node:child_process'
-import { promisify } from 'node:util'
 import type { HeadlessResult } from './types.js'
 
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -11,7 +10,13 @@ const RING_MAX = 400
 /** Cap on how many *exited* processes' logs are retained (bounds memory). Live processes are never evicted. */
 const MAX_EXITED_LOGS = 10
 
-const execFileAsync = promisify(execFile)
+// Keep raw output even when the host wraps execFile and omits its custom promisify symbol.
+const execFileAsync = (file: string, args: string[], options: { timeout: number; cwd?: string; encoding: 'utf-8' }) => new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+  execFile(file, args, options, (error, stdout, stderr) => {
+    if (error) reject(Object.assign(error, { stdout, stderr }))
+    else resolve({ stdout, stderr })
+  })
+})
 
 interface LogBuffer {
   lines: string[]
@@ -107,6 +112,9 @@ export async function execGodotAsync(
       stdout,
       stderr: stderr || message,
       exitCode,
+      // Preserve uncertain execution separately from a completed compiler failure.
+      failureKind: error?.killed === true || error?.signal || error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER'
+        ? 'INTERRUPTED' : typeof error?.code === 'number' ? 'EXIT_CODE' : 'START_FAILED',
     }
   }
 }
