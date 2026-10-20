@@ -28,6 +28,7 @@ export interface HeadlessResult {
   stdout: string
   stderr: string
   exitCode: number | null
+  failureKind?: 'INTERRUPTED' | 'START_FAILED' | 'EXIT_CODE'
 }
 
 export interface ProjectInfo {
