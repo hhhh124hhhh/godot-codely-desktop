@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { isAbsolute, join, relative, sep } from 'node:path'
 import { afterEach, expect, it, vi } from 'vitest'
 import { apply } from '@deepseek-ai/dsh-workspace-changes'
 import { apply as applyDeliverables } from '@deepseek-ai/dsh-client-ui-deliverables'
@@ -9,7 +9,15 @@ import { apply as applyDeliverables } from '@deepseek-ai/dsh-client-ui-deliverab
 const roots = []
 afterEach(async () => {
   vi.unstubAllEnvs()
-  for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true, maxRetries: 5 })
+  const allowedRoots = await Promise.all([tmpdir(), join(process.cwd(), '.build')].map(root => realpath(root)))
+  for (const root of roots.splice(0)) {
+    const resolved = await realpath(root)
+    if (!allowedRoots.some(base => {
+      const local = relative(base, resolved)
+      return local !== '' && local !== '..' && !local.startsWith('..' + sep) && !isAbsolute(local)
+    })) throw new Error('refusing to remove a temporary fixture outside the test roots')
+    await rm(resolved, { recursive: true, force: true, maxRetries: 5 })
+  }
 })
 
 function harness() {
@@ -56,6 +64,35 @@ async function changedTurn() {
   return { home, project, file, runtime, session, seq }
 }
 
+async function changedExternalTurn() {
+  const root = await mkdtemp(join(tmpdir(), 'workspace-changes-external-'))
+  const externalRoot = await mkdtemp(join(process.cwd(), '.build', 'm3-external-'))
+  roots.push(root, externalRoot)
+  const home = join(root, 'home')
+  const project = join(root, 'project')
+  await mkdir(home)
+  await mkdir(project)
+  const file = join(externalRoot, 'outside.gd')
+  await writeFile(file, 'before\n')
+  vi.stubEnv('DSH_HOME', home)
+  const runtime = harness()
+  let seq = 0
+  const session = {
+    id: 'm3-external-session',
+    header: { cwd: project, origin: 'user' },
+    append(type, data) { const event = { type, data, seq: ++seq }; return event },
+  }
+  await runtime.listeners.get('session/event')(session, { type: 'turn/start', data: { turn: 1 }, seq: 0 })
+  await runtime.listeners.get('tools/pre-execute')({
+    agent: { session },
+    name: 'write',
+    arguments: { file_path: file, content: 'after\n' },
+  }, async () => writeFile(file, 'after\n'))
+  runtime.listeners.get('session/event')(session, { type: 'tool/result', data: { turn: 1 }, seq: 2 })
+  await runtime.listeners.get('agent/turn-stopping')({ agent: { session }, turn: 1 })
+  return { home, project, file, runtime, session, seq }
+}
+
 it('replays a project diff after Host restart and keeps the captured result when the live file changes', async () => {
   const f = await changedTurn()
   const liveSummary = await f.runtime.service().summary(f.session.id, f.seq)
@@ -98,6 +135,18 @@ it('rejects a checksummed receipt whose decoded summary does not match its schem
   await writeFile(receiptPath, JSON.stringify(envelope))
   const reopened = harness()
   expect(await reopened.service().summary(f.session.id, f.seq)).toBeUndefined()
+  await reopened.dispose()
+})
+
+it('keeps external file diffs live-only while retaining the summary path and counts', async () => {
+  const f = await changedExternalTurn()
+  const liveDiff = await f.runtime.service().diff(f.session.id, f.seq, 0, new AbortController().signal)
+  expect(liveDiff.kind).toBe('text')
+  await f.runtime.dispose()
+  const reopened = harness()
+  const summary = await reopened.service().summary(f.session.id, f.seq)
+  expect(summary.files[0].path).toBe(f.file)
+  expect(await reopened.service().diff(f.session.id, f.seq, 0, new AbortController().signal)).toBeUndefined()
   await reopened.dispose()
 })
 

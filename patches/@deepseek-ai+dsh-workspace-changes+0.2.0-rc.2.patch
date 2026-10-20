@@ -1,5 +1,5 @@
 diff --git a/node_modules/@deepseek-ai/dsh-workspace-changes/lib/index.js b/node_modules/@deepseek-ai/dsh-workspace-changes/lib/index.js
-index 28587236..ee701d5d 100644
+index 28587236..64c6b01a 100644
 --- a/node_modules/@deepseek-ai/dsh-workspace-changes/lib/index.js
 +++ b/node_modules/@deepseek-ai/dsh-workspace-changes/lib/index.js
 @@ -1,8 +1,8 @@
@@ -13,7 +13,7 @@ index 28587236..ee701d5d 100644
  import { structuredPatch } from "diff";
  //#region lib/types/numstat.js
  /** Parsing of `git diff-tree --numstat -z` output. */
-@@ -600,6 +600,126 @@ function compareText(before, after, timeoutMs) {
+@@ -600,6 +600,130 @@ function compareText(before, after, timeoutMs) {
  	};
  }
  //#endregion
@@ -50,7 +50,7 @@ index 28587236..ee701d5d 100644
 +		const canonicalRoot = await realpath(root);
 +		directory = receiptDirectory(canonicalRoot, sessionId);
 +		const directoryInfo = await lstat(directory);
-+		if (!directoryInfo.isDirectory() || directoryInfo.isSymbolicLink()) return;
++		if (!directoryInfo.isDirectory() || directoryInfo.isSymbolicLink() || await realpath(directory) !== directory) return;
 +		const file = join(directory, `${seq}.json`);
 +		const fileInfo = await lstat(file);
 +		if (!fileInfo.isFile() || fileInfo.isSymbolicLink() || fileInfo.size > MAX_RECEIPT_BYTES) return;
@@ -131,16 +131,20 @@ index 28587236..ee701d5d 100644
 +	const envelope = JSON.stringify({ format: RECEIPT_FORMAT, sha256: createHash("sha256").update(encoded).digest("hex"), record });
 +	const file = join(directory, `${seq}.json`);
 +	const temporary = join(directory, `.${seq}.${randomUUID()}.tmp`);
-+	const handle = await open(temporary, "wx", 0o600);
-+	try { await handle.writeFile(envelope); await handle.sync(); } finally { await handle.close(); }
-+	await rename(temporary, file);
-+	await pruneReceipts(canonicalRoot, directory, file);
++	try {
++		const handle = await open(temporary, "wx", 0o600);
++		try { await handle.writeFile(envelope); await handle.sync(); } finally { await handle.close(); }
++		await rename(temporary, file);
++		await pruneReceipts(canonicalRoot, directory, file);
++	} finally {
++		await rm(temporary, { force: true });
++	}
 +}
 +//#endregion
  //#region lib/types/recorder.js
  /** Per-Session turn recorder: snapshots, captures around file-tool edits, the turn-end diff, and the records kept until disposal. */
  function freshState(turn) {
-@@ -618,9 +738,10 @@ const OVERSIZED = Symbol("oversized");
+@@ -618,9 +742,10 @@ const OVERSIZED = Symbol("oversized");
  * Serializes one Session's recording work: the turn-start snapshot, the
  * whole-file capture before each file-tool mutation, the turn-end snapshot
  * with its diff, and the appended `workspace/changes` event whose summary and
@@ -154,7 +158,7 @@ index 28587236..ee701d5d 100644
  * capture never races a mutation. A working directory outside any repository,
  * or a Host without git, gets no snapshot; its summary lists the files the file
  * tools changed.
-@@ -729,19 +850,22 @@ var TurnRecorder = class {
+@@ -729,19 +854,22 @@ var TurnRecorder = class {
  	* @param seq - the event's sequence number.
  	* @returns the summary, or undefined for a sequence this recorder did not announce.
  	*/
@@ -176,11 +180,11 @@ index 28587236..ee701d5d 100644
  	*/
  	async diff(seq, index, signal) {
  		const record = this.records.get(seq);
-+		if (record === void 0) return (await readReceipt(this.session.id, seq, signal))?.diffs[index];
++		if (record === void 0) return (await readReceipt(this.session.id, seq, signal))?.diffs[index] ?? void 0;
  		const file = record?.summary.files[index];
  		const sources = record?.sources[index];
  		if (file === void 0 || sources === void 0) return void 0;
-@@ -909,6 +1033,18 @@ var TurnRecorder = class {
+@@ -909,6 +1037,18 @@ var TurnRecorder = class {
  			sources: kept.map((entry) => entry.sources)
  		});
  		state.recordedAfterSeq = event.seq;
@@ -189,7 +193,7 @@ index 28587236..ee701d5d 100644
 +			for (let index = 0; index < kept.length; index++) {
 +				const file = kept[index].file;
 +				// Persist only project-relative paths; external files can contain private host data.
-+				if (isAbsolute(file.path)) { diffs.push(null); continue; }
++				if (isAbsolute(file.path) || !isInside(paths.cwd, resolve(paths.cwd, file.path))) { diffs.push(null); continue; }
 +				diffs.push(await this.diff(event.seq, index, signal));
 +			}
 +			await writeReceipt(this.session.id, event.seq, this.records.get(event.seq).summary, diffs);
@@ -199,7 +203,7 @@ index 28587236..ee701d5d 100644
  	}
  	/**
  	* The listing of a captured pair: an oversized side lists the file without
-@@ -966,7 +1102,7 @@ function changedFile({ cwd, home }, root, absolute, counts) {
+@@ -966,7 +1106,7 @@ function changedFile({ cwd, home }, root, absolute, counts) {
  * listed file's before-and-after comparison on demand. Each summary is
  * announced by a `workspace/changes` Session event that carries only the turn
  * number; summaries and comparisons are served through the `workspaceChanges`
@@ -208,14 +212,14 @@ index 28587236..ee701d5d 100644
  * git, the summary lists file-tool edits only.
  */
  /** Stable Loader identity. */
-@@ -1042,8 +1178,8 @@ function apply(ctx, config) {
+@@ -1042,8 +1182,8 @@ function apply(ctx, config) {
  		await Promise.all([...recorders.keys()].map(forget));
  	});
  	ctx.provide("workspaceChanges", {
 -		summary: (sessionId, seq) => byId.get(sessionId)?.summary(seq),
 -		diff: (sessionId, seq, index, signal) => byId.get(sessionId)?.diff(seq, index, signal) ?? Promise.resolve(void 0)
 +		summary: async (sessionId, seq) => await byId.get(sessionId)?.summary(seq) ?? (await readReceipt(sessionId, seq))?.summary,
-+		diff: async (sessionId, seq, index, signal) => await byId.get(sessionId)?.diff(seq, index, signal) ?? (await readReceipt(sessionId, seq, signal))?.diffs[index]
++		diff: async (sessionId, seq, index, signal) => await byId.get(sessionId)?.diff(seq, index, signal) ?? (await readReceipt(sessionId, seq, signal))?.diffs[index] ?? void 0
  	});
  	let runner;
  	const gitRunner = () => {
@@ -278,7 +282,7 @@ index 9debd852..1b3442d7 100644
 \ No newline at end of file
 +//# sourceMappingURL=types.d.ts.map
 diff --git a/node_modules/@deepseek-ai/dsh-workspace-changes/README.md b/node_modules/@deepseek-ai/dsh-workspace-changes/README.md
-index 168a30cd..0e1b98f5 100644
+index 168a30cd..de5fb3a7 100644
 --- a/node_modules/@deepseek-ai/dsh-workspace-changes/README.md
 +++ b/node_modules/@deepseek-ai/dsh-workspace-changes/README.md
 @@ -1,5 +1,5 @@
@@ -311,7 +315,7 @@ index 168a30cd..0e1b98f5 100644
  One `TurnRecorder` per Session serializes its git work. `turn/start` queues the baseline: `rev-parse` locates the repository once per Session and the Session's temporary object directory is created, then `add --all --ignore-errors` into a temporary index seeded from the repository's index and `write-tree` produce the tree id; an unreadable file is skipped and reported through git's exit code 1, which the snapshot accepts. Each turn holds its own state object, so a record still running for an interrupted turn keeps that turn's files when the next turn starts. Every command runs with `GIT_OBJECT_DIRECTORY` pointing at the temporary directory and `GIT_ALTERNATE_OBJECT_DIRECTORIES` at the repository's objects, so committed content is read from the repository and new objects never land there. Every `tools/pre-execute` waits for that queue before a tool runs, so no mutation can precede its baseline; the same step queues the whole-file capture of the path a `write`, `edit`, or mutating `str_replace_editor` call names, so the copy precedes the edit, and `tool/result` events only mark that the turn has results to record. `agent/turn-stopping` records inside the turn: a second snapshot, `diff-tree -r -M --numstat` between the two trees, `check-ignore` for captured paths inside the work tree, a second copy and line comparison of each uncovered path, the appended event, and the summary kept under the event's sequence beside each listed file's two content sources, a path in a snapshot tree or a copy. A comparison is computed when asked for: `ls-tree -l` locates and sizes a snapshot side and `cat-file blob` reads it under `maxFileBytes`, copies are read from disk, and both sides go through the same line comparison with its timeout. `turn/end` records again only when tool results settled after the last record attempt, which covers aborted, failed, and steered turns without repeating a failed attempt; an empty list after an earlier record supersedes it. The repository's index is only read.
  
 -Git runs through the `subprocess` capability with a scrubbed environment, `GIT_CONFIG_COUNT=0` (ambient indexed configuration is excluded because the credential scrub removes its key entries), `GIT_TERMINAL_PROMPT=0`, `GIT_OPTIONAL_LOCKS=0`, the configured timeout, and bounded output. A failing step abandons that turn's record with a warning; the next turn starts afresh. Session disposal and plugin disposal abort queued work, forget the summaries, and remove the temporary directory.
-+Git runs through the `subprocess` capability with a scrubbed environment, `GIT_CONFIG_COUNT=0` (ambient indexed configuration is excluded because the credential scrub removes its key entries), `GIT_TERMINAL_PROMPT=0`, `GIT_OPTIONAL_LOCKS=0`, the configured timeout, and bounded output. A failing step abandons that turn's record with a warning; the next turn starts afresh. Session disposal and plugin disposal abort queued work, forget the in-memory summaries, and remove the temporary snapshot directory. Project-relative text receipts remain in the local Host cache for up to 30 days, capped at 32 turns per Session and 256 MiB total; files outside the project are not persisted. The cache contains unencrypted diff text and is pruned automatically.
++Git runs through the `subprocess` capability with a scrubbed environment, `GIT_CONFIG_COUNT=0` (ambient indexed configuration is excluded because the credential scrub removes its key entries), `GIT_TERMINAL_PROMPT=0`, `GIT_OPTIONAL_LOCKS=0`, the configured timeout, and bounded output. A failing step abandons that turn's record with a warning; the next turn starts afresh. Session disposal and plugin disposal abort queued work, forget the in-memory summaries, and remove the temporary snapshot directory. Project-relative text receipts remain in the local Host cache for up to 30 days, capped at 32 turns per Session and 256 MiB total. Receipts retain only summary paths and counts for files outside the Session working directory, not their diff contents. The cache contains unencrypted diff text and is pruned automatically.
  
  **Runtime invariant:** No companion is published. Event listeners are effect-owned and the recorder owns the summaries, the snapshot trees, and the captured copies for its Session's lifetime; no independent observation can diverge from them.
  
@@ -320,12 +324,12 @@ index 168a30cd..0e1b98f5 100644
  <a id="known-limitations-and-deferred-work"></a>
  
 -- Summaries, snapshot trees, and captured copies live only as long as their Session in this Host process; earlier turns of a conversation reopened after a Host restart have no card and no comparison. This is the decided behavior: a card whose content the Host can no longer open is not shown.
-+- Text comparisons for project-relative files are persisted as SHA-256-checked atomic JSON receipts under `$DSH_HOME/workspace-changes` (or `~/.dsh/workspace-changes` when unset). Receipts expire after 30 days, retain at most 32 turns per Session, and share a 256 MiB cache budget; retained receipts can be replayed after a Host restart. Diffs for files outside the Session working directory are not retained. Binary and oversized comparisons keep only their status. The cache contains unencrypted local diff text and is pruned by age and size.
++- Text comparisons for files within the Session working directory are persisted as SHA-256-checked atomic JSON receipts under `$DSH_HOME/workspace-changes` (or `~/.dsh/workspace-changes` when unset). Receipts expire after 30 days, retain at most 32 turns per Session, and share a 256 MiB cache budget; retained receipts can be replayed after a Host restart. Files outside the Session working directory keep their announced path and counts, but their diff contents are not retained. Binary and oversized comparisons keep only their status. The cache contains unencrypted local diff text and is pruned by age and size.
  - Two git features still write into the repository's own git directory during a snapshot: `core.splitIndex` writes `sharedindex.*` files, and git-lfs runs its clean filter on changed files and stores their objects under `.git/lfs`.
  - git 2.13 or later is required for `rev-parse --absolute-git-dir`; an unsupported repository format or another git failure abandons the turn with a warning rather than being treated as a plain directory.
  - The first snapshot of a Session writes every untracked, non-ignored file of the work tree into the Session's temporary directory; a repository without a `.gitignore` that carries large build outputs costs that much temporary space until the Session is disposed.
 diff --git a/node_modules/@deepseek-ai/dsh-workspace-changes/README.zh.md b/node_modules/@deepseek-ai/dsh-workspace-changes/README.zh.md
-index 42a96ffd..1470d2c1 100644
+index 42a96ffd..599dbce0 100644
 --- a/node_modules/@deepseek-ai/dsh-workspace-changes/README.zh.md
 +++ b/node_modules/@deepseek-ai/dsh-workspace-changes/README.zh.md
 @@ -1,5 +1,5 @@
@@ -358,7 +362,7 @@ index 42a96ffd..1470d2c1 100644
  每个 Session 一个 `TurnRecorder`，串行化其 git 工作。`turn/start` 排入基线：`rev-parse` 每个 Session 只定位一次仓库并创建 Session 的临时对象目录，然后以仓库 index 为种子在临时 index 上执行 `add --all --ignore-errors` 与 `write-tree` 得到 tree id；不可读的文件被跳过并以 git 的退出码 1 报告，快照接受这个退出码。每轮持有自己的状态对象，因此被中断的轮次仍在运行的记录会在下一轮开始后保留自己那一轮的文件。每条命令都带 `GIT_OBJECT_DIRECTORY` 指向临时目录、`GIT_ALTERNATE_OBJECT_DIRECTORIES` 指向仓库的 objects，因此已提交内容从仓库读取，新对象不会落进仓库。每次 `tools/pre-execute` 都等待该队列，因此没有修改能先于其基线发生；同一步骤还排入对 `write`、`edit` 或有修改作用的 `str_replace_editor` 调用所指路径的整文件捕获，因此副本先于编辑，`tool/result` 事件只标记本轮有结果需要记录。`agent/turn-stopping` 在轮内记录：第二次快照、两棵树之间的 `diff-tree -r -M --numstat`、对工作树内已捕获路径的 `check-ignore`、对每个未覆盖路径的第二次复制与逐行对比、追加事件，以及按事件序号保存摘要和每个所列文件两侧的内容来源，即快照树中的路径或一份副本。对比在被请求时计算：`ls-tree -l` 定位快照一侧并取其大小，`cat-file blob` 在 `maxFileBytes` 之内读出，副本从磁盘读取，两侧随后走同一个带超时的逐行对比。`turn/end` 仅在最后一次记录尝试之后仍有工具结果结束时再次记录，这覆盖了中止、失败和被转向的轮次，且不会重复一次失败的尝试；早先记录之后的空列表会取代它。仓库的 index 只读取。
  
 -git 通过 `subprocess` 能力运行，使用净化后的环境、`GIT_CONFIG_COUNT=0`（凭据清理会移除索引配置的键，因此不继承这些环境配置）、`GIT_TERMINAL_PROMPT=0`、`GIT_OPTIONAL_LOCKS=0`、配置的超时与有界输出。任何步骤失败都会放弃本轮记录并给出警告；下一轮重新开始。Session 释放与插件释放会中止排队的工作、忘记摘要并删除临时目录。
-+git 通过 `subprocess` 能力运行，使用净化后的环境、`GIT_CONFIG_COUNT=0`（凭据清理会移除索引配置的键，因此不继承这些环境配置）、`GIT_TERMINAL_PROMPT=0`、`GIT_OPTIONAL_LOCKS=0`、配置的超时与有界输出。任何步骤失败都会放弃本轮记录并给出警告；下一轮重新开始。Session 释放与插件释放会中止排队的工作、忘记内存摘要并删除临时快照目录。项目内文本收据会在本地 Host 缓存保留最多 30 天，每个 Session 最多 32 轮、总量上限 256 MiB；项目外文件不持久化。缓存中的 diff 文本未加密，并会自动清理。
++git 通过 `subprocess` 能力运行，使用净化后的环境、`GIT_CONFIG_COUNT=0`（凭据清理会移除索引配置的键，因此不继承这些环境配置）、`GIT_TERMINAL_PROMPT=0`、`GIT_OPTIONAL_LOCKS=0`、配置的超时与有界输出。任何步骤失败都会放弃本轮记录并给出警告；下一轮重新开始。Session 释放与插件释放会中止排队的工作、忘记内存摘要并删除临时快照目录。项目内文本收据会在本地 Host 缓存保留最多 30 天，每个 Session 最多 32 轮、总量上限 256 MiB。Session 工作目录外的文件只保留摘要中的路径和行数，不持久化 diff 内容。缓存中的 diff 文本未加密，并会自动清理。
  
  **运行时不变式：** 不发布伴生入口。事件监听归 effect 所有，记录器在其 Session 存活期间同时拥有摘要、快照树与捕获的副本；没有独立观察会与它们分歧。
  
