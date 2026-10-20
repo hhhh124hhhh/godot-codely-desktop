@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 import { randomUUID } from 'node:crypto'
 import { keys, text, natural, fail } from './contract.mjs'
 import { projectHandoff } from './handoff.mjs'
