@@ -1,5 +1,4 @@
 import { initializeDesktopService, desktopDiagnostics } from './desktop-service'
-import { mainLog } from './main-log'
 import { GodotEngineService, engineError } from './godot-engine'
 import { createGodotEngineHandler } from './godot-engine-ipc'
 import { applyMacosWindowBackdrop } from './macos-window-backdrop'
@@ -49,7 +48,6 @@ import {
 } from './state/profile-install-marker'
 import { healProfileBundles, HOST_COMPOSED_BUNDLES, inspectProfileConsistency } from './state/profile-consistency'
 import { inspectProfileBootInputs } from './state/profile-boot-preflight'
-import { hostInsertedPluginNames } from './state/host-plugin-sources'
 import {
   BUILTIN_IMAGE_GENERATION,
   prepareProfileBundleForHostEnable,
@@ -347,7 +345,7 @@ function appendRendererPluginRecoveryLog(logs: readonly string[]): void {
       'utf8'
     )
   } catch (error) {
-    mainLog('warn', '[desktop] failed to persist frontend plugin recovery evidence', error)
+    console.warn('[desktop] failed to persist frontend plugin recovery evidence', error)
   }
 }
 
@@ -360,7 +358,7 @@ function appendPluginRecoveryDetectionLog(plugins: readonly string[]): void {
       'utf8'
     )
   } catch (error) {
-    mainLog('warn', '[desktop] failed to persist plugin recovery detection', error)
+    console.warn('[desktop] failed to persist plugin recovery detection', error)
   }
 }
 
@@ -1450,14 +1448,7 @@ function launchHarness(): Promise<void> {
       marketUsableWithoutBaseline: () => marketUsableWithoutBaseline(dshHome),
       reportProfileConsistency: () => reportProfileConsistency(dshHome),
       inspectProfileBootInputs: () => inspectProfileBootInputs(dshHome, dshEntryPath(), desktopResourcePath('dsh-desktop.patch.yml')),
-      pruneUnresolvableBundles: async () => {
-        const patchPath = desktopResourcePath('dsh-desktop.patch.yml')
-        const hostInserted = new Set(await hostInsertedPluginNames(
-          readFileSync(patchPath, 'utf8'),
-          await readDisabledHostPlugins(dshHome)
-        ))
-        return pruneUnresolvableProfileBundles(dshHome, hostInserted)
-      }
+      pruneUnresolvableBundles: () => pruneUnresolvableProfileBundles(dshHome)
     })
     migrationPendingPlugins = new Set(
       maintenance.outcome === 'normal-profile' && maintenance.migration.outcome === 'deferred-failure'
@@ -1994,7 +1985,7 @@ async function waitForPluginRecoveryAction(options: {
 function showUnexpectedError(error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error)
   runtime?.note(`[desktop] unexpected error: ${message}`)
-  mainLog('error', '[desktop] unexpected error:', message)
+  console.error('[desktop] unexpected error:', message)
   dialog.showErrorBox(`${app.getName()} encountered an error`, message)
 }
 
@@ -3272,7 +3263,7 @@ async function bootstrap(): Promise<void> {
   const dshHome = join(app.getPath('userData'), 'harness')
   desktopStorageManager = new DesktopStorageManager(join(dshHome, 'profiles', 'web'), {
     onError: (error, context) => {
-      mainLog('warn', `[desktop-storage] error during ${context}:`, error)
+      console.warn(`[desktop-storage] error during ${context}:`, error)
     }
   })
   createWindow()
@@ -3326,7 +3317,7 @@ async function bootstrap(): Promise<void> {
     appIconPath: desktopIconPath(),
     cloudflaredCacheDir: join(app.getPath('userData'), 'bin'),
     forceCloudflareFailure: process.env.DSH_TUNNEL_FORCE_PINGGY === '1',
-    tunnelLog: (message) => mainLog('warn', message),
+    tunnelLog: (message) => console.warn(message),
     port: developmentBuild ? 43128 : 43127,
     onReconnectRequested: () => {
       void showMobilePairing().catch(showUnexpectedError)
@@ -3620,7 +3611,7 @@ if (isDaemonLaunch(process.env, process.platform)) {
   installGpuFallbackWatch()
   const singleInstance = app.requestSingleInstanceLock()
   if (!singleInstance) {
-    mainLog('warn', '[desktop] Another instance is already running; focusing existing window and exiting.')
+    console.warn('[desktop] Another instance is already running; focusing existing window and exiting.')
     app.quit()
   } else {
     // Start the login-shell capture now so it overlaps Electron's own startup
