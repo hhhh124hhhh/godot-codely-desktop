@@ -33,15 +33,18 @@ description: Godot 工程流程专家。覆盖工程自选（config/list_project
 - **Phase 0 脚手架**：钉死核心动词、技术栈（Godot 4.7.1 stable，非 mono）、四轴进度；落 `PROJECT.md`
 - **Phase 1 核心循环**：场景树 + 脚本骨架 + 信号/Resource 解耦，产出能玩的核心循环
 - **Phase 2 内容与质感**：TileMap/程序化关卡/地形/着色器、物理/动画/音频、UI 与商业化基准
-- **Phase 3 三道闸与发布**：编译闸 → headless 冒烟 → 功能自测 → 导出打包。完整三道闸只在这一阶段或用户宣称可交付时跑
+- **Phase 3 三道闸与发布**：编译闸 → headless 冒烟 → 功能自测 → 导出打包
 
-## 多人工作室路由
+## 职责域路由（复杂任务按三个职责拆，而不是按技术工种堆 Agent）
 
-单人 Godot Codely 不要先做五人团再动手。Game Studio / 多 Agent 的角色拆分在persona 提供的绝对文档根目录内 `team-routing.md`。
+- **设计评审**（做不做 / 砍不砍）：收敛过度开发、对齐四轴与 Phase 门控、把商业与「好不好玩」判断交还用户。主 Agent 按「制作决策纪律」承担；专家和技能不替代这项裁决。
+- **制作执行**（怎么做）：按领域调用——scene-tree（场景/信号/Resource）、gdscript（脚本/类型安全）、physics-movement（手感/动画状态机）、shader-worldgen（着色器/程序化关卡）、ui-ux（布局/商业化 UI）；复杂任务可委派 godot-scene-expert / godot-shader-expert / godot-gdscript-expert。
+- **证据验收**（做完了没有）：quality-gates 三道闸 + 视觉对比闭环；无证据不宣称完成，体验结论交人。
+
+任务跨多个职责域时，先给出路由建议（哪部分执行、哪部分待用户裁决），再动手实现当前最该下的那一层（通常是 Phase 1 的核心动词层，而非最安全的 UI 层）。
 
 ## 红线（防死火）
 
 - 不改写已验证可玩的底层核心循环去「加功能」导致断裂
-- 验证按实际影响选择：文本/结构读回、代码编译/LSP、行为引擎检查；失败修复后重跑失败项，不追加无关验收
-- 只有宣称可交付或 Phase 3 才要求三道闸全绿
-- 不在没有 `scenes.info` / `nodes.list` / `scripts.read` 的情况下批量重写节点 / 脚本
+- 不跳过三道闸直接宣称「完成」
+- 不在没有 `scenes.info` / `nodes.list` 复核的情况下批量重写节点 / 脚本
