@@ -12,6 +12,7 @@ on:
       - 'test/ocu-gateway.test.mjs'
       - 'scripts/build-godot-runtime.mjs'
       - 'scripts/probes/governance-*.mjs'
+      - 'scripts/probes/governance-*.ts'
       - 'test/fixtures/governance-worker.mjs'
       - 'package*.json'
       - '.github/workflows/godot-agent.yml'
@@ -46,7 +47,7 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - name: Harness, MCP, panel and native editor regressions
-        run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-asar-provisioning.test.mjs test/godot-launch-token.test.mjs test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-desktop-api.test.mjs test/godot-governance.test.mjs test/godot-engine.test.ts test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs
+        run: node node_modules/vitest/vitest.mjs run --maxWorkers=4 test/godot-asar-provisioning.test.mjs test/godot-launch-token.test.mjs test/godot-runtime.test.mjs test/godot-distribution-gaps.test.mjs test/godot-bridge.test.mjs test/godot-editor-control.test.mjs test/godot-desktop-api.test.mjs test/godot-governance.test.mjs test/godot-desktop-client.test.mjs test/godot-witness.test.mjs test/godot-headless-outcome.test.ts test/godot-engine.test.ts test/godot-agent-tools.test.mjs test/godot-editor-live.test.mjs test/ocu-gateway.test.mjs
 
       - name: Observed governance real Harness restart and Agent handoff
         run: npm run test:governance:runtime
