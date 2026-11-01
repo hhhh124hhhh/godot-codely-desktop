@@ -2,7 +2,6 @@ node_modules/
 out/
 dist/
 dist-dev/
-dist-dev2/
 .DS_Store
 *.log
 coverage/
@@ -36,3 +35,10 @@ docs/mobile-connection-latency.zh.md
 /.build/
 /packages/ppt-runtime/templates/
 /packages/ppt-bundles/
+
+# Local Feishu webhook (custom robot progress notifications)
+/.secrets/
+
+# Local progress aggregation (multi-window progress log, never commit)
+/logs/progress.jsonl
+/logs/progress.cursor
