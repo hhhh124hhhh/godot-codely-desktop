@@ -22,6 +22,10 @@
 - id: ui-settings-account
   disabled: true
 
+# Stock document conversion eagerly imports LibreOffice; game creation does not ship it.
+- id: office-to-pdf
+  disabled: true
+
 - insert:
     - id: dsh-desktop-client-ui
       name: dsh-desktop-client-ui
@@ -40,16 +44,9 @@
     - id: dsh-desktop-market-installer
       name: dsh-desktop-market-installer
 
-    # One shared image tool for conversations and Office workflows.
+    # Shared image generation remains available for game assets.
     - id: dsh-image-generation
       name: dsh-image-generation
-
-    # DSH PPT owns one direct PPTD workflow and one standard Composer client.
-    # The package contains no Tencent editor runtime or SlideP route.
-    - id: dsh-ppt-composer
-      name: 'dsh-ppt-composer'
-      config:
-        root: !!js dshHomePath('kimi-ppt')
 
 # Harness creates the full Cordis HMR service after boot when no `hmr` service
 # exists, and that service throws without Node's internal module loader —
@@ -69,14 +66,7 @@
     - id: dsh-desktop-preset-transfer
       name: dsh-desktop-preset-transfer
 
-# Offline Office authoring is installation-owned and shared by agent presets.
-- insert:
-    - id: dsh-desktop-office
-      name: dsh-desktop-office
-      config:
-        resources: !!js process.env.DSH_DESKTOP_OFFICE_RESOURCES
-        cli: !!js process.env.DSH_DESKTOP_OFFICE_CLI
-
+# Office/PPT sources are retained but excluded from the game-creation product.
 # Godot Codely stack: bundled godot-codely-lite preset, godot skills and
 # godot-mcp-server are provisioned into the DSH home on first boot.
 - insert:

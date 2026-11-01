@@ -15,6 +15,10 @@
 - id: ui-settings-account
   disabled: true
 
+# Recovery must also boot without the suspended Office conversion engine.
+- id: office-to-pdf
+  disabled: true
+
 - insert:
     - id: dsh-desktop-client-ui
       name: dsh-desktop-client-ui

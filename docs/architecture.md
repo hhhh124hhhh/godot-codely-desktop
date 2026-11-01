@@ -2,6 +2,8 @@
 
 DSH Desktop is an Electron host for the existing DeepSeek Harness runtime and Web UI. It does not maintain a second agent runtime or reimplement the Harness frontend.
 
+The Godot Codely product currently focuses on game creation. Office/PPT host plugins are omitted before source resolution and client discovery, including older host patch inputs. Their sources and optional preparation commands remain in the repository; the normal dev/build/package path does not prepare or ship those payloads. Image generation remains available for game assets. Existing user projects, credentials and retained Office data are not deleted.
+
 ## Runtime topology
 
 ```mermaid
