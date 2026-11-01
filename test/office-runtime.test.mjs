@@ -129,7 +129,9 @@ export async function apply(ctx) {
 `)
   const normal = await prepareHostPluginSourcesPatch(home, join(root, 'build/dsh-desktop.patch.yml'), join(root, 'node_modules/@deepseek-ai/dsh/lib/bin.js'))
   const patch = join(home, 'probe.patch.yml')
-  await writeFile(patch, `${await readFile(normal, 'utf8')}\n- insert:\n    - id: office-probe\n      name: ${JSON.stringify(pathToFileURL(diagnostic).href)}\n`)
+  // Retained Office sources are tested only through explicit fixture insertions;
+  // the game product's default composition intentionally does not mount them.
+  await writeFile(patch, `${await readFile(normal, 'utf8')}\n- insert:\n    - id: dsh-desktop-office\n      name: ${JSON.stringify(pathToFileURL(join(root, 'packages/dsh-desktop-office/index.js')).href)}\n      config:\n        resources: !!js process.env.DSH_DESKTOP_OFFICE_RESOURCES\n        cli: !!js process.env.DSH_DESKTOP_OFFICE_CLI\n    - id: dsh-ppt-composer\n      name: ${JSON.stringify(pathToFileURL(join(root, 'node_modules/dsh-ppt-composer/lib/index.js')).href)}\n      config:\n        root: !!js dshHomePath('kimi-ppt')\n    - id: office-probe\n      name: ${JSON.stringify(pathToFileURL(diagnostic).href)}\n`)
   const runtime = new HarnessRuntime({
     dshEntryPath: join(root, 'node_modules/@deepseek-ai/dsh/lib/bin.js'),
     nodeEntryPath: join(root, 'build/harness-node-entry.mjs'),
@@ -199,7 +201,7 @@ it.runIf(supportsOffice)('reports a missing Office payload during activation and
   const missing = join(home, 'missing-office-payload')
   const source = await readFile(join(root, 'build/dsh-desktop.patch.yml'), 'utf8')
   const patch = join(home, 'missing-office.patch.yml')
-  await writeFile(patch, source.replace('resources: !!js process.env.DSH_DESKTOP_OFFICE_RESOURCES', `resources: ${JSON.stringify(missing)}`))
+  await writeFile(patch, `${source}\n- insert:\n    - id: dsh-desktop-office\n      name: ${JSON.stringify(pathToFileURL(join(root, 'packages/dsh-desktop-office/index.js')).href)}\n      config:\n        resources: ${JSON.stringify(missing)}\n        cli: !!js process.env.DSH_DESKTOP_OFFICE_CLI\n`)
   const runtime = new HarnessRuntime({
     dshEntryPath: join(root, 'node_modules/@deepseek-ai/dsh/lib/bin.js'),
     nodeEntryPath: join(root, 'build/harness-node-entry.mjs'),

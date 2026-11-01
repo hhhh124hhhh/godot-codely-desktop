@@ -210,7 +210,7 @@ describe('profile consistency', () => {
       desktop
     ])
     expect(entries.filter((entry) => !entry.disabled && entry.name === 'dsh-ppt')).toHaveLength(0)
-    expect(entries.filter((entry) => !entry.disabled && entry.name === 'dsh-ppt-composer')).toHaveLength(1)
+    expect(entries.filter((entry) => !entry.disabled && entry.name === 'dsh-ppt-composer')).toHaveLength(0)
     expect(entries.filter((entry) => !entry.disabled && entry.name === 'dsh-image-generation')).toHaveLength(2)
     const once = await readFile(join(profile, 'package.json'), 'utf8')
     await expect(healProfileBundles(home, HOST_COMPOSED_BUNDLES)).resolves.toEqual({ added: [], removed: [] })

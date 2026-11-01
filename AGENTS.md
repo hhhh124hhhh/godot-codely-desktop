@@ -6,6 +6,8 @@
 
 DSH Desktop 是 Electron 宿主，复用 Harness runtime 和 Web UI。保持这一定位，不另建 Agent runtime 或独立业务前端。
 
+Godot Codely 当前聚焦游戏创作（2026-10-17 用户决定）：Office/PPT 源码与专项准备命令保留，但不进入默认宿主组合、dev/build 或安装包；不要为满足旧的 Office/PPT 测试假设重新启用它们。全量保留源码回归的 pretest 仍可准备对应资产，游戏专项验证应直接使用相应入口。
+
 设计与评审优先回答四个问题：能力属于哪个进程；失败后用户数据能否恢复；上游升级后能否继续加载；目标平台的安装包是否包含并能运行这项能力。代码风格服务于这些边界。
 
 涉及 Harness 定制、宿主插件或第三方补丁时，先阅读 [Patch 与 Plugin 规范](docs/patch-plugin-contract.md)：选型、slot 兼容性和组合验证在此统一定义。

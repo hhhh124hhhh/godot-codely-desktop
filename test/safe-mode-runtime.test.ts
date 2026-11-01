@@ -11,17 +11,21 @@ import { BRIDGE_READY_LINE } from '../packages/dsh-desktop-log-bridge/index.js'
 import { resolveTestNodeExecutable } from './node-executable'
 const TEST_NODE_EXECUTABLE = resolveTestNodeExecutable()
 
-it('boots recovery when a PPT dependency is missing without loading optional Desktop plugins', async () => {
+it('boots recovery when a project plugin dependency is missing without loading optional Desktop plugins', async () => {
   const root = resolve(import.meta.dirname, '..')
   const home = await mkdtemp(join(tmpdir(), 'dsh-safe-mode-runtime-'))
   const normalPatch = join(root, 'build/dsh-desktop.patch.yml')
+  const originalPatch = await readFile(normalPatch, 'utf8')
   const safePatch = join(root, 'build/dsh-desktop-safe.patch.yml')
-  const hook = join(home, 'missing-ppt.mjs')
-  const missing = 'BUG008 simulated missing PPT dependency'
+  const hook = join(home, 'missing-game-dependency.mjs')
+  const missing = 'BUG008 simulated missing project plugin dependency'
   await writeFile(hook, `
 import { registerHooks } from 'node:module';
 registerHooks({ resolve(specifier, context, next) {
-  if (specifier === '@aiden0z/pptx-renderer') {
+  if (specifier === '@deepseek-ai/dsh-office-to-pdf' || specifier === '@deepseek-ai/libreoffice-kit' || specifier.startsWith('@deepseek-ai/libreoffice-kit-')) {
+    throw new Error('Office engine loaded in game recovery: ' + specifier);
+  }
+  if (specifier === 'missing-game-dependency') {
     throw new Error(${JSON.stringify(missing)});
   }
   if (specifier === 'dsh-desktop-market-installer' || specifier === 'dsh-desktop-preset-transfer') {
@@ -42,10 +46,12 @@ registerHooks({ resolve(specifier, context, next) {
     launchProcess: (executable, args, options) => spawn(executable, ['--import', pathToFileURL(hook).href, ...args], options),
     onChanged() {}
   })
-  // Positive control: the same safe Profile with a PPT-only overlay must fail.
+  // Positive control: the same safe Profile with a broken project plugin must fail.
   // This proves the fault injection actually reaches the missing dependency.
-  const brokenPatch = join(home, 'ppt.patch.yml')
-  await writeFile(brokenPatch, '- insert:\n    - id: dsh-ppt-composer\n      name: dsh-ppt-composer\n')
+  const brokenPlugin = join(home, 'broken-game-plugin.mjs')
+  await writeFile(brokenPlugin, "import 'missing-game-dependency'\nexport const name = 'broken-game-plugin'\n")
+  const brokenPatch = join(home, 'game.patch.yml')
+  await writeFile(brokenPatch, '- insert:\n    - id: broken-game-plugin\n      name: ' + JSON.stringify(pathToFileURL(brokenPlugin).href) + '\n')
   const broken = makeRuntime(brokenPatch, 'broken.log')
   const recovered = makeRuntime(safePatch, 'recovered.log')
   try {
@@ -92,7 +98,7 @@ registerHooks({ resolve(specifier, context, next) {
     expect(envelope.result?.ok, JSON.stringify(envelope)).toBe(true)
     expect(envelope.result?.value?.sessionId).toBeTruthy()
     // Recovery uses its own overlay and never edits the normal composition.
-    expect(await readFile(normalPatch, 'utf8')).toContain('name: \'dsh-ppt-composer\'')
+    expect(await readFile(normalPatch, 'utf8')).toBe(originalPatch)
   } finally {
     await broken.stop()
     await recovered.stop()

@@ -14,13 +14,13 @@ const directories: string[] = []
 afterEach(async () => { await Promise.all(directories.splice(0).map(path => rm(path, { recursive: true, force: true }))) })
 
 describe('Desktop host plugin sources', () => {
-  it.each(['linux', 'win32', 'darwin'] as const)('projects Office only on supported platforms (%s)', async (platform) => {
+  it.each(['linux', 'win32', 'darwin'] as const)('omits suspended Office/PPT before resolution on every platform (%s)', async (platform) => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-host-platform-'))
     directories.push(root)
     const patchPath = join(root, 'desktop.patch.yml')
-    const source = '- insert:\n    - id: office\n      name: dsh-desktop-office\n    - id: other\n      name: host-other\n      config:\n        path: !!js dshHomePath("data")\n'
+    const source = '- insert:\n    - id: office\n      name: dsh-desktop-office\n    - id: ppt\n      name: dsh-ppt-composer\n    - id: other\n      name: host-other\n      config:\n        path: !!js dshHomePath("data")\n'
     await writeFile(patchPath, source)
-    const names = platform === 'linux' ? ['host-other'] : ['dsh-desktop-office', 'host-other']
+    const names = ['host-other']
     for (const name of names) {
       const directory = join(root, 'node_modules', name)
       await mkdir(directory, { recursive: true })
@@ -30,7 +30,7 @@ describe('Desktop host plugin sources', () => {
     expect(hostInsertedPluginNames(source, [], platform)).toEqual(names)
     const output = await prepareHostPluginSourcesPatch(root, patchPath, join(root, 'package.json'), platform)
     const rows = parse(await readFile(output, 'utf8'), { logLevel: 'silent' }) as { insert: { id: string }[] }[]
-    expect(rows[0]?.insert.map(entry => entry.id)).toEqual(platform === 'linux' ? ['other'] : ['office', 'other'])
+    expect(rows[0]?.insert.map(entry => entry.id)).toEqual(['other'])
     expect(await readFile(output, 'utf8')).toContain('!!js dshHomePath("data")')
     expect(await readFile(patchPath, 'utf8')).toBe(source)
   })

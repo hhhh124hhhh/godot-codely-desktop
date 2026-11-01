@@ -38,11 +38,10 @@ function hostPluginNames(source: string): HostPluginName[] {
   return names
 }
 
-function omittedHostPlugins(disabled: readonly string[], platform: NodeJS.Platform): string[] {
-  // Linux community builds intentionally carry no Office Python payload.
-  // Filter at composition, before resolution and client discovery, rather than
-  // hiding a missing payload during plugin activation on supported platforms.
-  return platform === 'linux' ? [...disabled, 'dsh-desktop-office'] : [...disabled]
+function omittedHostPlugins(disabled: readonly string[], _platform: NodeJS.Platform): string[] {
+  // Game creation excludes the retained Office/PPT host layers on every platform.
+  // Filter before resolution/client discovery, including older host patch inputs.
+  return [...disabled, 'dsh-desktop-office', 'dsh-ppt', 'dsh-ppt-composer']
 }
 
 export function hostInsertedPluginNames(source: string, disabled: readonly string[] = [], platform: NodeJS.Platform = process.platform): string[] {
